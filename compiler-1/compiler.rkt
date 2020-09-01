@@ -76,7 +76,7 @@
 ; complete with ~error handling~
 (define (search-symtab table var)
   (cdr (or (assv var table)
-           (error "variable" var 'not 'found))))
+           (error (format "Error: variable ~a not found" var)))))
 
 (define (uniquify-exp symtab)
   (lambda (e)
@@ -122,3 +122,42 @@
 ;; print-x86 : x86 -> string
 (define (print-x86 p)
   (error "TODO: code goes here (print-x86)"))
+
+
+(define r1-passes
+  (list uniquify
+        remove-complex-opera*
+        explicate-control
+        select-instructions
+        assign-homes
+        patch-instructions
+        print-x86))
+
+; our opportunity for style/coolness points
+(define (compile program passes)
+  (match passes
+    ['() program]
+    [`(,pass-a . ,passes-d)
+     (compile (pass-a program) passes-d)]))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
