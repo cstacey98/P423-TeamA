@@ -108,7 +108,7 @@
      (Program info ((uniquify-exp '()) e))]))
 
 ; 'type' predicate for atomicity
-(define (is-atomic e)
+(define (atomic? e)
   (match e
     [(Var x) #t]
     [(Int n) #t]
@@ -136,8 +136,8 @@
       #;[(Var x) (values (Var x) '())]
       #;[(Int n) (values (Int n) '())]
       [(Let x e body)
-       ; hmm
-       (values )]
+       (let ([new-name (gensym 'tmp)])
+         (values new-name (list (cons new-name (Let x e body)))))]
       [(Prim op es)
        (let ([new-name (gensym 'tmp)])
          (values new-name (list (cons new-name (Prim op es)))))]))
@@ -149,19 +149,38 @@
   (match exp
     [(Var x) (Var x)]
     [(Int n) (Int n)]
-    [(Let x e body) 1]
+    [(Let x e body)
+     ; if e not atomic, atomize and recur
+     (if (not (atomic? e))
+         (let-values ([(new-name-e bindings-e) (rco-atom e)])
+           (let ([bound-to (cdr (assv new-name-e bindings-e))])
+             (Let new-name-e
+                  (rco-exp bound-to)
+                  ; recur with e now being atomized
+                  (rco-exp (Let x (Var new-name-e) body)))))
+         ; do the same thing to body
+         (if (not (atomic? body))
+             (let-values ([(new-name-body bindings-body) (rco-atom body)])
+               (let ([bound-to (cdr (assv new-name-body bindings-body))])
+                 (Let new-name-body
+                      (rco-exp bound-to)
+                      ; don't recur because both parts are now rco'd
+                      (Let x e (Var new-name-body)))))
+             (Let x e body)))]
     [(Prim op es)
      (let-values
-         ([; split where you find the first complex operand :D
-           (atomic-front complex-back)
-           (split-where (lambda (e) (not (is-atomic e))) es)])
+         ; split where you find the first complex operand :D
+         ([(atomic-front complex-back)
+           (split-where (lambda (e) (not (atomic? e))) es)])
        (match complex-back
-         ['() (Prim op es)]          ; if there is nothing complex left, return what we have.
-         [`(,complex-a . ,complex-d) 
+         ['() (Prim op es)]
+         ; if there is nothing complex left, return what we have.
+         ; else, bind the complex operand to a variable (atomic) and recur
+         [`(,complex-a . ,complex-d)
           (let-values ([(new-name bindings) (rco-atom complex-a)])
             (let ([bound-to (cdr (assv new-name bindings))])
-              (Let new-name          ; else, bind the complex operand to a variable (atomic)
-                   bound-to          ; and recur
+              (Let new-name
+                   (rco-exp bound-to)
                    (rco-exp (Prim op (append atomic-front
                                              (list (Var new-name))
                                              complex-d))))))]))]))
@@ -174,7 +193,7 @@
     [(Var x) (Var x)]
     [(Int n) (Int n)]
     [(Let x e body)
-     (if (is-atomic e)
+     (if (atomic? e)
          e
          (let-values
              ([(e-atom e-bindings) (rco-atom e)])
@@ -184,7 +203,7 @@
              (let ([body-rco (rco-exp body)])
                (Let x e-atom )))))]
     [(Prim op es)
-     (if (andmap is-atomic es)
+     (if (andmap atomic? es)
          (Prim op es)
          (Let 
           (Prim op
@@ -200,7 +219,7 @@
 
           
      #;(Prim op (for/list ([arg es])
-                  (if (is-atomic arg)
+                  (if (atomic? arg)
                       arg
                     (Let (gensym 'tmp)
                          (let-values
