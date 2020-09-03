@@ -151,13 +151,25 @@
     [(Int n) (Int n)]
     [(Let x e body)
      ; if e not atomic, atomize and recur
-     (if (not (atomic? e))
+     ; bro it was that easy??????
+     (Let x (rco-exp e) (rco-exp body))
+     #;(if (not (atomic? body))
+             (let-values ([(new-name-body bindings-body) (rco-atom body)])
+               (let ([bound-to (cdr (assv new-name-body bindings-body))])
+                 (Let new-name-body
+                      (rco-exp bound-to)
+                      ; don't recur because both parts are now rco'd
+                      (Let x (rco-exp e) (Var new-name-body)))))
+             (Let x (rco-exp e) body))
+     #;(if (not (atomic? e))
          (let-values ([(new-name-e bindings-e) (rco-atom e)])
            (let ([bound-to (cdr (assv new-name-e bindings-e))])
              (Let new-name-e
                   (rco-exp bound-to)
                   ; recur with e now being atomized
                   (rco-exp (Let x (Var new-name-e) body)))))
+
+         
          ; do the same thing to body
          (if (not (atomic? body))
              (let-values ([(new-name-body bindings-body) (rco-atom body)])
@@ -187,44 +199,6 @@
 
 
 
-; abandoning this, but it's here just in case (until we finish the rest of rco*)
-#;(define (rco-exp exp)
-  (match exp
-    [(Var x) (Var x)]
-    [(Int n) (Int n)]
-    [(Let x e body)
-     (if (atomic? e)
-         e
-         (let-values
-             ([(e-atom e-bindings) (rco-atom e)])
-           (let ([atomized-bindings
-                  (for/list ([binding e-bindings])
-                    (rco-exp binding))])
-             (let ([body-rco (rco-exp body)])
-               (Let x e-atom )))))]
-    [(Prim op es)
-     (if (andmap atomic? es)
-         (Prim op es)
-         (Let 
-          (Prim op
-               (for/list ([arg es])
-                 (let-values
-                     ([(arg-atm arg-bindings) (rco-atom arg)])
-                   (let ([binding (assv arg-atm arg-bindings)])
-                     (if binding
-                         (Let (car binding)
-                              (cdr binding)
-                              (car binding))
-                         arg-atm)))))
-
-          
-     #;(Prim op (for/list ([arg es])
-                  (if (atomic? arg)
-                      arg
-                    (Let (gensym 'tmp)
-                         (let-values
-                             ([(arg-atm arg-bindings) (rco-atom arg)])
-                           )))))))]))
 
 ;; remove-complex-opera* : R1 -> R1
 (define (remove-complex-opera* p)
@@ -252,6 +226,28 @@
 (define (print-x86 p)
   (error "TODO: code goes here (print-x86)"))
 
+; all the passes needed to be used in (t .)
+(define test-passes
+  (list
+   uniquify
+   remove-complex-opera*
+   ))
+
+; t = test, just so I can type it quickly lol
+; p should be a quoted R1 program list
+(define (t p)
+  (testttt (parse-program
+            `(program
+              ()
+              ,p))
+           test-passes))
+
+; helper, just does natural recursion
+(define (testttt p passes)
+  (match passes
+    ['() p]
+    [`(,pass-a . ,passes-d)
+     (testttt (pass-a p) passes-d)]))
 
 (define r1-passes
   (list uniquify
