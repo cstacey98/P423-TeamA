@@ -86,22 +86,132 @@
        (Var (search-symtab symtab x))]
       [(Int n) (Int n)]
       [(Let x e body)
-       (let ([e-uniq ((uniquify-exp symtab) e)])
-         ((uniquify-exp (extend-symtab symtab x)) body))]
+       ; TODO capital L let?
+       (let* ([e-uniq ((uniquify-exp symtab) e)]
+              [symtab-x (extend-symtab symtab x)]
+              [x-uniq (search-symtab symtab-x x)]
+              [body-uniq ((uniquify-exp symtab-x) body)])
+         (Let x-uniq
+              e-uniq
+              body-uniq))
+       #;(let ([e-uniq ((uniquify-exp symtab) e)])
+           ((uniquify-exp (extend-symtab symtab x)) body))]
       [(Prim op es)
-       (Prim op (for/list ([e es]) ((uniquify-exp symtab) e)))]
-      )))
+       (begin
+         (displayln es)
+       (Prim op (for/list ([e es]) ((uniquify-exp symtab) e))))])))
 
 ;; uniquify : R1 -> R1
 (define (uniquify p)
   (match p
     [(Program info e)
-     (Program info ((uniquify-exp '()) e))]
-    ))
+     (Program info ((uniquify-exp '()) e))]))
+
+; 'type' predicate for atomicity
+(define (is-atomic e)
+  (match e
+    [(Var x) #t]
+    [(Int n) #t]
+    [(Let x e body) #f]
+    [(Prim op es) #f]))
+
+; split lst into two sublists (maintaining order)
+; where all elements in first value return #f with pred and the first
+; element in the second value returns #t for pred
+(define (split-where pred lst)
+  (match lst
+    ['() (values '() '())]
+    [`(,a . ,d)
+     (if (pred a)
+         (values '() lst)
+         (let-values ([(rest-front rest-back) (split-where pred d)])
+           (values (cons a rest-front)
+                   rest-back)))]))
+
+; to-atomize is an expression that should.. be atomized
+; bindings is our association list of variable bindings
+; then is basically a continuation/callback
+(define (rco-atom to-atomize)
+  (match to-atomize
+      #;[(Var x) (values (Var x) '())]
+      #;[(Int n) (values (Int n) '())]
+      [(Let x e body)
+       ; hmm
+       (values )]
+      [(Prim op es)
+       (let ([new-name (gensym 'tmp)])
+         (values new-name (list (cons new-name (Prim op es)))))]))
+
+; current problem:
+; > (eq? (Var 'tmp161623) (Var 'tmp161623))
+; #f
+(define (rco-exp exp)
+  (match exp
+    [(Var x) (Var x)]
+    [(Int n) (Int n)]
+    [(Let x e body) 1]
+    [(Prim op es)
+     (let-values
+         ([; split where you find the first complex operand :D
+           (atomic-front complex-back)
+           (split-where (lambda (e) (not (is-atomic e))) es)])
+       (match complex-back
+         ['() (Prim op es)]          ; if there is nothing complex left, return what we have.
+         [`(,complex-a . ,complex-d) 
+          (let-values ([(new-name bindings) (rco-atom complex-a)])
+            (let ([bound-to (cdr (assv new-name bindings))])
+              (Let new-name          ; else, bind the complex operand to a variable (atomic)
+                   bound-to          ; and recur
+                   (rco-exp (Prim op (append atomic-front
+                                             (list (Var new-name))
+                                             complex-d))))))]))]))
+
+
+
+; abandoning this, but it's here just in case (until we finish the rest of rco*)
+#;(define (rco-exp exp)
+  (match exp
+    [(Var x) (Var x)]
+    [(Int n) (Int n)]
+    [(Let x e body)
+     (if (is-atomic e)
+         e
+         (let-values
+             ([(e-atom e-bindings) (rco-atom e)])
+           (let ([atomized-bindings
+                  (for/list ([binding e-bindings])
+                    (rco-exp binding))])
+             (let ([body-rco (rco-exp body)])
+               (Let x e-atom )))))]
+    [(Prim op es)
+     (if (andmap is-atomic es)
+         (Prim op es)
+         (Let 
+          (Prim op
+               (for/list ([arg es])
+                 (let-values
+                     ([(arg-atm arg-bindings) (rco-atom arg)])
+                   (let ([binding (assv arg-atm arg-bindings)])
+                     (if binding
+                         (Let (car binding)
+                              (cdr binding)
+                              (car binding))
+                         arg-atm)))))
+
+          
+     #;(Prim op (for/list ([arg es])
+                  (if (is-atomic arg)
+                      arg
+                    (Let (gensym 'tmp)
+                         (let-values
+                             ([(arg-atm arg-bindings) (rco-atom arg)])
+                           )))))))]))
 
 ;; remove-complex-opera* : R1 -> R1
 (define (remove-complex-opera* p)
-  (error "TODO: code goes here (remove-complex-opera*)"))
+  (match p
+    [(Program info e)
+     (Program info (rco-exp e))]))
 
 ;; explicate-control : R1 -> C0
 (define (explicate-control p)
