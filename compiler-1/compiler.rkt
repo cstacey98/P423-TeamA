@@ -97,9 +97,7 @@
        #;(let ([e-uniq ((uniquify-exp symtab) e)])
            ((uniquify-exp (extend-symtab symtab x)) body))]
       [(Prim op es)
-       (begin
-         (displayln es)
-       (Prim op (for/list ([e es]) ((uniquify-exp symtab) e))))])))
+       (Prim op (for/list ([e es]) ((uniquify-exp symtab) e)))])))
 
 ;; uniquify : R1 -> R1
 (define (uniquify p)
@@ -152,33 +150,7 @@
     [(Let x e body)
      ; if e not atomic, atomize and recur
      ; bro it was that easy??????
-     (Let x (rco-exp e) (rco-exp body))
-     #;(if (not (atomic? body))
-             (let-values ([(new-name-body bindings-body) (rco-atom body)])
-               (let ([bound-to (cdr (assv new-name-body bindings-body))])
-                 (Let new-name-body
-                      (rco-exp bound-to)
-                      ; don't recur because both parts are now rco'd
-                      (Let x (rco-exp e) (Var new-name-body)))))
-             (Let x (rco-exp e) body))
-     #;(if (not (atomic? e))
-         (let-values ([(new-name-e bindings-e) (rco-atom e)])
-           (let ([bound-to (cdr (assv new-name-e bindings-e))])
-             (Let new-name-e
-                  (rco-exp bound-to)
-                  ; recur with e now being atomized
-                  (rco-exp (Let x (Var new-name-e) body)))))
-
-         
-         ; do the same thing to body
-         (if (not (atomic? body))
-             (let-values ([(new-name-body bindings-body) (rco-atom body)])
-               (let ([bound-to (cdr (assv new-name-body bindings-body))])
-                 (Let new-name-body
-                      (rco-exp bound-to)
-                      ; don't recur because both parts are now rco'd
-                      (Let x e (Var new-name-body)))))
-             (Let x e body)))]
+     (Let x (rco-exp e) (rco-exp body))]
     [(Prim op es)
      (let-values
          ; split where you find the first complex operand :D
@@ -197,9 +169,6 @@
                                              (list (Var new-name))
                                              complex-d))))))]))]))
 
-
-
-
 ;; remove-complex-opera* : R1 -> R1
 (define (remove-complex-opera* p)
   (match p
@@ -213,28 +182,36 @@
     [(Return val) (Seq (Assign x val) t2)]
     [(Seq assign taild) (Seq assign (combine-tails taild t2 x))]))
 
-;; R1 -> C0 x Listof(Variable)
-;; applied to exps in tail position
+; R1 -> C0 x Listof(Variable)
+; applied to exps in tail position
 (define (explicate-tail exp)
   (match exp
     [(Var x) (values (Return (Var x)) '())]
     [(Int n) (values (Return (Int n)) '())]
     [(Let lhs rhs body)
-     (let*-values ([(body-c0 body-vars)
-                    (explicate-tail body)]
-                   [(assign-c0 assign-vars)
-                    (explicate-assign lhs rhs body-c0)])
-       (values assign-c0 (append assign-vars body-vars)))]
+     ; ew
+     (let*-values
+         ([(body-c0 body-vars)
+           (explicate-tail body)]
+          [(new-tail new-assignment-vars)
+           (explicate-assign lhs rhs body-c0)])
+       (values new-tail
+               (append new-assignment-vars
+                       body-vars)))]
     [(Prim op es)
      (values (Return (Prim op es))
              '())]))
 
-;; R1 x Variable x C0 -> Tail x Listof(Variable)
-;; applied to exps that occur on the rhs of a let clause
-(define (explicate-assign lhs rhs rest-c0)
+; Tail = Assignment* . Return
+;
+; R1 x Variable x C0 -> Tail x Listof(Variable)
+; applied to exps that occur on the rhs of a let clause
+(define (explicate-assign lhs rhs c0)
   (let-values ([(rhs-c0 rhs-vars)
                 (explicate-tail rhs)])
-    (values (combine-tails rhs-c0 rest-c0 (Var lhs)) rhs-vars)))
+    (values (combine-tails rhs-c0 c0 (Var lhs))
+            (cons lhs #;(cons lhs #f)
+                  rhs-vars))))
 
 ;; explicate-control : R1 -> C0
 (define (explicate-control p)
@@ -242,7 +219,8 @@
     [(Program info e)
      (let-values ([(body* locals*)
                    (explicate-tail e)])
-       (Program locals*
+       (Program (list (cons 'locals locals*))
+                ;           label: tail
                 (list (cons 'start body*))))]))
 
 ;; select-instructions : C0 -> pseudo-x86
@@ -267,6 +245,10 @@
    uniquify
    remove-complex-opera*
    explicate-control
+   ;select-instructions
+   ;assign-homes
+   ;patch-instructions
+   ;print-x86
    ))
 
 ; t = test, just so I can type it quickly lol
@@ -278,6 +260,11 @@
               ,p))
            test-passes))
 
+; doesn't work :(
+; te = test and eval
+(define (te p)
+    (eval (t p)))
+
 ; helper, just does natural recursion
 (define (testttt p passes)
   (match passes
@@ -286,13 +273,15 @@
      (testttt (pass-a p) passes-d)]))
 
 (define r1-passes
-  (list uniquify
-        remove-complex-opera*
-        explicate-control
-        select-instructions
-        assign-homes
-        patch-instructions
-        print-x86))
+  (list
+   uniquify
+   remove-complex-opera*
+   explicate-control
+   select-instructions
+   assign-homes
+   patch-instructions
+   print-x86
+   ))
 
 ; our opportunity for style/coolness points
 (define (compile program passes)
