@@ -206,9 +206,44 @@
     [(Program info e)
      (Program info (rco-exp e))]))
 
+;; Tail Tail Variable -> Tail
+;; Takes two tails and combines them. Takes result of first tail and assigns it to the given variable.
+(define (combine-tails t1 t2 x)
+  (match t1
+    [(Return val) (Seq (Assign x val) t2)]
+    [(Seq assign taild) (Seq assign (combine-tails taild t2 x))]))
+
+;; R1 -> C0 x Listof(Variable)
+;; applied to exps in tail position
+(define (explicate-tail exp)
+  (match exp
+    [(Var x) (values (Return (Var x)) '())]
+    [(Int n) (values (Return (Int n)) '())]
+    [(Let lhs rhs body)
+     (let*-values ([(body-c0 body-vars)
+                    (explicate-tail body)]
+                   [(assign-c0 assign-vars)
+                    (explicate-assign lhs rhs body-c0)])
+       (values assign-c0 (append assign-vars body-vars)))]
+    [(Prim op es)
+     (values (Return (Prim op es))
+             '())]))
+
+;; R1 x Variable x C0 -> Tail x Listof(Variable)
+;; applied to exps that occur on the rhs of a let clause
+(define (explicate-assign lhs rhs rest-c0)
+  (let-values ([(rhs-c0 rhs-vars)
+                (explicate-tail rhs)])
+    (values (combine-tails rhs-c0 rest-c0 (Var lhs)) rhs-vars)))
+
 ;; explicate-control : R1 -> C0
 (define (explicate-control p)
-  (error "TODO: code goes here (explicate-control)"))
+  (match p
+    [(Program info e)
+     (let-values ([(body* locals*)
+                   (explicate-tail e)])
+       (Program locals*
+                (list (cons 'start body*))))]))
 
 ;; select-instructions : C0 -> pseudo-x86
 (define (select-instructions p)
@@ -231,6 +266,7 @@
   (list
    uniquify
    remove-complex-opera*
+   explicate-control
    ))
 
 ; t = test, just so I can type it quickly lol
