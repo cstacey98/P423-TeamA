@@ -210,8 +210,7 @@
   (let-values ([(rhs-c0 rhs-vars)
                 (explicate-tail rhs)])
     (values (combine-tails rhs-c0 c0 (Var lhs))
-            (cons lhs #;(cons lhs #f)
-                  rhs-vars))))
+            (cons lhs rhs-vars))))
 
 ;; explicate-control : R1 -> C0
 (define (explicate-control p)
@@ -228,7 +227,9 @@
   (match var1
     [(Var s1)
      (match var2
-       [(Var s2) (eq? s1 s2)])]))
+       [(Var s2) (eq? s1 s2)]
+       [whatever #f])]
+    [whatever #f]))
 
 ; select instructions for atoms
 (define (si-atm atm)
@@ -241,40 +242,57 @@
   (match stmt
     [(Assign var exp)
      (match exp
-       [(Var x) (Var x)]
-       [(Int n) (Int n)]
+       [(Var x) (Instr 'movq (list (Var x) var))]
+       [(Int n) (Instr 'movq (list (Imm n) var))]
        [(Prim '+ args)
         (match args
-          [(var1 var2)
+          [(list arg1 arg2)
            ; addq-var is the variable that will always be addq
            ; movq-var is the variable we will check if it is equal to var.
            ; We always do (Instr 'addq (list addq-var var))
            ; We just compare movq-var to var to see if we need to bother doing movq.
-           (let ([addq-var (if (vars-eq? var1 var) var2 var1)]
-                  [movq-var (if (vars-eq? var1 var) var1 var2)])
+           (let ([addq-var (si-atm (if (vars-eq? arg1 var) arg2 arg1))]
+                 [movq-var (si-atm (if (vars-eq? arg1 var) arg1 arg2))])
              (if (vars-eq? var movq-var)
-                 (Instr 'addq (list addq-var var))
-                 (list (Instr 'movq (list movq-var var)) (Instr 'addq (list addq-var var)))))])]
+                 (list (Instr 'addq (list addq-var var)))
+                 (list (Instr 'movq (list movq-var var))
+                       (Instr 'addq (list addq-var var)))))])]
        ; x = y + z
        [(Prim '- args)
-        ...]
+        (match args
+          [(list arg)
+           (if (vars-eq? arg var)
+               (list (Instr 'negq (list var)))
+               (list (Instr 'movq (list (si-atm arg) var))
+                     (Instr 'negq (list var))))])]
        [(Prim 'read args)
-        ...])]))
+        (list (Callq 'read_int)
+              (Instr 'movq (list (Reg 'rax) var)))])]))
 
 ; select instructions for tails
 ; gives a non-empty list of instr
 (define (si-tail tail)
   (match tail
     [(Return exp)
-     (list (Instr 'movq (list exp (Reg 'rax)))
-           (Callq 'conclusion))]
+     (append (si-stmt (Assign (Reg 'rax) exp))
+             (list (Jmp 'conclusion)))]
     [(Seq stmt tail-d)
-     (cons (si-stmt stmt)
-          (si-tail tail-d))]))
+     (append (si-stmt stmt)
+             (si-tail tail-d))]))
 
 ;; select-instructions : C0 -> pseudo-x86
 (define (select-instructions p)
-  (error "TODO: code goes here (select-instructions)"))
+  (match p
+    [(Program info e)
+     (Program
+      info
+      (CFG (map
+            (lambda (label-tail)
+              (let* ([label (car label-tail)]
+                     [tail (cdr label-tail)]
+                     [instr+ (si-tail tail)])
+                `(,label . ,(Block '() instr+))))
+            e)))]))
 
 ;; assign-homes : pseudo-x86 -> pseudo-x86
 (define (assign-homes p)
@@ -294,7 +312,7 @@
    uniquify
    remove-complex-opera*
    explicate-control
-   ;select-instructions
+   select-instructions
    ;assign-homes
    ;patch-instructions
    ;print-x86
