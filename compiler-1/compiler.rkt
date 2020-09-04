@@ -223,6 +223,37 @@
                 ;           label: tail
                 (list (cons 'start body*))))]))
 
+; select instructions for atoms
+(define (si-atm atm)
+  (match atm
+    [(Var x) (Var x)]
+    [(Int n) (Imm n)]))
+
+; select instructions for statements
+#;(define (si-stmt stmt)
+  (match stmt
+    [(Assign var exp)
+     (match exp
+       [(Var x) (Var x)]
+       [(Int n) (Int n)]
+       [(Prim '+ args)
+        ...]
+       [(Prim '- args)
+        ...]
+       [(Prim 'read args)
+        ...])]))
+
+; select instructions for tails
+; gives a non-empty list of instr
+(define (si-tail tail)
+  (match tail
+    [(Return exp)
+     (list (Instr 'movq (list exp (Reg 'rax)))
+           (Callq 'conclusion))]
+    [(Seq stmt tail-d)
+     (cons (si-stmt stmt)
+          (si-tail tail-d))]))
+
 ;; select-instructions : C0 -> pseudo-x86
 (define (select-instructions p)
   (error "TODO: code goes here (select-instructions)"))
