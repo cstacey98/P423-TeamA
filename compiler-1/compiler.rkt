@@ -242,8 +242,8 @@
   (match stmt
     [(Assign var exp)
      (match exp
-       [(Var x) (Instr 'movq (list (Var x) var))]
-       [(Int n) (Instr 'movq (list (Imm n) var))]
+       [(Var x) (list (Instr 'movq (list (Var x) var)))]
+       [(Int n) (list (Instr 'movq (list (Imm n) var)))]
        [(Prim '+ args)
         (match args
           [(list arg1 arg2)
@@ -280,6 +280,7 @@
      (append (si-stmt stmt)
              (si-tail tail-d))]))
 
+
 ;; select-instructions : C0 -> pseudo-x86
 (define (select-instructions p)
   (match p
@@ -294,9 +295,94 @@
                 `(,label . ,(Block '() instr+))))
             e)))]))
 
+; helper for getting next stack location :)
+(define (next-loc mappings)
+  (* -8 (add1 (length mappings))))
+
+(define (ah-helper p mappings)
+  (match p
+    ['() '()]
+    [`(,instr-a . ,instr-d)
+     (match instr-a
+       [(Instr op args)
+        (let-values
+            ([(no-vars-front vars-back) (split-where Var? args)])
+          (match vars-back
+            ['() (cons instr-a
+                       (ah-helper instr-d mappings))]
+            [`(,(Var varr) . ,rest-vars)
+             (let ([mapping (assv varr mappings)])
+               (if mapping
+                   (ah-helper
+                    (cons (Instr
+                           op
+                           (append
+                            no-vars-front
+                            (cons (Deref 'rbp (cdr mapping))
+                                  rest-vars)))
+                          instr-d)
+                    mappings)
+                   (let ([mapping (cons varr (next-loc mappings))])
+                     (ah-helper
+                      (cons (Instr
+                             op
+                             (append
+                              no-vars-front
+                              (cons (Deref 'rbp (cdr mapping))
+                                    rest-vars)))
+                            instr-d)
+                      (cons mapping mappings)))))]))]
+       [(Jmp label)
+        (cons instr-a
+              (ah-helper instr-d mappings))]
+       [(Callq label)
+        (cons instr-a
+              (ah-helper instr-d mappings))])]))
+
+#|
+> (t '(+ 4 
+         (let ([y (+ 8 12)]) 
+           (let ([x (+ 10 (- 8))]) 
+             (+ (- x) (+ y y))))))
+program:
+stack-space:
+48
+start:
+    movq $12, -8(%rbp)
+    addq $8, -8(%rbp)
+    movq $8, -16(%rbp)
+    negq -16(%rbp)
+    movq -16(%rbp), -24(%rbp)
+    addq $10, -24(%rbp)
+    movq -24(%rbp), -32(%rbp)
+    negq -32(%rbp)
+    movq -8(%rbp), -40(%rbp)
+    addq -8(%rbp), -40(%rbp)
+    movq -40(%rbp), -48(%rbp)
+    addq -32(%rbp), -48(%rbp)
+    movq -48(%rbp), %rax
+    addq $4, %rax
+    jmp conclusion
+|#
+
 ;; assign-homes : pseudo-x86 -> pseudo-x86
 (define (assign-homes p)
-  (error "TODO: code goes here (assign-homes)"))
+  (match p
+    [(Program info (CFG nodes))
+     ; new info is just size needed on stack
+     (Program (list (cons 'stack-space
+                          (* 8 (length (cdr (assv 'locals info)) ))))
+              (CFG
+               (map
+                (lambda (node)
+                  (let* ([label (car node)]
+                         [blonk (cdr node)]
+                         [block-instr+
+                          (match blonk
+                            [(Block b-info b-instr+) b-instr+])]
+                         [instr+ (ah-helper block-instr+ '())])
+                    `(,label . ,(Block '() instr+))))
+                nodes)))]))
 
 ;; patch-instructions : psuedo-x86 -> x86
 (define (patch-instructions p)
@@ -313,7 +399,7 @@
    remove-complex-opera*
    explicate-control
    select-instructions
-   ;assign-homes
+   assign-homes
    ;patch-instructions
    ;print-x86
    ))
