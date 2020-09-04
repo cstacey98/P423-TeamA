@@ -223,6 +223,13 @@
                 ;           label: tail
                 (list (cons 'start body*))))]))
 
+; Checks if two vars are equal.
+(define (vars-eq? var1 var2)
+  (match var1
+    [(Var s1)
+     (match var2
+       [(Var s2) (eq? s1 s2)])]))
+
 ; select instructions for atoms
 (define (si-atm atm)
   (match atm
@@ -230,14 +237,25 @@
     [(Int n) (Imm n)]))
 
 ; select instructions for statements
-#;(define (si-stmt stmt)
+(define (si-stmt stmt)
   (match stmt
     [(Assign var exp)
      (match exp
        [(Var x) (Var x)]
        [(Int n) (Int n)]
        [(Prim '+ args)
-        ...]
+        (match args
+          [(var1 var2)
+           ; addq-var is the variable that will always be addq
+           ; movq-var is the variable we will check if it is equal to var.
+           ; We always do (Instr 'addq (list addq-var var))
+           ; We just compare movq-var to var to see if we need to bother doing movq.
+           (let ([addq-var (if (vars-eq? var1 var) var2 var1)]
+                  [movq-var (if (vars-eq? var1 var) var1 var2)])
+             (if (vars-eq? var movq-var)
+                 (Instr 'addq (list addq-var var))
+                 (list (Instr 'movq (list movq-var var)) (Instr 'addq (list addq-var var)))))])]
+       ; x = y + z
        [(Prim '- args)
         ...]
        [(Prim 'read args)
