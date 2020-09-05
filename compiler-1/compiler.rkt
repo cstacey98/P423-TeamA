@@ -393,7 +393,7 @@ start:
                  indent "retq"))
 
 (define (print-main bytes-needed)
-  (string-append indent ".globl " (os-label 'main) newline
+  (string-append #;indent ".globl " (os-label 'main) newline
                  (os-label 'main) ":" newline
                  indent "pushq  %rbp" newline
                  indent "movq   %rsp, %rbp" newline
@@ -489,7 +489,8 @@ start:
     [`(,pass-a . ,passes-d)
      (compile (pass-a program) passes-d)]))
 
-
+(define (p prog)
+  (displayln (t prog)))
 
 
 
