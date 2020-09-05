@@ -7,59 +7,15 @@
 (require "utilities.rkt")
 ;(provide (all-defined-out))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; R0 examples
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-;; The following compiler pass is just a silly one that doesn't change
-;; anything important, but is nevertheless an example of a pass. It
-;; flips the arguments of +. -Jeremy
-(define (flip-exp e)
-  (match e
-    [(Var x) e]
-    ; pls put this line in the support code
-    [(Int n) e]
-    [(Prim 'read '()) (Prim 'read '())]
-    [(Prim '- (list e1)) (Prim '- (list (flip-exp e1)))]
-    [(Prim '+ (list e1 e2)) (Prim '+ (list (flip-exp e2) (flip-exp e1)))]))
-
-(define (flip-R0 e)
-  (match e
-    [(Program info e) (Program info (flip-exp e))]))
-
-
-;; Next we have the partial evaluation pass described in the book.
-; templates START
-(define (pe-neg r)
-  (match r
-    [(Int n) (Int (fx- 0 n))]
-    [else (Prim '- (list r))]))
-
-(define (pe-add r1 r2)
-  (match* (r1 r2)
-    [((Int n1) (Int n2)) (Int (fx+ n1 n2))]
-    [(_ _) (Prim '+ (list r1 r2))]))
-
-(define (pe-exp e)
-  (match e
-    [(Int n) (Int n)]
-    [(Prim 'read '()) (Prim 'read '())]
-    [(Prim '- (list e1)) (pe-neg (pe-exp e1))]
-    [(Prim '+ (list e1 e2)) (pe-add (pe-exp e1) (pe-exp e2))]
-    ))
-
-(define (pe-R0 p)
-  (match p
-    [(Program info e) (Program info (pe-exp e))]))
-; templates END
-
-(define (test-pe p)
-  (assert "testing pe-R0"
-     (equal? (interp-R0 p) (interp-R0 (pe-R0 p)))))
-
-(test-pe (parse-program `(program () (+ 10 (- (+ 5 3))))))
-(test-pe (parse-program `(program () (+ 1 (+ 3 1)))))
-(test-pe (parse-program `(program () (- (+ 3 (- 5))))))
+(provide
+   uniquify
+   remove-complex-opera*
+   explicate-control
+   select-instructions
+   assign-homes
+   patch-instructions
+   print-x86
+   )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; HW1 Passes
@@ -140,15 +96,12 @@
        (let ([new-name (gensym 'tmp)])
          (values new-name (list (cons new-name (Prim op es)))))]))
 
-; current problem:
-; > (eq? (Var 'tmp161623) (Var 'tmp161623))
-; #f
+
 (define (rco-exp exp)
   (match exp
     [(Var x) (Var x)]
     [(Int n) (Int n)]
     [(Let x e body)
-     ; if e not atomic, atomize and recur
      ; bro it was that easy??????
      (Let x (rco-exp e) (rco-exp body))]
     [(Prim op es)
@@ -189,7 +142,6 @@
     [(Var x) (values (Return (Var x)) '())]
     [(Int n) (values (Return (Int n)) '())]
     [(Let lhs rhs body)
-     ; ew
      (let*-values
          ([(body-c0 body-vars)
            (explicate-tail body)]
@@ -370,8 +322,7 @@ start:
   (match p
     [(Program info (CFG nodes))
      ; new info is just size needed on stack
-     (Program (list (cons 'stack-space
-                          (* 8 (length (cdr (assv 'locals info)) ))))
+     (Program info
               (CFG
                (map
                 (lambda (node)
@@ -384,13 +335,108 @@ start:
                     `(,label . ,(Block '() instr+))))
                 nodes)))]))
 
+(define (pi-helper p)
+  (match p
+    ['() '()]
+    [`(,instr-a . ,instr-d)
+     (match instr-a
+       [(Instr op (list arg))
+        (cons instr-a
+              (pi-helper instr-d))]
+       [(Instr op (list arg1 arg2))
+        (if (and (Deref? arg1)
+                 (Deref? arg2))
+            (append (list (Instr 'movq (list arg1 (Reg 'rax)))
+                          (Instr op (list (Reg 'rax) arg2)))
+                    (pi-helper instr-d))
+            (cons instr-a
+                  (pi-helper instr-d)))]
+       [(Jmp label)
+        (cons instr-a
+              (pi-helper instr-d))]
+       [(Callq label)
+        (cons instr-a
+              (pi-helper instr-d))])]))
+
 ;; patch-instructions : psuedo-x86 -> x86
 (define (patch-instructions p)
-  (error "TODO: code goes here (patch-instructions)"))
+  (match p
+    ; info : `((stack-space . ,bytes-needed)); should stay the same
+    [(Program info (CFG nodes))
+     (Program (list (cons 'stack-space
+                          (* 8 (length (cdr (assv 'locals info)) ))))
+              (CFG
+               (map
+                (lambda (node)
+                  (let* ([label (car node)]
+                         [blonk (cdr node)]
+                         [block-instr+
+                          (match blonk
+                            [(Block b-info b-instr+) b-instr+])]
+                         [instr+ (pi-helper block-instr+)])
+                    `(,label . ,(Block '() instr+))))
+                nodes)))]))
+
+(define (os-label label)
+  (match (system-type 'os)
+    ['macosx (format "_~a" label)]
+    [other label]))
+
+(define indent "       ")
+(define newline "\n")
+
+
+(define (print-conclusion bytes-needed)
+  (string-append (os-label 'conclusion) ":" newline
+                 indent (format "addq   $~a, %rsp" bytes-needed) newline
+                 indent "popq   %rbp" newline
+                 indent "retq"))
+
+(define (print-main bytes-needed)
+  (string-append indent ".globl " (os-label 'main) newline
+                 (os-label 'main) ":" newline
+                 indent "pushq  %rbp" newline
+                 indent "movq   %rsp, %rbp" newline
+                 indent (format "subq   $~a, %rsp" bytes-needed) newline
+                 indent "jmp " (os-label 'start)))
+
+(define (print-arg arg)
+  (match arg
+    [(Imm n) (format "$~a" n)]
+    [(Reg reg) (format "%~a" reg)]
+    [(Deref reg bytes) (format "~a(%~a)" bytes reg)]))
+
+(define (print-instr instr)
+  (match instr
+    [(Instr op (list arg1 arg2))
+     (format "~a   ~a, ~a" op (print-arg arg1) (print-arg arg2))]
+    [(Instr op (list arg))
+     (format "~a   ~a" op (print-arg arg))]
+    [(Jmp label) (format "jmp ~a" (os-label label))]
+    [(Callq label) (format "callq ~a" (os-label label))]))
+
+(define (print-start block)
+  (let ([instr+ (match block [(Block _ instructions) instructions])])
+    (string-append
+     (os-label 'start) ":" newline
+     (foldr (lambda (instr so-far)
+              (string-append indent (print-instr instr) newline
+                             so-far))
+            ""
+            instr+))))
 
 ;; print-x86 : x86 -> string
 (define (print-x86 p)
-  (error "TODO: code goes here (print-x86)"))
+  (match p
+    ; info : `((stack-space . ,bytes-needed)); should stay the same
+    [(Program `((stack-space . ,bytes-needed))
+              (CFG (list `(,start-label . ,start-block))))
+     (string-append
+      (print-start start-block)
+      newline
+      (print-main bytes-needed)
+      newline
+      (print-conclusion bytes-needed))]))
 
 ; all the passes needed to be used in (t .)
 (define test-passes
@@ -400,8 +446,8 @@ start:
    explicate-control
    select-instructions
    assign-homes
-   ;patch-instructions
-   ;print-x86
+   patch-instructions
+   print-x86
    ))
 
 ; t = test, just so I can type it quickly lol
@@ -442,15 +488,6 @@ start:
     ['() program]
     [`(,pass-a . ,passes-d)
      (compile (pass-a program) passes-d)]))
-
-
-
-
-
-
-
-
-
 
 
 
