@@ -425,6 +425,14 @@ start:
             ""
             instr+))))
 
+(define (actual-bytes-needed bytes-needed)
+  (match (system-type 'os)
+    ['macosx
+     (if (not (zero? (modulo bytes-needed 16)))
+         (+ 8 bytes-needed)
+         bytes-needed)]
+    [whatever bytes-needed]))
+
 ;; print-x86 : x86 -> string
 (define (print-x86 p)
   (match p
@@ -434,9 +442,9 @@ start:
      (string-append
       (print-start start-block)
       newline
-      (print-main bytes-needed)
+      (print-main (actual-bytes-needed bytes-needed))
       newline
-      (print-conclusion bytes-needed))]))
+      (print-conclusion (actual-bytes-needed bytes-needed)))]))
 
 ; all the passes needed to be used in (t .)
 (define test-passes
