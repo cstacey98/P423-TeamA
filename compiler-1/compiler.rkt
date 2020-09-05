@@ -380,7 +380,7 @@ start:
 (define (os-label label)
   (match (system-type 'os)
     ['macosx (format "_~a" label)]
-    [other label]))
+    [other (format "~a" label)]))
 
 (define indent "       ")
 (define newline "\n")
