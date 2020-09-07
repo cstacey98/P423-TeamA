@@ -172,7 +172,7 @@
                    (explicate-tail e)])
        (Program (list (cons 'locals locals*))
                 ;           label: tail
-                (list (cons 'start body*))))]))
+                (CFG (list (cons 'start body*)))))]))
 
 ; Checks if two vars are equal.
 (define (vars-eq? var1 var2)
@@ -236,7 +236,7 @@
 ;; select-instructions : C0 -> pseudo-x86
 (define (select-instructions p)
   (match p
-    [(Program info e)
+    [(Program info (CFG e))
      (Program
       info
       (CFG (map
