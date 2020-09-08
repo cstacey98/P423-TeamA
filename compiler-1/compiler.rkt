@@ -38,20 +38,16 @@
   (lambda (e)
     (match e
       [(Var x)
-       #;(search-symtab symtab x)
        (Var (search-symtab symtab x))]
       [(Int n) (Int n)]
       [(Let x e body)
-       ; TODO capital L let?
        (let* ([e-uniq ((uniquify-exp symtab) e)]
               [symtab-x (extend-symtab symtab x)]
               [x-uniq (search-symtab symtab-x x)]
               [body-uniq ((uniquify-exp symtab-x) body)])
          (Let x-uniq
               e-uniq
-              body-uniq))
-       #;(let ([e-uniq ((uniquify-exp symtab) e)])
-           ((uniquify-exp (extend-symtab symtab x)) body))]
+              body-uniq))]
       [(Prim op es)
        (Prim op (for/list ([e es]) ((uniquify-exp symtab) e)))])))
 
@@ -87,8 +83,6 @@
 ; then is basically a continuation/callback
 (define (rco-atom to-atomize)
   (match to-atomize
-      #;[(Var x) (values (Var x) '())]
-      #;[(Int n) (values (Int n) '())]
       [(Let x e body)
        (let ([new-name (gensym 'tmp)])
          (values new-name (list (cons new-name (Let x e body)))))]
@@ -154,8 +148,6 @@
      (values (Return (Prim op es))
              '())]))
 
-; Tail = Assignment* . Return
-;
 ; R1 x Variable x C0 -> Tail x Listof(Variable)
 ; applied to exps that occur on the rhs of a let clause
 (define (explicate-assign lhs rhs c0)
@@ -209,7 +201,6 @@
                  (list (Instr 'addq (list addq-var var)))
                  (list (Instr 'movq (list movq-var var))
                        (Instr 'addq (list addq-var var)))))])]
-       ; x = y + z
        [(Prim '- args)
         (match args
           [(list arg)
@@ -291,37 +282,11 @@
         (cons instr-a
               (ah-helper instr-d mappings))])]))
 
-#|
-> (t '(+ 4 
-         (let ([y (+ 8 12)]) 
-           (let ([x (+ 10 (- 8))]) 
-             (+ (- x) (+ y y))))))
-program:
-stack-space:
-48
-start:
-    movq $12, -8(%rbp)
-    addq $8, -8(%rbp)
-    movq $8, -16(%rbp)
-    negq -16(%rbp)
-    movq -16(%rbp), -24(%rbp)
-    addq $10, -24(%rbp)
-    movq -24(%rbp), -32(%rbp)
-    negq -32(%rbp)
-    movq -8(%rbp), -40(%rbp)
-    addq -8(%rbp), -40(%rbp)
-    movq -40(%rbp), -48(%rbp)
-    addq -32(%rbp), -48(%rbp)
-    movq -48(%rbp), %rax
-    addq $4, %rax
-    jmp conclusion
-|#
 
 ;; assign-homes : pseudo-x86 -> pseudo-x86
 (define (assign-homes p)
   (match p
     [(Program info (CFG nodes))
-     ; new info is just size needed on stack
      (Program info
               (CFG
                (map
@@ -361,7 +326,6 @@ start:
 ;; patch-instructions : psuedo-x86 -> x86
 (define (patch-instructions p)
   (match p
-    ; info : `((stack-space . ,bytes-needed)); should stay the same
     [(Program info (CFG nodes))
      (Program (list (cons 'stack-space
                           (* 8 (length (cdr (assv 'locals info)) ))))
@@ -436,7 +400,6 @@ start:
 ;; print-x86 : x86 -> string
 (define (print-x86 p)
   (match p
-    ; info : `((stack-space . ,bytes-needed)); should stay the same
     [(Program `((stack-space . ,bytes-needed))
               (CFG (list `(,start-label . ,start-block))))
      (string-append
@@ -466,11 +429,6 @@ start:
               ()
               ,p))
            test-passes))
-
-; doesn't work :(
-; te = test and eval
-(define (te p)
-    (eval (t p)))
 
 ; helper, just does natural recursion
 (define (testttt p passes)
