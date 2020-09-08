@@ -83,12 +83,14 @@
 ; then is basically a continuation/callback
 (define (rco-atom to-atomize)
   (match to-atomize
-      [(Let x e body)
-       (let ([new-name (gensym 'tmp)])
-         (values new-name (list (cons new-name (Let x e body)))))]
-      [(Prim op es)
-       (let ([new-name (gensym 'tmp)])
-         (values new-name (list (cons new-name (Prim op es)))))]))
+    [(Var x) (values (Var x) '())]
+    [(Int n) (values (Int n) '())]
+    [(Let x e body)
+     (let ([new-name (gensym 'tmp)])
+       (values new-name (list (cons new-name (Let x e body)))))]
+    [(Prim op es)
+     (let ([new-name (gensym 'tmp)])
+       (values new-name (list (cons new-name (Prim op es)))))]))
 
 
 (define (rco-exp exp)
