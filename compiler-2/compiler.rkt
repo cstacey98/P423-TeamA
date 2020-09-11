@@ -12,8 +12,8 @@
    remove-complex-opera*
    explicate-control
    select-instructions
-   assign-homes
-   patch-instructions
+   #;assign-homes
+   #;patch-instructions
    print-x86
    )
 
@@ -197,8 +197,8 @@
            ; movq-var is the variable we will check if it is equal to var.
            ; We always do (Instr 'addq (list addq-var var))
            ; We just compare movq-var to var to see if we need to bother doing movq.
-           (let ([addq-var (si-atm (if (vars-eq? arg1 var) arg2 arg1))]
-                 [movq-var (si-atm (if (vars-eq? arg1 var) arg1 arg2))])
+           (let ([addq-var (si-atm (if (vars-eq? arg2 var) arg1 arg2))]
+                 [movq-var (si-atm (if (vars-eq? arg2 var) arg2 arg1))])
              (if (vars-eq? var movq-var)
                  (list (Instr 'addq (list addq-var var)))
                  (list (Instr 'movq (list movq-var var))
@@ -240,108 +240,74 @@
                 `(,label . ,(Block '() instr+))))
             e)))]))
 
-; helper for getting next stack location :)
-(define (next-loc mappings)
-  (* -8 (add1 (length mappings))))
+(define (caller-saved? r)
+  (not (not (memv r (list 'rax 'rdx 'rcx 'rsi 'rdi 'r8 'r9 'r10 'r11)))))
 
-(define (ah-helper p mappings)
+(define (callee-saved? r)
+  (not (not (memv r  (list 'rsp 'rbp 'rbx 'r12 'r13 'r14 'r15)))))
+
+
+; which operations read/write (r/w) each arg
+; movq: r w
+; addq: r rw
+; negq: rw
+; callq: u what
+
+; (values (write args) (read args))
+(define (get-write/read instr)
+  (match instr
+    [(Instr 'addq (list arg1 arg2))
+     (values (filter Var? (list arg2))
+             (filter Var? (list arg1 arg2)))]
+    [(Instr 'movq (list arg1 arg2))
+     (values (filter Var? (list arg2))
+             (filter Var? (list arg1)))]
+    [(Instr 'negq (list arg))
+     (values (filter Var? (list arg))
+             (filter Var? (list arg)))]))
+
+; instr+ is a list
+; 'fairly simple' - kevin cao's last words
+; return a (list of (lists of variables that are live at that point))
+(define (liveness instr+)
+  (match instr+
+    [(cons (Jmp label) '()) '(())]
+    [(cons (Callq label) instr-d)
+     (let ([l-d (liveness instr-d)])
+       (cons (car l-d) l-d))]
+    ; we're assuming that instr-a is an (Instr . .)
+    [(cons instr-a instr-d)
+     (let-values
+         ([(write-args read-args) (get-write/read instr-a)])
+       (let* ([liveness-d (liveness instr-d)]
+              [liveness-a (set-union
+                           (set-subtract (car liveness-d)
+                                         write-args)
+                           read-args)])
+         (cons liveness-a
+               liveness-d)))]))
+
+;; TODO: register allocation, etc
+(define (uncover-live p)
   (match p
-    ['() '()]
-    [`(,instr-a . ,instr-d)
-     (match instr-a
-       [(Instr op args)
-        (let-values
-            ([(no-vars-front vars-back) (split-where Var? args)])
-          (match vars-back
-            ['() (cons instr-a
-                       (ah-helper instr-d mappings))]
-            [`(,(Var varr) . ,rest-vars)
-             (let ([mapping (assv varr mappings)])
-               (if mapping
-                   (ah-helper
-                    (cons (Instr
-                           op
-                           (append
-                            no-vars-front
-                            (cons (Deref 'rbp (cdr mapping))
-                                  rest-vars)))
-                          instr-d)
-                    mappings)
-                   (let ([mapping (cons varr (next-loc mappings))])
-                     (ah-helper
-                      (cons (Instr
-                             op
-                             (append
-                              no-vars-front
-                              (cons (Deref 'rbp (cdr mapping))
-                                    rest-vars)))
-                            instr-d)
-                      (cons mapping mappings)))))]))]
-       [(Jmp label)
-        (cons instr-a
-              (ah-helper instr-d mappings))]
-       [(Callq label)
-        (cons instr-a
-              (ah-helper instr-d mappings))])]))
+    [(Program info (CFG e))
+     (Program
+      info
+      (CFG (map
+            (lambda (label-tail)
+              (let* ([label (car label-tail)]
+                     [instr+ (match (cdr label-tail)
+                               ; we just want the instructions from this tail.
+                               ; the old info is meaningless
+                               [(Block '() instr+) instr+])]
+                     [live-after-sets (append (liveness instr+)
+                                              ; this one is the 'after-end' live
+                                              ; vars set
+                                              (list '()))])
+                (begin (displayln live-after-sets)
+                       `(,label . ,(Block live-after-sets instr+)))))
+            e)))]))
 
-
-;; assign-homes : pseudo-x86 -> pseudo-x86
-(define (assign-homes p)
-  (match p
-    [(Program info (CFG nodes))
-     (Program info
-              (CFG
-               (map
-                (lambda (node)
-                  (let* ([label (car node)]
-                         [blonk (cdr node)]
-                         [block-instr+
-                          (match blonk
-                            [(Block b-info b-instr+) b-instr+])]
-                         [instr+ (ah-helper block-instr+ '())])
-                    `(,label . ,(Block '() instr+))))
-                nodes)))]))
-
-(define (pi-helper p)
-  (match p
-    ['() '()]
-    [`(,instr-a . ,instr-d)
-     (match instr-a
-       [(Instr op (list arg))
-        (cons instr-a
-              (pi-helper instr-d))]
-       [(Instr op (list arg1 arg2))
-        (if (and (Deref? arg1)
-                 (Deref? arg2))
-            (append (list (Instr 'movq (list arg1 (Reg 'rax)))
-                          (Instr op (list (Reg 'rax) arg2)))
-                    (pi-helper instr-d))
-            (cons instr-a
-                  (pi-helper instr-d)))]
-       [(Jmp label)
-        (cons instr-a
-              (pi-helper instr-d))]
-       [(Callq label)
-        (cons instr-a
-              (pi-helper instr-d))])]))
-
-;; patch-instructions : psuedo-x86 -> x86
-(define (patch-instructions p)
-  (match p
-    [(Program info (CFG nodes))
-     (Program (list (cons 'stack-space
-                          (* 8 (length (cdr (assv 'locals info)) ))))
-              (CFG
-               (map
-                (lambda (node)
-                  (let* ([label (car node)]
-                         [blonk (cdr node)]
-                         [block-instr+
-                          (match blonk
-                            [(Block b-info b-instr+) b-instr+])]
-                         [instr+ (pi-helper block-instr+)])
-                    `(,label . ,(Block '() instr+))))
-                nodes)))]))
 
 (define (os-label label)
   (match (system-type 'os)
@@ -418,9 +384,10 @@
    remove-complex-opera*
    explicate-control
    select-instructions
-   assign-homes
-   patch-instructions
-   print-x86
+   uncover-live
+   #;assign-homes
+   #;patch-instructions
+   #;print-x86
    ))
 
 ; t = test, just so I can type it quickly lol
@@ -445,9 +412,10 @@
    remove-complex-opera*
    explicate-control
    select-instructions
-   assign-homes
-   patch-instructions
-   print-x86
+   uncover-live
+   #;assign-homes
+   #;patch-instructions
+   #;print-x86
    ))
 
 ; our opportunity for style/coolness points
