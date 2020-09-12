@@ -243,7 +243,8 @@
                 `(,label . ,(Block '() instr+))))
             e)))]))
 
-(define caller-saved (list 'rax 'rdx 'rcx 'rsi 'rdi 'r8 'r9 'r10 'r11))
+; removed 'rax
+(define caller-saved (list 'rdx 'rcx 'rsi 'rdi 'r8 'r9 'r10 'r11))
 ; membership predicate
 (define (caller-saved? r)
   (not (not (memv r caller-saved))))
@@ -337,25 +338,31 @@
      (let ([graph-d (interference-graph (cdr bl-info) instr-d)])
        (match instr-a
          [(Instr 'addq (list arg1 arg2))
-          (for/list ([var (car bl-info)])
-            (if (not (vars-eq? arg2 var))
-                (add-edge! graph-d arg2 var)
-                'no-interference-addq))
+          (if (Var? arg2)
+              (for/list ([var (car bl-info)])
+                (if (not (vars-eq? arg2 var))
+                    (add-edge! graph-d arg2 var)
+                    'no-interference-addq))
+              'arg2-is-rax-addq)
           graph-d]
          ; assumption is that var is a variable (you can't negq an immediate...
          ; right?)
          [(Instr 'negq (list arg))
-          (for/list ([var (car bl-info)])
-            (if (not (vars-eq? arg var))
-                (add-edge! graph-d arg var)
-                'no-interference-negq))
+          (if (Var? arg)
+              (for/list ([var (car bl-info)])
+                (if (not (vars-eq? arg var))
+                    (add-edge! graph-d arg var)
+                    'no-interference-negq))
+              'arg-is-rax-negq)
           graph-d]
          [(Instr 'movq (list arg1 arg2))
-          (for/list ([var (car bl-info)])
-            (if (or (vars-eq? arg2 var)
-                    (vars-eq? arg1 var))
-                'no-interference-movq
-                (add-edge! graph-d arg2 var)))
+          (if (Var? arg2)
+              (for/list ([var (car bl-info)])
+                (if (or (vars-eq? arg2 var)
+                        (vars-eq? arg1 var))
+                    'no-interference-movq
+                    (add-edge! graph-d arg2 var)))
+              'arg2-is-rax-movq)
           graph-d]))]))
 
 (define (build-interference p)
