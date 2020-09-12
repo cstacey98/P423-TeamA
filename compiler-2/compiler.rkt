@@ -5,6 +5,7 @@
 (require "interp-R1.rkt")
 (require "interp.rkt")
 (require "utilities.rkt")
+(require graph)
 ;(provide (all-defined-out))
 
 (provide
@@ -12,6 +13,8 @@
    remove-complex-opera*
    explicate-control
    select-instructions
+   uncover-live
+   build-interference
    #;assign-homes
    #;patch-instructions
    print-x86
@@ -240,11 +243,15 @@
                 `(,label . ,(Block '() instr+))))
             e)))]))
 
+(define caller-saved (list 'rax 'rdx 'rcx 'rsi 'rdi 'r8 'r9 'r10 'r11))
+; membership predicate
 (define (caller-saved? r)
-  (not (not (memv r (list 'rax 'rdx 'rcx 'rsi 'rdi 'r8 'r9 'r10 'r11)))))
+  (not (not (memv r caller-saved))))
 
+(define callee-saved (list 'rsp 'rbp 'rbx 'r12 'r13 'r14 'r15))
+; membership predicate
 (define (callee-saved? r)
-  (not (not (memv r  (list 'rsp 'rbp 'rbx 'r12 'r13 'r14 'r15)))))
+  (not (not (memv r callee-saved))))
 
 
 ; which operations read/write (r/w) each arg
@@ -308,6 +315,76 @@
                        `(,label . ,(Block live-after-sets instr+)))))
             e)))]))
 
+(define uwu unweighted-graph/undirected)
+
+; outputs an unweighted-graph/undirected
+; we're assuming that the top of instr+ corresponds to the top of bl-info
+(define (interference-graph bl-info instr+)
+  (match instr+
+    [(cons (Jmp label) '())
+     (uwu '())]
+    [(cons (Callq label) instr-d)
+     (let ([graph-d (interference-graph (cdr bl-info) instr-d)])
+       (begin
+         (for/list ([reg caller-saved])
+           (for/list ([var (car bl-info)])
+             ; add-edge! is imperative/has side-effects/mutates graph-d, so we
+             ; abuse the syntax of match clauses here
+             (add-edge! graph-d reg var)))
+         graph-d))]
+    ; we're assuming that instr-a is an (Instr . .)
+    [(cons instr-a instr-d)
+     (let ([graph-d (interference-graph (cdr bl-info) instr-d)])
+       (match instr-a
+         [(Instr 'addq (list arg1 arg2))
+          (for/list ([var (car bl-info)])
+            (if (not (vars-eq? arg2 var))
+                (add-edge! graph-d arg2 var)
+                'no-interference-addq))
+          graph-d]
+         ; assumption is that var is a variable (you can't negq an immediate...
+         ; right?)
+         [(Instr 'negq (list arg))
+          (for/list ([var (car bl-info)])
+            (if (not (vars-eq? arg var))
+                (add-edge! graph-d arg var)
+                'no-interference-negq))
+          graph-d]
+         [(Instr 'movq (list arg1 arg2))
+          (for/list ([var (car bl-info)])
+            (if (or (vars-eq? arg2 var)
+                    (vars-eq? arg1 var))
+                'no-interference-movq
+                (add-edge! graph-d arg2 var)))
+          graph-d]))]))
+
+(define (build-interference p)
+  (match p
+    [(Program info (CFG e))
+     (Program
+      (list (cons 'conflicts
+                  (map (lambda (label-tail)
+                         (let* ([label (car label-tail)]
+                                [instr+ (match (cdr label-tail)
+                                          [(Block bl-info instr+) instr+])]
+                                [bl-info (match (cdr label-tail)
+                                           [(Block bl-info instr+) bl-info])])
+                           ; taking cdr of bl-info so that we only use the
+                           ; liveness-after sets; the first before-liveness set
+                           ; is (guaranteed to be?) empty
+                           (let ([g (interference-graph (cdr bl-info) instr+)])
+                             (begin (displayln (get-edges g)) g)))
+                         )
+                       e)))
+      (CFG e))]))
+
+(define book-example
+  '(let ([v 1])
+     (let ([w 46])
+       (let ([x (+ v 7)])
+         (let ([y (+ 4 x)])
+           (let ([z (+ x w)])
+             (+ z (- y))))))))
 
 (define (os-label label)
   (match (system-type 'os)
@@ -385,6 +462,7 @@
    explicate-control
    select-instructions
    uncover-live
+   build-interference
    #;assign-homes
    #;patch-instructions
    #;print-x86
@@ -413,6 +491,7 @@
    explicate-control
    select-instructions
    uncover-live
+   build-interference
    #;assign-homes
    #;patch-instructions
    #;print-x86
