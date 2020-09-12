@@ -312,6 +312,7 @@
                                               ; this one is the 'after-end' live
                                               ; vars set
                                               (list '()))])
+                ; TODO remove displayln
                 (begin (displayln live-after-sets)
                        `(,label . ,(Block live-after-sets instr+)))))
             e)))]))
@@ -380,6 +381,7 @@
                            ; liveness-after sets; the first before-liveness set
                            ; is (guaranteed to be?) empty
                            (let ([g (interference-graph (cdr bl-info) instr+)])
+                             ; TODO remove displayln
                              (begin (displayln (get-edges g)) g)))
                          )
                        e)))
