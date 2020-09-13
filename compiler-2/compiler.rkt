@@ -15,8 +15,8 @@
    select-instructions
    uncover-live
    build-interference
-   #;assign-homes
-   #;patch-instructions
+   allocate-registers
+   patch-instructions
    print-x86
    )
 
@@ -387,6 +387,73 @@
                        e)))
       (CFG e))]))
 
+(define uncolored '-)
+(define (uncolored? color) (eqv? color uncolored))
+; returns an association list mapping variables to:
+; (Pair number saturation) where saturation is a set of numbers/colors
+; that this variable cannot have
+; graph -> (listof (pairof var (pairof color saturation)))
+(define (initial-sat-avail g)
+  (map (lambda (v) `(,v . (,uncolored . ())))
+       (get-vertices g)))
+
+; saturations is the shape of the output of initial-sat-avail.
+; we must ensure that the one we pick is also uncolored
+; assumes that saturations is non-empty
+(define (select-most-saturated saturations)
+  (select-most-saturated-acc saturations (car saturations)))
+
+(define (select-most-saturated-acc saturations max-so-far)
+  (match saturations
+    ['() max-so-far]
+    [`((,var . (,color . ,saturation-set)) . ,sats-d)
+     (let ([new-max (if (and (uncolored? color)
+                             (> (length saturation-set)
+                                (length (cddr max-so-far))))
+                        (car saturations)
+                        max-so-far)])
+       (select-most-saturated-acc (cdr saturations) new-max))]))
+
+
+; give u a new color that is not in its saturations
+(define (color-u u-pair)
+  (color-u-acc u-pair 0))
+
+; accumulator helper fn (we want minimal number not in saturations, so add1)
+(define (color-u-acc u-pair n)
+  (if (memv n (cddr u-pair))
+      (color-u-acc u-pair (add1 n))
+      `(,(car u-pair) . (,n . ,(cddr u-pair)))))
+
+; saturations * var-name -> new-saturations (where the var is now colored
+; appropriately (see book))
+(define (assign-new-color saturations u)
+  (match saturations
+    ['() (error (format "var ~a not found" u))]
+    [`(,sat-a . ,sats-d)
+     (if (vars-eq? (car sat-a) u)
+         ; re-color u
+         (cons (color-u sat-a)
+               sats-d)
+         (cons sat-a
+               (assign-new-color sats-d u)))]))
+
+; add color ,color to saturation lists of all neighbors v of u
+(define (saturate-neighbors g saturations u color)
+  saturations)
+
+; one iteration of the graph coloring alg
+(define (assign-new-color-and-saturate-neighbors g saturations u color)
+  (saturate-neighbors g (assign-new-color saturations u) u color))
+
+(define (allocate-registers p)
+  (match p
+    [(Program `(conflicts . intf-graph) (CFG e))
+     ; TODO: finish this pass
+     p
+     #;(Program . .)
+     ]))
+
 (define book-example
   '(let ([v 1])
      (let ([w 46])
@@ -472,8 +539,8 @@
    select-instructions
    uncover-live
    build-interference
-   #;assign-homes
-   #;patch-instructions
+   allocate-registers
+   patch-instructions
    #;print-x86
    ))
 
@@ -501,8 +568,8 @@
    select-instructions
    uncover-live
    build-interference
-   #;assign-homes
-   #;patch-instructions
+   allocate-registers
+   patch-instructions
    #;print-x86
    ))
 
