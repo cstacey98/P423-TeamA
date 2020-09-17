@@ -319,6 +319,12 @@
 
 (define uwu unweighted-graph/undirected)
 
+(define (add-all-var-args args g)
+  (for/list ([arg args])
+    (if (Var? arg)
+        (add-vertex! g arg)
+        'not-var-you-shouldnt-see-this)))
+
 ; outputs an unweighted-graph/undirected
 ; we're assuming that the top of instr+ corresponds to the top of bl-info
 ; TODO: guarantee that all program vars have vertex in graph
@@ -341,6 +347,7 @@
      (let ([graph-d (interference-graph (cdr bl-info) instr-d)])
        (match instr-a
          [(Instr 'addq (list arg1 arg2))
+          (add-all-var-args (list arg1 arg2) graph-d)
           (if (Var? arg2)
               (for/list ([var (car bl-info)])
                 (if (not (vars-eq? arg2 var))
@@ -351,6 +358,7 @@
          ; assumption is that var is a variable (you can't negq an immediate...
          ; right?)
          [(Instr 'negq (list arg))
+          (add-all-var-args (list arg) graph-d)
           (if (Var? arg)
               (for/list ([var (car bl-info)])
                 (if (not (vars-eq? arg var))
@@ -359,6 +367,7 @@
               'arg-is-rax-negq)
           graph-d]
          [(Instr 'movq (list arg1 arg2))
+          (add-all-var-args (list arg1 arg2) graph-d)
           (if (Var? arg2)
               (for/list ([var (car bl-info)])
                 (if (or (vars-eq? arg2 var)
@@ -469,7 +478,7 @@
 
 ; anything higher than 11 (we use 0,...,11 for registers) will be a stack loc
 ; interference-graph * list-of-program-vars -> (listof (pairof var color))
-(define (color-graph g vars)
+(define (color-mappings g vars)
   (let* ([sats (initial-sat-avail g)]
          [W (get-vertices g)]
          [totally-saturated
@@ -480,19 +489,92 @@
                (ancasn g saturations u color)))
            sats
            W)])
-    ; get rid of extra info
+    ; get rid of extra info after coloring the graph
     (map (lambda (sat)
            (match sat [`(,var . (,color . ,sat-set))
                        `(,var . ,color)]))
          totally-saturated)))
 
+(define usable-regs
+  (list
+   `(0 . rdx)
+   `(1 . rcx)
+   `(2 . rsi)
+   `(3 . rdi)
+   `(4 . r8)
+   `(5 . r9)
+   `(6 . r10)
+   `(7 . r11)
+   `(8 . rbx)
+   `(9 . r12)
+   `(10 . r13)
+   `(11 . r14)))
+
+(define n-usable-regs (length usable-regs))
+
+; color is a natural number (or ,uncolored; see above)
+(define (color-to-location color)
+  (let ([reg (assv color usable-regs)])
+    (if reg
+        (Reg (cdr reg))
+        ; need a positive multiple of -8, and we can get non-interfering
+        ; stack locations by reducing our universe to just these stack vars
+        ; ... or email team A
+        (Deref 'rbp (* -8 (add1 (- color n-usable-regs)))))))
+
+(define (assign-regs-helper instr+ color-map)
+  (match instr+
+    ['() '()]
+    [`(,instr-a . ,instr-d)
+     (cons 
+      (match instr-a
+        [(Instr op args)
+         (Instr
+          op
+          (map
+           (lambda (arg)
+             (if (Var? arg)
+                 ; kevin, team-a-cdr is a fool
+                 ; https://www.youtube.com/watch?v=OMm1RLF32ig
+                 (color-to-location (assv arg color-map))
+                 arg))
+           args))]
+        [(Jmp label) instr-a]
+        [(Callq label) instr-a])
+      (assign-regs-helper instr-d color-map))]))
+
+; returns a new label-block where vars are replaced with regs or stack-locations
+(define (assign-regs-or-stack node color-map)
+  (let-values ([(label bl-info instr+)
+                (match node
+                  [`(,label . ,(Block bl-info instr+))
+                   (values label bl-info instr+)])])
+    `(,label . ,(Block bl-info
+                       (assign-regs-helper instr+ color-map))))
+  #;
+  (for/list
+           ([block-instr+
+             (map (lambda (lbl-blk)
+                    (match (cdr lbl-blk)
+                      ; we just want the instructions out of the DAMN block
+                      [(Block _info instr+) instr+])) nodes)]
+            [color-map color-mappings])
+         ))
+
 ; TODO: finish this pass
 (define (allocate-registers p)
   (match p
-    [(Program `((conflicts . intf-graph) . ,(locals . ,local-vars)) (CFG e))
-     (let ([colored-graph (color-graph intf-graph local-vars)])
-       p)
-     ]))
+    [(Program `((conflicts . intf-graphs) . ,(locals . ,local-vars))
+              (CFG nodes))
+     (let ([colored-mappings
+            (map (lambda (g) (color-mappings g local-vars))
+                 intf-graphs)])
+       ; don't need the intf-graph anymore
+       (Program (list `(locals . ,local-vars))
+                (for/list
+                    ([node nodes]
+                     [color-map color-mappings])
+                  (assign-regs-or-stack node color-map))))]))
 
 (define book-example
   '(let ([v 1])
