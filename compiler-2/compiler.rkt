@@ -399,7 +399,7 @@
             info)
       (CFG e))]))
 
-(define uncolored '-)
+(define uncolored -1)
 (define (uncolored? color) (eqv? color uncolored))
 ; returns an association list mapping variables to:
 ; (Pair number saturation) where saturation is a set of numbers/colors
@@ -420,8 +420,8 @@
     ['() max-so-far]
     [`((,var . (,color . ,saturation-set)) . ,sats-d)
      (let ([new-max (if (and (uncolored? color)
-                             (> (length saturation-set)
-                                (length (cddr max-so-far))))
+                             (>= (length saturation-set)
+                                 (length (cddr max-so-far))))
                         (car saturations)
                         max-so-far)])
        (select-most-saturated-acc (cdr saturations) new-max))]))
@@ -433,9 +433,10 @@
 
 ; accumulator helper fn (we want minimal number not in saturations, so add1)
 (define (color-u-acc u-pair n)
-  (if (memv n (cddr u-pair))
-      (color-u-acc u-pair (add1 n))
-      `(,(car u-pair) . (,n . ,(cddr u-pair)))))
+  (begin (displayln (cddr u-pair))
+         (if (memv n (cddr u-pair))
+             (color-u-acc u-pair (add1 n))
+             `(,(car u-pair) . (,n . ,(cddr u-pair))))))
 
 ; saturations * var-name -> new-saturations (where the var is now colored
 ; appropriately (see book))
@@ -455,8 +456,8 @@
   (match saturations
     ['() (error (format "var ~a not found" u))]
     [`((,var-name . (,var-color . ,saturation-set)) . ,sat-d)
-     (if (eqv? v var-name)
-         (cons `(,var-name . (,var-color . ,(cons color saturation-sets)))
+     (if (vars-eq? v var-name)
+         (cons `(,var-name . (,var-color . ,(cons color saturation-set)))
                sat-d)
          (cons (car saturations)
                (saturate-neighbor (cdr saturations) u v color)))]))
@@ -464,30 +465,39 @@
 ; add color ,color to saturation lists of all neighbors v of u
 (define (saturate-neighbors g saturations u color)
   (let* ([edges (get-edges g)]
-         [u-neighbors (filter (lambda (edge) (eqv? u (car edge))) edges)])
+         [u-neighbors (filter (lambda (edge) (vars-eq? u (car edge))) edges)])
     (foldr (lambda (u-v sats)
-             (saturate-neighbor sats u (cadr u-v)))
+             (saturate-neighbor sats u (cadr u-v) color))
            saturations
            u-neighbors)))
 
+(define (print-and-return e)
+  (begin (displayln e)
+         e))
+
 ; one iteration of the graph coloring alg
-(define (assign-new-color-and-saturate-neighbors g saturations u color)
-  (saturate-neighbors g (assign-new-color saturations u) u color))
+(define (assign-new-color-and-saturate-neighbors g saturations u)
+  (let* ([new-sats (assign-new-color saturations u)]
+         [color (cadr (assf (lambda (var) (vars-eq? u var))
+                            new-sats))])
+    (saturate-neighbors g new-sats u color)))
 
 (define ancasn assign-new-color-and-saturate-neighbors)
 
 ; anything higher than 11 (we use 0,...,11 for registers) will be a stack loc
 ; interference-graph * list-of-program-vars -> (listof (pairof var color))
 (define (color-mappings g vars)
-  (let* ([sats (initial-sat-avail g)]
+  (let* ([saturations (initial-sat-avail g)]
          [W (get-vertices g)]
          [totally-saturated
           (foldr
            (lambda (_v sats)
-             (let ([u (select-most-saturated saturations)])
+             (let* ([u (select-most-saturated sats)]
+                    [u-label (car u)]
+                    [color (cadr u)])
                ; self-documenting code
-               (ancasn g saturations u color)))
-           sats
+               (ancasn g sats u-label)))
+           saturations
            W)])
     ; get rid of extra info after coloring the graph
     (map (lambda (sat)
@@ -536,7 +546,10 @@
              (if (Var? arg)
                  ; kevin, team-a-cdr is a fool
                  ; https://www.youtube.com/watch?v=OMm1RLF32ig
-                 (color-to-location (assv arg color-map))
+                 (color-to-location
+                  ; assv uses eqv instead of our vars-eq? :|
+                  ; the cdr is the color
+                  (cdr (assf (lambda (var) (vars-eq? var arg)) color-map)))
                  arg))
            args))]
         [(Jmp label) instr-a]
@@ -545,12 +558,13 @@
 
 ; returns a new label-block where vars are replaced with regs or stack-locations
 (define (assign-regs-or-stack node color-map)
-  (let-values ([(label bl-info instr+)
-                (match node
-                  [`(,label . ,(Block bl-info instr+))
-                   (values label bl-info instr+)])])
-    `(,label . ,(Block bl-info
-                       (assign-regs-helper instr+ color-map))))
+  (begin (displayln color-map)
+         (let-values ([(label bl-info instr+)
+                       (match node
+                         [`(,label . ,(Block bl-info instr+))
+                          (values label bl-info instr+)])])
+           `(,label . ,(Block bl-info
+                              (assign-regs-helper instr+ color-map)))))
   #;
   (for/list
            ([block-instr+
@@ -564,7 +578,8 @@
 ; TODO: finish this pass
 (define (allocate-registers p)
   (match p
-    [(Program `((conflicts . intf-graphs) . ,(locals . ,local-vars))
+    [(Program (list `(conflicts . ,intf-graphs)
+                    `(locals . ,local-vars))
               (CFG nodes))
      (let ([colored-mappings
             (map (lambda (g) (color-mappings g local-vars))
@@ -573,7 +588,7 @@
        (Program (list `(locals . ,local-vars))
                 (for/list
                     ([node nodes]
-                     [color-map color-mappings])
+                     [color-map colored-mappings])
                   (assign-regs-or-stack node color-map))))]))
 
 (define book-example
@@ -583,6 +598,49 @@
          (let ([y (+ 4 x)])
            (let ([z (+ x w)])
              (+ z (- y))))))))
+
+
+(define (pi-helper p)
+  (match p
+    ['() '()]
+    [`(,instr-a . ,instr-d)
+     (match instr-a
+       [(Instr op (list arg))
+        (cons instr-a
+              (pi-helper instr-d))]
+       [(Instr op (list arg1 arg2))
+        (if (and (Deref? arg1)
+                 (Deref? arg2))
+            (append (list (Instr 'movq (list arg1 (Reg 'rax)))
+                          (Instr op (list (Reg 'rax) arg2)))
+                    (pi-helper instr-d))
+            (cons instr-a
+                  (pi-helper instr-d)))]
+       [(Jmp label)
+        (cons instr-a
+              (pi-helper instr-d))]
+       [(Callq label)
+        (cons instr-a
+              (pi-helper instr-d))])]))
+
+;; patch-instructions : psuedo-x86 -> x86
+(define (patch-instructions p)
+  (match p
+    [(Program info (CFG nodes))
+     (Program (list (cons 'stack-space
+                          (* 8 (length (cdr (assv 'locals info)) ))))
+              (CFG
+               (map
+                (lambda (node)
+                  (let* ([label (car node)]
+                         [blonk (cdr node)]
+                         [block-instr+
+                          (match blonk
+                            [(Block b-info b-instr+) b-instr+])]
+                         [instr+ (pi-helper block-instr+)])
+                    `(,label . ,(Block '() instr+))))
+                nodes)))]))
+
 
 (define (os-label label)
   (match (system-type 'os)
