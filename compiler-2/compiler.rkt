@@ -321,6 +321,8 @@
 
 ; outputs an unweighted-graph/undirected
 ; we're assuming that the top of instr+ corresponds to the top of bl-info
+; TODO: guarantee that all program vars have vertex in graph
+; (may not have edge though)
 (define (interference-graph bl-info instr+)
   (match instr+
     [(cons (Jmp label) '())
@@ -370,7 +372,7 @@
   (match p
     [(Program info (CFG e))
      (Program
-      (list (cons 'conflicts
+      (cons (cons 'conflicts
                   (map (lambda (label-tail)
                          (let* ([label (car label-tail)]
                                 [instr+ (match (cdr label-tail)
@@ -384,7 +386,8 @@
                              ; TODO remove displayln
                              (begin (displayln (get-edges g)) g)))
                          )
-                       e)))
+                       e))
+            info)
       (CFG e))]))
 
 (define uncolored '-)
@@ -438,20 +441,57 @@
          (cons sat-a
                (assign-new-color sats-d u)))]))
 
+; saturate ,v with ,color
+(define (saturate-neighbor saturations u v color)
+  (match saturations
+    ['() (error (format "var ~a not found" u))]
+    [`((,var-name . (,var-color . ,saturation-set)) . ,sat-d)
+     (if (eqv? v var-name)
+         (cons `(,var-name . (,var-color . ,(cons color saturation-sets)))
+               sat-d)
+         (cons (car saturations)
+               (saturate-neighbor (cdr saturations) u v color)))]))
+
 ; add color ,color to saturation lists of all neighbors v of u
 (define (saturate-neighbors g saturations u color)
-  saturations)
+  (let* ([edges (get-edges g)]
+         [u-neighbors (filter (lambda (edge) (eqv? u (car edge))) edges)])
+    (foldr (lambda (u-v sats)
+             (saturate-neighbor sats u (cadr u-v)))
+           saturations
+           u-neighbors)))
 
 ; one iteration of the graph coloring alg
 (define (assign-new-color-and-saturate-neighbors g saturations u color)
   (saturate-neighbors g (assign-new-color saturations u) u color))
 
+(define ancasn assign-new-color-and-saturate-neighbors)
+
+; anything higher than 11 (we use 0,...,11 for registers) will be a stack loc
+; interference-graph * list-of-program-vars -> (listof (pairof var color))
+(define (color-graph g vars)
+  (let* ([sats (initial-sat-avail g)]
+         [W (get-vertices g)]
+         [totally-saturated
+          (foldr
+           (lambda (_v sats)
+             (let ([u (select-most-saturated saturations)])
+               ; self-documenting code
+               (ancasn g saturations u color)))
+           sats
+           W)])
+    ; get rid of extra info
+    (map (lambda (sat)
+           (match sat [`(,var . (,color . ,sat-set))
+                       `(,var . ,color)]))
+         totally-saturated)))
+
+; TODO: finish this pass
 (define (allocate-registers p)
   (match p
-    [(Program `(conflicts . intf-graph) (CFG e))
-     ; TODO: finish this pass
-     p
-     #;(Program . .)
+    [(Program `((conflicts . intf-graph) . ,(locals . ,local-vars)) (CFG e))
+     (let ([colored-graph (color-graph intf-graph local-vars)])
+       p)
      ]))
 
 (define book-example
