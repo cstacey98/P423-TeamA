@@ -479,29 +479,30 @@
                (assign-new-color sats-d u)))]))
 
 ; saturate ,v with ,color
-(define (saturate-neighbor saturations u v color)
-  (match saturations
-    ['() (error (format "var ~a not found" u))]
-    [`((,var-name . (,var-color . ,saturation-set)) . ,sat-d)
-     (if (vars-eq? v var-name)
-         (cons `(,var-name . (,var-color . ,(cons color saturation-set)))
-               sat-d)
-         (cons (car saturations)
-               (saturate-neighbor (cdr saturations) u v color)))
-     #;
-     (begin (displayln (Var? var-name))
-            (if (vars-eq? v var-name)
-                (cons `(,var-name . (,var-color . ,(cons color saturation-set)))
-                      sat-d)
-                (cons (car saturations)
-                      (saturate-neighbor (cdr saturations) u v color))))]))
+(define (saturate-neighbor saturations v color)
+  (if (not (Var? v)) saturations
+      (match saturations
+        ['() '()]
+        [`((,var-name . (,var-color . ,saturation-set)) . ,sat-d)
+         (if (vars-eq? v var-name)
+             (cons `(,var-name . (,var-color . ,(cons color saturation-set)))
+                   sat-d)
+             (cons (car saturations)
+                   (saturate-neighbor (cdr saturations) v color)))
+         #;
+         (begin (displayln (Var? var-name))
+                (if (vars-eq? v var-name)
+                    (cons `(,var-name . (,var-color . ,(cons color saturation-set)))
+                          sat-d)
+                    (cons (car saturations)
+                          (saturate-neighbor (cdr saturations) u v color))))])))
 
 ; add color ,color to saturation lists of all neighbors v of u
 (define (saturate-neighbors g saturations u color)
   (let* ([edges (get-edges g)]
          [u-neighbors (filter (lambda (edge) (vars-eq? u (car edge))) edges)])
     (foldr (lambda (u-v sats)
-             (saturate-neighbor sats (car u-v) (cadr u-v) color))
+             (saturate-neighbor sats (cadr u-v) color))
            saturations
            u-neighbors)))
 
