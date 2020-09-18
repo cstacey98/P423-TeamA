@@ -9,16 +9,16 @@
 ;(provide (all-defined-out))
 
 (provide
-   uniquify
-   remove-complex-opera*
-   explicate-control
-   select-instructions
-   uncover-live
-   build-interference
-   allocate-registers
-   patch-instructions
-   print-x86
-   )
+ uniquify
+ remove-complex-opera*
+ explicate-control
+ select-instructions
+ uncover-live
+ build-interference
+ allocate-registers
+ patch-instructions
+ print-x86
+ )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; HW1 Passes
@@ -199,7 +199,8 @@
            ; addq-var is the variable that will always be addq
            ; movq-var is the variable we will check if it is equal to var.
            ; We always do (Instr 'addq (list addq-var var))
-           ; We just compare movq-var to var to see if we need to bother doing movq.
+           ; We just compare movq-var to var to see if we need to bother doing
+           ; movq.
            (let ([addq-var (si-atm (if (vars-eq? arg2 var) arg1 arg2))]
                  [movq-var (si-atm (if (vars-eq? arg2 var) arg2 arg1))])
              (if (vars-eq? var movq-var)
@@ -312,7 +313,6 @@
                                               ; this one is the 'after-end' live
                                               ; vars set
                                               (list '()))])
-                ; TODO remove displayln
                 `(,label . ,(Block live-after-sets instr+))))
             e)))]))
 
@@ -393,9 +393,7 @@
                            ; liveness-after sets; the first before-liveness set
                            ; is (guaranteed to be?) empty
                            (let ([g (interference-graph (cdr bl-info) instr+)])
-                             ; TODO remove displayln
-                             g))
-                         )
+                             g)))
                        e))
             info)
       (CFG e))]))
@@ -488,14 +486,7 @@
              (cons `(,var-name . (,var-color . ,(cons color saturation-set)))
                    sat-d)
              (cons (car saturations)
-                   (saturate-neighbor (cdr saturations) v color)))
-         #;
-         (begin (displayln (Var? var-name))
-                (if (vars-eq? v var-name)
-                    (cons `(,var-name . (,var-color . ,(cons color saturation-set)))
-                          sat-d)
-                    (cons (car saturations)
-                          (saturate-neighbor (cdr saturations) u v color))))])))
+                   (saturate-neighbor (cdr saturations) v color)))])))
 
 ; add color ,color to saturation lists of all neighbors v of u
 (define (saturate-neighbors g saturations u color)
@@ -518,11 +509,6 @@
     (saturate-neighbors g new-sats u color)))
 
 (define ancasn assign-new-color-and-saturate-neighbors)
-
-(define (while cond-pred body-fn)
-  (if (cond-pred)
-      (body-fn)
-      'termnate-while))
 
 ; set-subtract uses eqv?, not vars-eq?
 (define (remove-u vertices u)
@@ -554,43 +540,7 @@
            (match sat [`(,var . (,color . ,sat-set))
                        `(,var . ,color)]))
          totally-saturated)))
-; seems like it should work, but does not. nothing really gets colored
-; (except the first thing that is colored?)
 
-#;
-(define (color-mappings g vars)
-  (let* ([saturations (initial-sat-avail g)]
-         [W (get-vertices g)]
-         #;
-         [totally-saturated
-          
-          saturations
-          #;
-          (foldr
-           (lambda (_v sats)
-             (let* ([u (select-most-saturated sats)]
-                    [u-label (car u)]
-                    [color (cadr u)])
-               ; self-documenting code
-               (ancasn g sats u-label)))
-           saturations
-           W)])
-    ; get rid of extra info after coloring the graph
-    (begin
-      (while (lambda () (not (zero? (length W))))
-        (lambda ()
-          (let* ([u (select-most-saturated saturations)]
-                 [u-label (car u)]
-                 [color (cadr u)])
-            ; self-documenting code
-            (begin (set! W (remove-u W u))
-                   (set! saturations (ancasn g saturations u-label))))))
-      (map (lambda (sat)
-             (match sat [`(,var . (,color . ,sat-set))
-                         `(,var . ,color)]))
-           (print-and-return saturations)
-           #;totally-saturated
-           ))))
 
 (define usable-regs
   (list
@@ -636,7 +586,6 @@
           (map
            (lambda (arg)
              (if (Var? arg)
-                 ; kevin, team-a-cdr is a fool
                  ; https://www.youtube.com/watch?v=OMm1RLF32ig
                  (color-to-location
                   ; assv uses eqv instead of our vars-eq? :|
@@ -658,13 +607,13 @@
                        (assign-regs-helper instr+ color-map))))
   #;
   (for/list
-           ([block-instr+
-             (map (lambda (lbl-blk)
-                    (match (cdr lbl-blk)
-                      ; we just want the instructions out of the DAMN block
-                      [(Block _info instr+) instr+])) nodes)]
-            [color-map color-mappings])
-         ))
+      ([block-instr+
+        (map (lambda (lbl-blk)
+               (match (cdr lbl-blk)
+                 ; we just want the instructions out of the DAMN block
+                 [(Block _info instr+) instr+])) nodes)]
+       [color-map color-mappings])
+    ))
 
 
 
@@ -691,11 +640,11 @@
 
 (define book-example
   #;'(let ([v 1])
-     (let ([w 42])
-       (let ([x (+ v 7)])
-         (let ([y x])
-           (let ([z (+ x w)])
-             (+ z (- y)))))))
+       (let ([w 42])
+         (let ([x (+ v 7)])
+           (let ([y x])
+             (let ([z (+ x w)])
+               (+ z (- y)))))))
   '(let ([v 1])
      (let ([w 46])
        (let ([x (+ v 7)])
@@ -824,8 +773,8 @@
    uncover-live
    build-interference
    allocate-registers
-   #;patch-instructions
-   #;print-x86
+   patch-instructions
+   print-x86
    ))
 
 ; t = test, just so I can type it quickly lol
@@ -854,7 +803,7 @@
    build-interference
    allocate-registers
    patch-instructions
-   #;print-x86
+   print-x86
    ))
 
 ; our opportunity for style/coolness points

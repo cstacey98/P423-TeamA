@@ -1,11 +1,11 @@
 _start:
-       movq   $10, %rsi
-       addq   $11, %rsi
-       movq   $4, %rdx
-       negq   %rdx
+       movq   $10, %rdx
+       addq   $11, %rdx
+       movq   $4, %rsi
+       negq   %rsi
        movq   $25, %rcx
-       addq   %rdx, %rcx
-       movq   %rsi, %rax
+       addq   %rsi, %rcx
+       movq   %rdx, %rax
        addq   %rcx, %rax
        jmp _conclusion
 

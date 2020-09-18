@@ -1,16 +1,16 @@
 _start:
-       movq   $1, %rcx
-       movq   $46, %rdx
-       movq   %rcx, %rcx
-       addq   $7, %rcx
+       movq   $1, %rdx
+       movq   $46, %rcx
+       movq   %rdx, %rdx
+       addq   $7, %rdx
        movq   $4, %rsi
-       addq   %rcx, %rsi
-       movq   %rcx, %rcx
-       addq   %rdx, %rcx
-       movq   %rsi, %rdx
-       negq   %rdx
-       movq   %rcx, %rax
-       addq   %rdx, %rax
+       addq   %rdx, %rsi
+       movq   %rdx, %rdx
+       addq   %rcx, %rdx
+       movq   %rsi, %rcx
+       negq   %rcx
+       movq   %rdx, %rax
+       addq   %rcx, %rax
        jmp _conclusion
 
 .globl _main

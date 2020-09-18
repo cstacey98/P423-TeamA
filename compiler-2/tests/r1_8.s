@@ -1,9 +1,9 @@
 _start:
-       movq   $20, %rdx
-       movq   $22, %rcx
-       movq   %rcx, %rcx
-       movq   %rcx, %rax
-       addq   %rdx, %rax
+       movq   $20, %rcx
+       movq   $22, %rdx
+       movq   %rdx, %rdx
+       movq   %rdx, %rax
+       addq   %rcx, %rax
        jmp _conclusion
 
 .globl _main
