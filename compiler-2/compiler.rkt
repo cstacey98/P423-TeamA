@@ -313,8 +313,7 @@
                                               ; vars set
                                               (list '()))])
                 ; TODO remove displayln
-                (begin (displayln live-after-sets)
-                       `(,label . ,(Block live-after-sets instr+)))))
+                `(,label . ,(Block live-after-sets instr+))))
             e)))]))
 
 (define uwu unweighted-graph/undirected)
@@ -393,7 +392,7 @@
                            ; is (guaranteed to be?) empty
                            (let ([g (interference-graph (cdr bl-info) instr+)])
                              ; TODO remove displayln
-                             (begin (displayln (get-edges g)) g)))
+                             g))
                          )
                        e))
             info)
@@ -413,7 +412,10 @@
 ; we must ensure that the one we pick is also uncolored
 ; assumes that saturations is non-empty
 (define (select-most-saturated saturations)
-  (select-most-saturated-acc saturations (car saturations)))
+  (select-most-saturated-acc saturations (findf
+                                          (lambda (sat)
+                                            (uncolored? (cadr sat)))
+                                          saturations)))
 
 (define (select-most-saturated-acc saturations max-so-far)
   (match saturations
@@ -433,10 +435,9 @@
 
 ; accumulator helper fn (we want minimal number not in saturations, so add1)
 (define (color-u-acc u-pair n)
-  (begin (displayln (cddr u-pair))
-         (if (memv n (cddr u-pair))
-             (color-u-acc u-pair (add1 n))
-             `(,(car u-pair) . (,n . ,(cddr u-pair))))))
+  (if (memv n (cddr u-pair))
+      (color-u-acc u-pair (add1 n))
+      `(,(car u-pair) . (,n . ,(cddr u-pair)))))
 
 ; saturations * var-name -> new-saturations (where the var is now colored
 ; appropriately (see book))
@@ -487,7 +488,7 @@
 (define (while cond-pred body-fn)
   (if (cond-pred)
       (body-fn)
-      'terminate-while))
+      'termnate-while))
 
 ; set-subtract uses eqv?, not vars-eq?
 (define (remove-u vertices u)
@@ -508,8 +509,7 @@
           (foldr
            (lambda (_v sats)
              (let* ([u (select-most-saturated sats)]
-                    [u-label (car u)]
-                    [color (cadr u)])
+                    [u-label (car u)])
                ; self-documenting code
                (ancasn g sats u-label)))
            saturations
@@ -668,13 +668,12 @@ start:
                        (assign-regs-or-stack node color-map)))))]))
 
 (define book-example
-  '(let ([v 1])
+  #;'(let ([v 1])
      (let ([w 42])
        (let ([x (+ v 7)])
          (let ([y x])
            (let ([z (+ x w)])
              (+ z (- y)))))))
-  #;
   '(let ([v 1])
      (let ([w 46])
        (let ([x (+ v 7)])
@@ -845,8 +844,6 @@ start:
 
 (define (p prog)
   (displayln (t prog)))
-
-
 
 
 
