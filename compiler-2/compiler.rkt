@@ -484,6 +484,21 @@
 
 (define ancasn assign-new-color-and-saturate-neighbors)
 
+(define (while cond-pred body-fn)
+  (if (cond-pred)
+      (body-fn)
+      'terminate-while))
+
+; set-subtract uses eqv?, not vars-eq?
+(define (remove-u vertices u)
+  (match vertices
+    ['() '()]
+    [`(,vtx . ,vertices-d)
+     (if (vars-eq? vtx u)
+         vertices-d
+         (cons vtx
+               (remove-u vertices-d u)))]))
+
 ; anything higher than 11 (we use 0,...,11 for registers) will be a stack loc
 ; interference-graph * list-of-program-vars -> (listof (pairof var color))
 (define (color-mappings g vars)
@@ -504,21 +519,76 @@
            (match sat [`(,var . (,color . ,sat-set))
                        `(,var . ,color)]))
          totally-saturated)))
+; seems like it should work, but does not. nothing really gets colored
+; (except the first thing that is colored?)
+#|
+program:
+locals:
+'(v335399 w335400 x335401 y335402 z335403 tmp335404)
+start:
+    movq $1, %rdx
+    movq $42, 8(%rbp)
+    movq %rdx, 8(%rbp)
+    addq $7, 8(%rbp)
+    movq 8(%rbp), 8(%rbp)
+    movq 8(%rbp), 8(%rbp)
+    addq 8(%rbp), 8(%rbp)
+    movq 8(%rbp), 8(%rbp)
+    negq 8(%rbp)
+    movq 8(%rbp), %rax
+    addq 8(%rbp), %rax
+    jmp conclusion
+|#
+#;
+(define (color-mappings g vars)
+  (let* ([saturations (initial-sat-avail g)]
+         [W (get-vertices g)]
+         #;
+         [totally-saturated
+          
+          saturations
+          #;
+          (foldr
+           (lambda (_v sats)
+             (let* ([u (select-most-saturated sats)]
+                    [u-label (car u)]
+                    [color (cadr u)])
+               ; self-documenting code
+               (ancasn g sats u-label)))
+           saturations
+           W)])
+    ; get rid of extra info after coloring the graph
+    (begin
+      (while (lambda () (not (zero? (length W))))
+        (lambda ()
+          (let* ([u (select-most-saturated saturations)]
+                 [u-label (car u)]
+                 [color (cadr u)])
+            ; self-documenting code
+            (begin (set! W (remove-u W u))
+                   (set! saturations (ancasn g saturations u-label))))))
+      (map (lambda (sat)
+             (match sat [`(,var . (,color . ,sat-set))
+                         `(,var . ,color)]))
+           (print-and-return saturations)
+           #;totally-saturated
+           ))))
 
 (define usable-regs
   (list
    `(0 . rdx)
-   `(1 . rcx)
-   `(2 . rsi)
-   `(3 . rdi)
-   `(4 . r8)
-   `(5 . r9)
-   `(6 . r10)
-   `(7 . r11)
-   `(8 . rbx)
-   `(9 . r12)
-   `(10 . r13)
-   `(11 . r14)))
+   #;`(1 . rcx)
+   #;`(2 . rsi)
+   #;`(3 . rdi)
+   #;`(4 . r8)
+   #;`(5 . r9)
+   #;`(6 . r10)
+   #;`(7 . r11)
+   #;`(8 . rbx)
+   #;`(9 . r12)
+   #;`(10 . r13)
+   #;`(11 . r14)
+   ))
 
 (define n-usable-regs (length usable-regs))
 
@@ -558,13 +628,12 @@
 
 ; returns a new label-block where vars are replaced with regs or stack-locations
 (define (assign-regs-or-stack node color-map)
-  (begin (displayln color-map)
-         (let-values ([(label bl-info instr+)
-                       (match node
-                         [`(,label . ,(Block bl-info instr+))
-                          (values label bl-info instr+)])])
-           `(,label . ,(Block bl-info
-                              (assign-regs-helper instr+ color-map)))))
+  (let-values ([(label bl-info instr+)
+                (match node
+                  [`(,label . ,(Block bl-info instr+))
+                   (values label bl-info instr+)])])
+    `(,label . ,(Block bl-info
+                       (assign-regs-helper instr+ color-map))))
   #;
   (for/list
            ([block-instr+
@@ -575,7 +644,14 @@
             [color-map color-mappings])
          ))
 
-; TODO: finish this pass
+
+
+; TODO: we're giving positive stack locations, which we should not.
+; this has to do with some vertices being uncolored. maybe we should
+; more closely follow the "while W =/= empty set", "W <- W \ {u}" idea
+; from the book? to ensure that we do not saturate a vertex's neighbors twice
+;
+; see: color-mappings
 (define (allocate-registers p)
   (match p
     [(Program (list `(conflicts . ,intf-graphs)
@@ -586,12 +662,19 @@
                  intf-graphs)])
        ; don't need the intf-graph anymore
        (Program (list `(locals . ,local-vars))
-                (for/list
-                    ([node nodes]
-                     [color-map colored-mappings])
-                  (assign-regs-or-stack node color-map))))]))
+                (CFG (for/list
+                         ([node nodes]
+                          [color-map colored-mappings])
+                       (assign-regs-or-stack node color-map)))))]))
 
 (define book-example
+  '(let ([v 1])
+     (let ([w 42])
+       (let ([x (+ v 7)])
+         (let ([y x])
+           (let ([z (+ x w)])
+             (+ z (- y)))))))
+  #;
   '(let ([v 1])
      (let ([w 46])
        (let ([x (+ v 7)])
@@ -720,7 +803,7 @@
    uncover-live
    build-interference
    allocate-registers
-   patch-instructions
+   #;patch-instructions
    #;print-x86
    ))
 
