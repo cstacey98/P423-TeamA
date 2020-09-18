@@ -333,13 +333,15 @@
     [(cons (Jmp label) '())
      (uwu '())]
     [(cons (Callq label) instr-d)
-     (let ([graph-d (interference-graph (cdr bl-info) instr-d)])
+     (let ([graph-d
+            (interference-graph
+             (cdr bl-info) instr-d)])
        (begin
          (for/list ([reg caller-saved])
            (for/list ([var (car bl-info)])
              ; add-edge! is imperative/has side-effects/mutates graph-d, so we
              ; abuse the syntax of match clauses here
-             (add-edge! graph-d reg var)))
+             (add-edge! graph-d (Reg reg) var)))
          graph-d))]
     ; we're assuming that instr-a is an (Instr . .)
     [(cons instr-a instr-d)
@@ -405,27 +407,51 @@
 ; that this variable cannot have
 ; graph -> (listof (pairof var (pairof color saturation)))
 (define (initial-sat-avail g)
-  (map (lambda (v) `(,v . (,uncolored . ())))
+  (map (lambda (v)
+         (let* ([v-edges
+                 (filter
+                  (lambda (edge) (vars-eq? (car edge) v))
+                  (get-edges g))]
+                [v-neighbors (map cadr v-edges)]
+                [v-regs (filter Reg? v-neighbors)]
+                [v-saturations
+                 (map
+                  (lambda (reg)
+                    (let ([reg-name
+                           (match reg
+                             [(Reg reg-name) reg-name])])
+                      ; good god
+                      (cdr (assv reg-name regs-to-color))))
+                  v-regs)])
+           ; we want to make sure that each v cannot go in any registers to
+           ; which they already have an edge, no matter what
+           `(,v . (,uncolored . ,v-saturations))))
        (get-vertices g)))
 
 ; saturations is the shape of the output of initial-sat-avail.
 ; we must ensure that the one we pick is also uncolored
 ; assumes that saturations is non-empty
 (define (select-most-saturated saturations)
-  (select-most-saturated-acc saturations (findf
-                                          (lambda (sat)
-                                            (uncolored? (cadr sat)))
-                                          saturations)))
+  (select-most-saturated-acc
+   saturations
+   (findf
+    (lambda (sat)
+      (and (uncolored? (cadr sat))
+           (Var? (car sat))))
+    saturations)))
 
 (define (select-most-saturated-acc saturations max-so-far)
   (match saturations
     ['() max-so-far]
     [`((,var . (,color . ,saturation-set)) . ,sats-d)
-     (let ([new-max (if (and (uncolored? color)
-                             (>= (length saturation-set)
-                                 (length (cddr max-so-far))))
-                        (car saturations)
-                        max-so-far)])
+     (let ([new-max
+            (if (and
+                 (uncolored? color)
+                 (Var? var)
+                 (> (length saturation-set)
+                    (length (cddr max-so-far))))
+                (car saturations)
+                max-so-far)])
        (select-most-saturated-acc (cdr saturations) new-max))]))
 
 
@@ -461,14 +487,21 @@
          (cons `(,var-name . (,var-color . ,(cons color saturation-set)))
                sat-d)
          (cons (car saturations)
-               (saturate-neighbor (cdr saturations) u v color)))]))
+               (saturate-neighbor (cdr saturations) u v color)))
+     #;
+     (begin (displayln (Var? var-name))
+            (if (vars-eq? v var-name)
+                (cons `(,var-name . (,var-color . ,(cons color saturation-set)))
+                      sat-d)
+                (cons (car saturations)
+                      (saturate-neighbor (cdr saturations) u v color))))]))
 
 ; add color ,color to saturation lists of all neighbors v of u
 (define (saturate-neighbors g saturations u color)
   (let* ([edges (get-edges g)]
          [u-neighbors (filter (lambda (edge) (vars-eq? u (car edge))) edges)])
     (foldr (lambda (u-v sats)
-             (saturate-neighbor sats u (cadr u-v) color))
+             (saturate-neighbor sats (car u-v) (cadr u-v) color))
            saturations
            u-neighbors)))
 
@@ -503,7 +536,8 @@
 ; anything higher than 11 (we use 0,...,11 for registers) will be a stack loc
 ; interference-graph * list-of-program-vars -> (listof (pairof var color))
 (define (color-mappings g vars)
-  (let* ([saturations (initial-sat-avail g)]
+  (let* ([saturations
+          (initial-sat-avail g)]
          [W (get-vertices g)]
          [totally-saturated
           (foldr
@@ -513,7 +547,7 @@
                ; self-documenting code
                (ancasn g sats u-label)))
            saturations
-           W)])
+           (filter Var? W))])
     ; get rid of extra info after coloring the graph
     (map (lambda (sat)
            (match sat [`(,var . (,color . ,sat-set))
@@ -521,24 +555,7 @@
          totally-saturated)))
 ; seems like it should work, but does not. nothing really gets colored
 ; (except the first thing that is colored?)
-#|
-program:
-locals:
-'(v335399 w335400 x335401 y335402 z335403 tmp335404)
-start:
-    movq $1, %rdx
-    movq $42, 8(%rbp)
-    movq %rdx, 8(%rbp)
-    addq $7, 8(%rbp)
-    movq 8(%rbp), 8(%rbp)
-    movq 8(%rbp), 8(%rbp)
-    addq 8(%rbp), 8(%rbp)
-    movq 8(%rbp), 8(%rbp)
-    negq 8(%rbp)
-    movq 8(%rbp), %rax
-    addq 8(%rbp), %rax
-    jmp conclusion
-|#
+
 #;
 (define (color-mappings g vars)
   (let* ([saturations (initial-sat-avail g)]
@@ -589,6 +606,10 @@ start:
    `(10 . r13)
    `(11 . r14)
    ))
+
+; flipp
+(define regs-to-color
+  (map (lambda (p) (cons (cdr p) (car p))) usable-regs))
 
 (define n-usable-regs (length usable-regs))
 
