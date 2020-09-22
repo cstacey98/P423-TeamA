@@ -564,6 +564,9 @@
 
 (define n-usable-regs (length usable-regs))
 
+; we're not proud of this approach but we only noticed the problem at 8p on
+; monday, thinking that we had finished the previous friday lol
+(define stack-vars-needed -1000)
 ; color is a natural number (or ,uncolored; see above)
 (define (color-to-location color)
   (let ([reg (assv color usable-regs)])
@@ -572,13 +575,16 @@
         ; need a positive multiple of -8, and we can get non-interfering
         ; stack locations by reducing our universe to just these stack vars
         ; ... or email team A
-        (Deref 'rbp (* -8 (add1 (- color n-usable-regs)))))))
+        (let ([stack-loc (add1 (- color n-usable-regs))])
+          (begin
+            (set! stack-vars-needed (max stack-vars-needed stack-loc))
+            (Deref 'rbp (* -8 stack-loc)))))))
 
 (define (assign-regs-helper instr+ color-map)
   (match instr+
     ['() '()]
     [`(,instr-a . ,instr-d)
-     (cons 
+     (cons
       (match instr-a
         [(Instr op args)
          (Instr
@@ -681,7 +687,8 @@
   (match p
     [(Program info (CFG nodes))
      (Program (list (cons 'stack-space
-                          (* 8 (length (cdr (assv 'locals info)) ))))
+                          ; want a non-negative size
+                          (* 8 (max 0 stack-vars-needed))))
               (CFG
                (map
                 (lambda (node)
@@ -707,13 +714,32 @@
 (define (print-conclusion bytes-needed)
   (string-append (os-label 'conclusion) ":" newline
                  indent (format "addq   $~a, %rsp" bytes-needed) newline
-                 indent "popq   %rbp" newline
+                 ; indent "popq   %rbp" newline
+                 (print-callee-saved-regs #f)
                  indent "retq"))
+
+; save? is a boolean; if true, pushq, if false, popq in reverse order
+(define (print-callee-saved-regs save?)
+  (if save?
+      (foldr
+       (lambda (next-reg string-so-far)
+         (string-append indent (format "pushq  %~a" next-reg) newline
+                        string-so-far))
+       ""
+       callee-saved)
+      ; if restore, ie if not save
+      (foldr
+       (lambda (next-reg string-so-far)
+         (string-append indent (format "popq   %~a" next-reg) newline
+                        string-so-far))
+       ""
+       (reverse callee-saved))))
 
 (define (print-main bytes-needed)
   (string-append #;indent ".globl " (os-label 'main) newline
                  (os-label 'main) ":" newline
-                 indent "pushq  %rbp" newline
+                 (print-callee-saved-regs #t)
+                 ; indent "pushq  %rbp" newline
                  indent "movq   %rsp, %rbp" newline
                  indent (format "subq   $~a, %rsp" bytes-needed) newline
                  indent "jmp " (os-label 'start)))
