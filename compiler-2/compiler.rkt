@@ -738,6 +738,8 @@
 (define (print-main bytes-needed)
   (string-append #;indent ".globl " (os-label 'main) newline
                  (os-label 'main) ":" newline
+                 ; odd number of callee-saved and subq one register --> boom
+                 ; it's 16-aligned
                  (print-callee-saved-regs #t)
                  ; indent "pushq  %rbp" newline
                  indent "movq   %rsp, %rbp" newline
