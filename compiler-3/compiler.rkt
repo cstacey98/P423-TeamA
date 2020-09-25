@@ -10,6 +10,7 @@
 
 (provide
  type-check
+ shrink
  uniquify
  remove-complex-opera*
  explicate-control
@@ -130,14 +131,13 @@
       [else
        (error "type-check-exp couldn't match" e)])))
 
-(define (type-check env)
-  (lambda (e)
-    (match e
-      [(Program info body)
-       (define Tb ((type-check-exp '()) body))
-       (unless (equal? Tb 'Integer)
-         (error "result of the program must be an integer or boolean, not " Tb))
-       (Program info body)])))
+(define (type-check p)
+  (match p
+    [(Program info body)
+     (define Tb ((type-check-exp '()) body))
+     (unless (equal? Tb 'Integer)
+       (error "result of the program must be an integer, not " Tb))
+     (Program info body)]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;
 ; Type checkin' tests ;
@@ -230,6 +230,55 @@ compiler.rkt> ((type-check-exp '())
 ;  /Applications/Racket v7.8/collects/racket/repl.rkt:11:26
 |#
 
+(define (shrink-prim p)
+  (match p
+    [(Prim '<= (list e1 e2))
+     (define shrunk-1 (shrink-exp e1))
+     (define shrunk-2 (shrink-exp e2))
+     (define tmp-var (gensym 'tmp))
+     (Let tmp-var shrunk-1
+          (Prim 'not (list (Prim '< (list shrunk-2 (Var tmp-var))))))]
+    [(Prim '>= (list e1 e2))
+     (define shrunk-1 (shrink-exp e1))
+     (define shrunk-2 (shrink-exp e2))
+     (Prim 'not (list (Prim '< (list shrunk-1 shrunk-2))))
+     ]
+    [(Prim '> (list e1 e2))
+     (define shrunk-1 (shrink-exp e1))
+     (define shrunk-2 (shrink-exp e2))
+     (define tmp-var (gensym 'tmp))
+     (Let tmp-var shrunk-1
+          (Prim '< (list shrunk-2 (Var tmp-var))))
+     ]
+    [(Prim '- (list e1 e2))
+     (define shrunk-1 (shrink-exp e1))
+     (define shrunk-2 (shrink-exp e2))
+     (Prim '+ (list shrunk-1
+                    (Prim '- (list shrunk-2))))]
+    [(Prim op args)
+     (Prim op (map shrink-exp args))]))
+
+(define (shrink-exp e)
+  (match e
+    [(Int n) e]
+    [(Var x) e]
+    [(Bool b) e]
+    [(Prim op args)
+     (shrink-prim e)]
+    [(If cnd cnsq alt)
+     (If (shrink-exp cnd)
+         (shrink-exp cnsq)
+         (shrink-exp alt))]
+    [(Let x e body)
+     (Let x (shrink-exp e)
+          (shrink-exp body))]))
+
+(define (shrink p)
+  (match p
+    [(Program info body)
+     (Program
+      info
+      (shrink-exp body))]))
 
 ; Our symtab is going to be an association list
 ; A table is a [Listof [Pairof Symbol Int]]
@@ -1002,6 +1051,7 @@ compiler.rkt> ((type-check-exp '())
 (define test-passes
   (list
    type-check
+   shrink
    ; uniquify
    ; remove-complex-opera*
    ; explicate-control
@@ -1032,6 +1082,7 @@ compiler.rkt> ((type-check-exp '())
 (define r1-passes
   (list
    type-check
+   shrink
    uniquify
    remove-complex-opera*
    explicate-control
