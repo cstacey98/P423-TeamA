@@ -43,7 +43,8 @@ Changelog:
 					;(require racket/async-channel)
 (require rackunit rackunit/text-ui rackunit/gui)
 
-(provide debug-level AST-output-syntax at-debug-level? debug verbose vomit
+(provide parse-exp
+         debug-level AST-output-syntax at-debug-level? debug verbose vomit
          map2 map3 b2i i2b
          racket-id->c-id 
          hash-union set-union*

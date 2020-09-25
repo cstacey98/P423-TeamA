@@ -120,7 +120,7 @@
        (define Tb ((type-check-exp (dict-set env x Te)) body))
        Tb]
       [(If cnd cnsq alt)
-       (unless (eqv? 'Boolean (type-check-exp cnd))
+       (unless (eqv? 'Boolean ((type-check-exp env) cnd))
          (error "condition given to if should be bool, given " cnd))
        (define Tc ((type-check-exp env) cnsq))
        (define Ta ((type-check-exp env) alt))
@@ -138,6 +138,97 @@
        (unless (equal? Tb 'Integer)
          (error "result of the program must be an integer or boolean, not " Tb))
        (Program info body)])))
+
+;;;;;;;;;;;;;;;;;;;;;;;
+; Type checkin' tests ;
+;;;;;;;;;;;;;;;;;;;;;;;
+#|
+compiler.rkt> ((type-check-exp '()) (parse-exp '1))
+'Integer
+compiler.rkt> ((type-check-exp '()) (parse-exp '#f))
+'Boolean
+compiler.rkt> ((type-check-exp '()) (parse-exp '#t))
+'Boolean
+compiler.rkt> ((type-check-exp '()) (parse-exp '(if #t 1 2)))
+'Integer
+compiler.rkt> ((type-check-exp '()) (parse-exp '(if #t 1 #f)))
+; consequent and alternative in if should have same type, given  (1 #f)
+; Context:
+;  /Applications/Racket v7.8/collects/racket/match/compiler.rkt:507:40 f134
+;  /Applications/Racket v7.8/collects/racket/repl.rkt:11:26
+compiler.rkt> ((type-check-exp '()) (parse-exp '(if #t #t #f)))
+'Boolean
+compiler.rkt> ((type-check-exp '())(parse-exp '(read)))
+'Integer
+compiler.rkt> ((type-check-exp '())
+ (parse-exp '(if (not (and (or (< (read) 42) #f)
+                           (or (and (<= 5 (+ 3 5))
+                                    (and (>= (- 4) (- 4 5))
+                                         (> (+ (- 3) (- 9 42))
+                                            (- (+ 3 4) (- 5757575)))))
+                               (eq? (eq? (not #f) #t)
+                                    (eq? (+ 5 0) 234234)))))
+                 (+ (if (let ([v (+ 1 (+ 4 (+ (- 5) (- 35 4))))])
+                          (let ([r (+ v 3)])
+                            (if (eq? v r)
+                                #f
+                                (and (not #f)
+                                     #f))))
+                        3423
+                        4)
+                    (+ (read) (read)))
+                 (- (let ([x 1])
+                      (let ([y 3])
+                        (let ([z (+ x (- y))])
+                          (let ([x (not #t)])
+                            (if x y z)))))))))
+'Integer
+compiler.rkt> ((type-check-exp '())
+               (parse-exp '(if (let ([v (+ 1 (+ 4 (+ (- 5) (- 35 4))))])
+                                (let ([r (+ v 3)])
+                                  (if (eq? v #t)
+                                      #f
+                                      (and (not #f)
+                                           #f))))
+                              3423
+                              4)))
+; eq? should take two ints or two bools, given  (v #t)
+; Context:
+;  /Applications/Racket v7.8/collects/racket/match/compiler.rkt:507:40 f134
+;  /Applications/Racket v7.8/collects/racket/match/compiler.rkt:507:40 f142
+;  /Applications/Racket v7.8/collects/racket/match/compiler.rkt:507:40 f142
+;  /Applications/Racket v7.8/collects/racket/match/compiler.rkt:507:40 f134
+;  /Applications/Racket v7.8/collects/racket/repl.rkt:11:26
+compiler.rkt> ((type-check-exp '())
+               (parse-exp '(if (let ([v (+ 1 #t)])
+                                 (let ([r (+ v 3)])
+                                   (if (eq? #f #t)
+                                       #f
+                                       (and (not #f)
+                                            #f))))
+                               3423
+                               4)))
+; + should take two ints, given  (1 #t)
+; Context:
+;  /Applications/Racket v7.8/collects/racket/match/compiler.rkt:507:40 f142
+;  /Applications/Racket v7.8/collects/racket/match/compiler.rkt:507:40 f134
+;  /Applications/Racket v7.8/collects/racket/repl.rkt:11:26
+compiler.rkt> ((type-check-exp '())
+               (parse-exp '(- (let ([x 1])
+                      (let ([y 3])
+                        (let ([z (+ x (- y))])
+                          (let ([x (not #t)])
+                            (if x y #f))))))))
+; consequent and alternative in if should have same type, given  (y #f)
+; Context:
+;  /Applications/Racket v7.8/collects/racket/match/compiler.rkt:507:40 f134
+;  /Applications/Racket v7.8/collects/racket/match/compiler.rkt:507:40 f142
+;  /Applications/Racket v7.8/collects/racket/match/compiler.rkt:507:40 f142
+;  /Applications/Racket v7.8/collects/racket/match/compiler.rkt:507:40 f142
+;  /Applications/Racket v7.8/collects/racket/match/compiler.rkt:507:40 f142
+;  /Users/zac/co/compiler-3/compiler.rkt:30:2
+;  /Applications/Racket v7.8/collects/racket/repl.rkt:11:26
+|#
 
 
 ; Our symtab is going to be an association list
@@ -911,15 +1002,15 @@
 (define test-passes
   (list
    type-check
-   uniquify
-   remove-complex-opera*
-   explicate-control
-   select-instructions
-   uncover-live
-   build-interference
-   allocate-registers
-   patch-instructions
-   print-x86
+   ; uniquify
+   ; remove-complex-opera*
+   ; explicate-control
+   ; select-instructions
+   ; uncover-live
+   ; build-interference
+   ; allocate-registers
+   ; patch-instructions
+   ; print-x86
    ))
 
 ; t = test, just so I can type it quickly lol
