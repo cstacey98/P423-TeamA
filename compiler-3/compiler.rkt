@@ -299,6 +299,12 @@ compiler.rkt> ((type-check-exp '())
       [(Var x)
        (Var (search-symtab symtab x))]
       [(Int n) (Int n)]
+      [(Bool b) (Bool b)]
+      [(If cnd cnsq alt)
+       (let* ([cnd-uniq ((uniquify-exp symtab) cnd)]
+              [cnsq-uniq ((uniquify-exp symtab) cnsq)]
+              [alt-uniq ((uniquify-exp symtab) alt)]))
+       (If cnd-uniq cnsq-uniq alt-uniq)]
       [(Let x e body)
        (let* ([e-uniq ((uniquify-exp symtab) e)]
               [symtab-x (extend-symtab symtab x)]
@@ -356,6 +362,11 @@ compiler.rkt> ((type-check-exp '())
   (match exp
     [(Var x) (Var x)]
     [(Int n) (Int n)]
+    [(Bool b) (Bool b)]
+    [(If cnd cnsq alt)
+     (If (rco-exp cnd)
+         (rco-exp cnsq)
+         (rco-exp alt))]
     [(Let x e body)
      ; bro it was that easy??????
      (Let x (rco-exp e) (rco-exp body))]
@@ -390,12 +401,20 @@ compiler.rkt> ((type-check-exp '())
     [(Return val) (Seq (Assign x val) t2)]
     [(Seq assign taild) (Seq assign (combine-tails taild t2 x))]))
 
+; TODO
+(define (explicate-pred p)
+  #f)
+
 ; R1 -> C0 x Listof(Variable)
 ; applied to exps in tail position
 (define (explicate-tail exp)
   (match exp
     [(Var x) (values (Return (Var x)) '())]
     [(Int n) (values (Return (Int n)) '())]
+    [(Bool b) (values (Return (Bool b)) '())]
+    ; TODO
+    [(If cnd cnsq alt)
+     (values 'do 'this-later)]
     [(Let lhs rhs body)
      (let*-values
          ([(body-c0 body-vars)
