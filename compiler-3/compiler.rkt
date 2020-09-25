@@ -9,6 +9,7 @@
 ;(provide (all-defined-out))
 
 (provide
+ type-check
  uniquify
  remove-complex-opera*
  explicate-control
@@ -23,6 +24,121 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; HW1 Passes
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(define (type-check-prim env)
+  (lambda (prim)
+    (match prim
+      [(Prim 'read (list)) 'Integer]
+      [(Prim 'eq? (list e1 e2))
+       (define Te1 ((type-check-exp env) e1))
+       (define Te2 ((type-check-exp env) e2))
+       (if (eqv? Te1 Te2)
+           ; assuming that only atom types are int/bool
+           #;
+           (and (eqv? Te1 Te1)
+                (or (eqv? Te1 'Integer)
+                    (eqv? Te1 'Boolean)))
+           'Boolean
+           (error "eq? should take two ints or two bools, given " (list e1 e2)))]
+      [(Prim '< (list e1 e2))
+       (define Te1 ((type-check-exp env) e1))
+       (define Te2 ((type-check-exp env) e2))
+       (if (and (eqv? Te1 'Integer)
+                (eqv? Te2 'Integer))
+           'Boolean
+           (error "< should take two ints, given " (list e1 e2)))]
+      [(Prim '<= (list e1 e2))
+       (define Te1 ((type-check-exp env) e1))
+       (define Te2 ((type-check-exp env) e2))
+       (if (and (eqv? Te1 'Integer)
+                (eqv? Te2 'Integer))
+           'Boolean
+           (error "<= should take two ints, given " (list e1 e2)))]
+      [(Prim '> (list e1 e2))
+       (define Te1 ((type-check-exp env) e1))
+       (define Te2 ((type-check-exp env) e2))
+       (if (and (eqv? Te1 'Integer)
+                (eqv? Te2 'Integer))
+           'Boolean
+           (error "> should take two ints, given " (list e1 e2)))]
+      [(Prim '>= (list e1 e2))
+       (define Te1 ((type-check-exp env) e1))
+       (define Te2 ((type-check-exp env) e2))
+       (if (and (eqv? Te1 'Integer)
+                (eqv? Te2 'Integer))
+           'Boolean
+           (error ">= should take two ints, given " (list e1 e2)))]
+      [(Prim '+ (list e1 e2))
+       (define Te1 ((type-check-exp env) e1))
+       (define Te2 ((type-check-exp env) e2))
+       (if (and (eqv? Te1 'Integer)
+                (eqv? Te2 'Integer))
+           'Integer
+           (error "+ should take two ints, given " (list e1 e2)))]
+      [(Prim '- (list e))
+       (define Te ((type-check-exp env) e))
+       (if (eqv? Te 'Integer)
+           'Integer
+           (error "- should take one int, given " (list e)))]
+      [(Prim '- (list e1 e2))
+       (define Te1 ((type-check-exp env) e1))
+       (define Te2 ((type-check-exp env) e2))
+       (if (and (eqv? Te1 'Integer)
+                (eqv? Te2 'Integer))
+           'Integer
+           (error "- should take two ints, given " (list e1 e2)))]
+      [(Prim 'and (list e1 e2))
+       (define Te1 ((type-check-exp env) e1))
+       (define Te2 ((type-check-exp env) e2))
+       (if (and (eqv? Te1 'Boolean)
+                (eqv? Te2 'Boolean))
+           'Boolean
+           (error "and should take two bools, given " (list e1 e2)))]
+      [(Prim 'or (list e1 e2))
+       (define Te1 ((type-check-exp env) e1))
+       (define Te2 ((type-check-exp env) e2))
+       (if (and (eqv? Te1 'Boolean)
+                (eqv? Te2 'Boolean))
+           'Boolean
+           (error "or should take two bools, given " (list e1 e2)))]
+      [(Prim 'not (list e))
+       (define Te ((type-check-exp env) e))
+       (if (eqv? Te 'Boolean)
+           'Boolean
+           (error "not should take one bool, given " (list e)))])))
+
+(define (type-check-exp env)
+  (lambda (e)
+    (match e
+      [(Var x) (dict-ref env x)]
+      [(Int n) 'Integer]
+      [(Bool b) 'Boolean]
+      [(Prim op args) ((type-check-prim env) e)]
+      [(Let x e body)
+       (define Te ((type-check-exp env) e))
+       (define Tb ((type-check-exp (dict-set env x Te)) body))
+       Tb]
+      [(If cnd cnsq alt)
+       (unless (eqv? 'Boolean (type-check-exp cnd))
+         (error "condition given to if should be bool, given " cnd))
+       (define Tc ((type-check-exp env) cnsq))
+       (define Ta ((type-check-exp env) alt))
+       (unless (eqv? Tc Ta)
+         (error "consequent and alternative in if should have same type, given " (list cnsq alt)))
+       Tc]
+      [else
+       (error "type-check-exp couldn't match" e)])))
+
+(define (type-check env)
+  (lambda (e)
+    (match e
+      [(Program info body)
+       (define Tb ((type-check-exp '()) body))
+       (unless (equal? Tb 'Integer)
+         (error "result of the program must be an integer or boolean, not " Tb))
+       (Program info body)])))
+
 
 ; Our symtab is going to be an association list
 ; A table is a [Listof [Pairof Symbol Int]]
@@ -794,6 +910,7 @@
 ; all the passes needed to be used in (t .)
 (define test-passes
   (list
+   type-check
    uniquify
    remove-complex-opera*
    explicate-control
@@ -823,6 +940,7 @@
 
 (define r1-passes
   (list
+   type-check
    uniquify
    remove-complex-opera*
    explicate-control
