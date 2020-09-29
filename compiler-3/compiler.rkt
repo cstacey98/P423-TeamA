@@ -255,6 +255,14 @@ compiler.rkt> ((type-check-exp '())
      (define shrunk-2 (shrink-exp e2))
      (Prim '+ (list shrunk-1
                     (Prim '- (list shrunk-2))))]
+    [(Prim 'and (list e1 e2))
+     (define shrunk-1 (shrink-exp e1))
+     (define shrunk-2 (shrink-exp e2))
+     (If shrunk-1 shrunk-2 #f)]
+    [(Prim 'or (list e1 e2))
+     (define shrunk-1 (shrink-exp e1))
+     (define shrunk-2 (shrink-exp e2))
+     (If shrunk-1 shrunk-1 shrunk-2)]
     [(Prim op args)
      (Prim op (map shrink-exp args))]))
 
@@ -402,7 +410,7 @@ compiler.rkt> ((type-check-exp '())
     [(Seq assign taild) (Seq assign (combine-tails taild t2 x))]))
 
 ; TODO
-(define (explicate-pred p)
+(define (explicate-pred p b1 b2)
   #f)
 
 ; R1 -> C0 x Listof(Variable)
@@ -414,7 +422,10 @@ compiler.rkt> ((type-check-exp '())
     [(Bool b) (values (Return (Bool b)) '())]
     ; TODO
     [(If cnd cnsq alt)
-     (values 'do 'this-later)]
+     (define-values (b1 b1-vars) (explicate-tail cnsq))
+     (define-values (b2 b2-vars) (explicate-tail alt))
+     (define-values (pred pred-vars) (explicate-pred cnd b1 b2))
+     (values pred (append pred-vars b1-vars b2-vars))]
     [(Let lhs rhs body)
      (let*-values
          ([(body-c0 body-vars)
