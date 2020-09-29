@@ -424,17 +424,17 @@ compiler.rkt> ((type-check-exp '())
     [(If cnd cnsq alt)
      (define-values (b1 b1-vars) (explicate-tail cnsq))
      (define-values (b2 b2-vars) (explicate-tail alt))
-     (define-values (pred pred-vars) (explicate-pred cnd b1 b2))
-     (values pred (append pred-vars b1-vars b2-vars))]
+     (define-values (pred-ex pred-vars) (explicate-pred cnd b1 b2))
+     (values pred-ex (append pred-vars b1-vars b2-vars))]
     [(Let lhs rhs body)
-     (let*-values
-         ([(body-c0 body-vars)
-           (explicate-tail body)]
-          [(new-tail new-assignment-vars)
-           (explicate-assign lhs rhs body-c0)])
-       (values new-tail
-               (append new-assignment-vars
-                       body-vars)))]
+     (define-values (body-c0 body-vars)
+       (explicate-tail body))
+     (define-values (new-tail new-assignment-vars)
+       (explicate-assign lhs rhs body-c0))
+     (values
+      new-tail
+      (append new-assignment-vars
+              body-vars))]
     [(Prim op es)
      (values (Return (Prim op es))
              '())]))
