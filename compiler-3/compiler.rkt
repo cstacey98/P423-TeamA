@@ -311,8 +311,8 @@ compiler.rkt> ((type-check-exp '())
       [(If cnd cnsq alt)
        (let* ([cnd-uniq ((uniquify-exp symtab) cnd)]
               [cnsq-uniq ((uniquify-exp symtab) cnsq)]
-              [alt-uniq ((uniquify-exp symtab) alt)]))
-       (If cnd-uniq cnsq-uniq alt-uniq)]
+              [alt-uniq ((uniquify-exp symtab) alt)])
+         (If cnd-uniq cnsq-uniq alt-uniq))]
       [(Let x e body)
        (let* ([e-uniq ((uniquify-exp symtab) e)]
               [symtab-x (extend-symtab symtab x)]
@@ -409,9 +409,31 @@ compiler.rkt> ((type-check-exp '())
     [(Return val) (Seq (Assign x val) t2)]
     [(Seq assign taild) (Seq assign (combine-tails taild t2 x))]))
 
+; what we need in this:
+; set of ... blocks?
+(define cfg-global (unweighted-graph/directed '()))
+
 ; TODO
+; should return values a la explicate-tail
+; page 69, nice, in book
 (define (explicate-pred p b1 b2)
-  #f)
+  (begin
+    (define label-1 (gensym 'block))
+    (define label-2 (gensym 'block))
+    (add-vertex! cfg-global `(,label-1 . ,b1))
+    (add-vertex! cfg-global `(,label-2 . ,b2))
+    (match p
+      [(If cnd cnsq alt) ...]
+      ; TODO
+      [(Bool b) (if b b1 b2)]
+      [whatever (values p '())]
+      #;
+      [(Prim 'not (list e1)) ...]
+      #;
+      [(Prim '< (list e1 e2)) ...]
+      #;
+      [(Prim 'eq? (list e1 e2)) ...]
+      )))
 
 ; R1 -> C0 x Listof(Variable)
 ; applied to exps in tail position
