@@ -181,7 +181,7 @@ compiler.rkt> ((type-check-exp '())
                       (let ([y 3])
                         (let ([z (+ x (- y))])
                           (let ([x (not #t)])
-                            (if x y z)))))))))
+                            (if x y z))))))))
 'Integer
 compiler.rkt> ((type-check-exp '())
                (parse-exp '(if (let ([v (+ 1 (+ 4 (+ (- 5) (- 35 4))))])
@@ -258,11 +258,11 @@ compiler.rkt> ((type-check-exp '())
     [(Prim 'and (list e1 e2))
      (define shrunk-1 (shrink-exp e1))
      (define shrunk-2 (shrink-exp e2))
-     (If shrunk-1 shrunk-2 #f)]
+     (If shrunk-1 shrunk-2 (Bool #f))]
     [(Prim 'or (list e1 e2))
      (define shrunk-1 (shrink-exp e1))
      (define shrunk-2 (shrink-exp e2))
-     (If shrunk-1 shrunk-1 shrunk-2)]
+     (If shrunk-1 (Bool #t) shrunk-2)]
     [(Prim op args)
      (Prim op (map shrink-exp args))]))
 
@@ -335,8 +335,8 @@ compiler.rkt> ((type-check-exp '())
   (match e
     [(Var x) #t]
     [(Int n) #t]
-    [(Let x e body) #f]
-    [(Prim op es) #f]))
+    [(Bool b) #t]
+    [whatever #f]))
 
 ; split lst into two sublists (maintaining order)
 ; where all elements in first value return #f with pred and the first
@@ -358,6 +358,9 @@ compiler.rkt> ((type-check-exp '())
   (match to-atomize
     [(Var x) (values (Var x) '())]
     [(Int n) (values (Int n) '())]
+    [(If cnd cnsq alt)
+     (let ([new-name (gensym 'tmp)])
+       (values new-name (list (cons new-name (If cnd cnsq alt)))))]
     [(Let x e body)
      (let ([new-name (gensym 'tmp)])
        (values new-name (list (cons new-name (Let x e body)))))]
@@ -379,6 +382,10 @@ compiler.rkt> ((type-check-exp '())
      ; bro it was that easy??????
      (Let x (rco-exp e) (rco-exp body))]
     [(Prim op es)
+     #;
+     (foldr
+      (lambda (new-arg rst)
+        (if )) exp es)
      (let-values
          ; split where you find the first complex operand :D
          ([(atomic-front complex-back)
@@ -400,14 +407,13 @@ compiler.rkt> ((type-check-exp '())
 (define (remove-complex-opera* p)
   (match p
     [(Program info e)
-     (Program info (rco-exp e))]))
+     (Program info (rco-exp e))
+     #;
+     (let ([x (Program info (rco-exp e))])
+       (begin
+         (displayln x)
+         x))]))
 
-;; Tail Tail Variable -> Tail
-;; Takes two tails and combines them. Takes result of first tail and assigns it to the given variable.
-(define (combine-tails t1 t2 x)
-  (match t1
-    [(Return val) (Seq (Assign x val) t2)]
-    [(Seq assign taild) (Seq assign (combine-tails taild t2 x))]))
 
 ; what we need in this:
 ; set of ... blocks?
@@ -420,23 +426,55 @@ compiler.rkt> ((type-check-exp '())
   (begin
     (define label-1 (gensym 'block))
     (define label-2 (gensym 'block))
+    #;
+    (define label-2
+      (match b2
+        [(Goto l2) l2]
+        [whatever
+         (define l2 (gensym 'block))
+         (add-vertex! cfg-global `(,l2 . ,b2))
+         l2]))
     (add-vertex! cfg-global `(,label-1 . ,b1))
     (add-vertex! cfg-global `(,label-2 . ,b2))
     (match p
-      [(If cnd cnsq alt) ...]
       ; TODO
-      [(Bool b) (if b b1 b2)]
-      [whatever (values p '())]
+      [(If cnd cnsq alt)
+       (define-values (b3 alt-vars)
+         (explicate-pred alt (Goto label-1) (Goto label-2)))
+       (define-values (b4 cnsq-vars)
+         (explicate-pred cnsq (Goto label-1) (Goto label-2)))
+       (define label-3 (gensym 'block))
+       (define label-4 (gensym 'block))
+       (add-vertex! cfg-global `(,label-3 . ,b3))
+       (add-vertex! cfg-global `(,label-4 . ,b4))
+       (explicate-pred cnd b3 b4)]
+      [(Bool b) (values (if b b1 b2) '())]
+      [(Var v)
+       (values
+        (IfStmt (Prim 'eq? (list (Var v) (Bool #t)))
+                (Goto label-1)
+                (Goto label-2))
+        '())]
+      [(Prim 'not (list e))
+       (explicate-pred e (Goto label-2) (Goto label-1))]
+      [(Prim op (list e1 e2))
+       (values (IfStmt p (Goto label-1) (Goto label-2)) '())]
+      [(Let lhs rhs body)
+       (define-values (body-exp body-vars)
+         (explicate-pred body (Goto label-1) (Goto label-2)))
+       (define-values (new-tail new-assignment-vars)
+         (explicate-assign lhs rhs body-exp))
+       (values new-tail (append body-vars new-assignment-vars))
+       ]
       #;
-      [(Prim 'not (list e1)) ...]
-      #;
-      [(Prim '< (list e1 e2)) ...]
-      #;
-      [(Prim 'eq? (list e1 e2)) ...]
+      [whatever
+       (define-values (p-exp p-vars) (explicate-pred ))
+       (define-values (p-exp p-vars) (explicate-tail p))
+       (values p '())]
       )))
 
-; R1 -> C0 x Listof(Variable)
-; applied to exps in tail position
+  ; R1 -> C0 x Listof(Variable)
+  ; applied to exps in tail position
 (define (explicate-tail exp)
   (match exp
     [(Var x) (values (Return (Var x)) '())]
@@ -461,23 +499,47 @@ compiler.rkt> ((type-check-exp '())
      (values (Return (Prim op es))
              '())]))
 
-; R1 x Variable x C0 -> Tail x Listof(Variable)
+(define b
+  '(if (eq? (read) 1)
+       (if (eq? (read) 0)
+           (+ 10 32)
+           (+ 700 77))
+       (if (eq? (read) 2)
+           (+ 52 3)
+           (+ 701 7))))
+
+; Variable x R1 x C0 -> Tail x Listof(Variable)
 ; applied to exps that occur on the rhs of a let clause
 (define (explicate-assign lhs rhs c0)
-  (let-values ([(rhs-c0 rhs-vars)
-                (explicate-tail rhs)])
-    (values (combine-tails rhs-c0 c0 (Var lhs))
-            (cons lhs rhs-vars))))
+  (match rhs
+    [(Let x e body)
+     (define-values (body-tail body-vars) (explicate-assign lhs body c0))
+     (define-values (assign-tail assign-vars) (explicate-assign x e body-tail))
+     (values assign-tail (cons x (append body-vars assign-vars)))]
+    [(If cnd cnsq alt)
+     (define label-1 (gensym 'block))
+     (add-vertex! cfg-global `(,label-1 . ,c0))
+     (define-values (b2-tail b2-vars)
+       (explicate-assign lhs cnsq (Goto label-1)))
+     (define-values (b3-tail b3-vars)
+       (explicate-assign lhs alt (Goto label-1)))
+     (define-values (b4-tail b4-vars)
+       (explicate-pred cnd b2-tail b3-tail))
+     (values b4-tail (append b4-vars b3-vars b2-vars))
+     ]
+    [whatever
+     (values (Seq (Assign (Var lhs) rhs) c0) '())]))
 
 ;; explicate-control : R1 -> C0
 (define (explicate-control p)
   (match p
     [(Program info e)
-     (let-values ([(body* locals*)
-                   (explicate-tail e)])
-       (Program (list (cons 'locals locals*))
-                ;           label: tail
-                (CFG (list (cons 'start body*)))))]))
+     (set! cfg-global (unweighted-graph/directed '()))
+     (define-values (start-block start-locals)
+       (explicate-tail e))
+     (add-vertex! cfg-global `(start . ,start-block))
+     (Program (list (cons 'locals start-locals))
+              (CFG (get-vertices cfg-global)))]))
 
 ; Checks if two vars are equal.
 (define (vars-eq? var1 var2)
@@ -1104,9 +1166,9 @@ compiler.rkt> ((type-check-exp '())
   (list
    type-check
    shrink
-   ; uniquify
-   ; remove-complex-opera*
-   ; explicate-control
+   uniquify
+   remove-complex-opera*
+   explicate-control
    ; select-instructions
    ; uncover-live
    ; build-interference
