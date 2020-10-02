@@ -419,8 +419,6 @@ compiler.rkt> ((type-check-exp '())
 ; set of ... blocks?
 (define cfg-global (unweighted-graph/directed '()))
 
-; TODO
-; should return values a la explicate-tail
 ; page 69, nice, in book
 (define (explicate-pred p b1 b2)
   (begin
@@ -437,7 +435,6 @@ compiler.rkt> ((type-check-exp '())
     (add-vertex! cfg-global `(,label-1 . ,b1))
     (add-vertex! cfg-global `(,label-2 . ,b2))
     (match p
-      ; TODO
       [(If cnd cnsq alt)
        (define-values (b3 alt-vars)
          (explicate-pred alt (Goto label-1) (Goto label-2)))
@@ -480,7 +477,6 @@ compiler.rkt> ((type-check-exp '())
     [(Var x) (values (Return (Var x)) '())]
     [(Int n) (values (Return (Int n)) '())]
     [(Bool b) (values (Return (Bool b)) '())]
-    ; TODO
     [(If cnd cnsq alt)
      (define-values (b1 b1-vars) (explicate-tail cnsq))
      (define-values (b2 b2-vars) (explicate-tail alt))
@@ -554,7 +550,8 @@ compiler.rkt> ((type-check-exp '())
 (define (si-atm atm)
   (match atm
     [(Var x) (Var x)]
-    [(Int n) (Imm n)]))
+    [(Int n) (Imm n)]
+    [(Bool b) (if b (Imm 1) (Imm 0))]))
 
 ; select instructions for statements
 (define (si-stmt stmt)
@@ -563,6 +560,27 @@ compiler.rkt> ((type-check-exp '())
      (match exp
        [(Var x) (list (Instr 'movq (list (Var x) var)))]
        [(Int n) (list (Instr 'movq (list (Imm n) var)))]
+       [(Bool b) (list (Instr 'movq (list (si-atm exp) var)))]
+       [(Prim 'not (list e))
+        (define e-si (si-atm e))
+        (if (vars-eq? e var)
+            (Instr 'xorq (list (Imm 1) e-si))
+            (list (Instr 'movq (list e-si var))
+                  (Instr 'xorq (list (Imm 1) var))))]
+       [(Prim '< (list e1 e2))
+        (define e1-si (si-atm e1))
+        (define e2-si (si-atm e2))
+        (list (Instr 'cmpq (list e2-si e1-si))
+              (Instr 'setl (list (ByteReg 'al)))
+              (Instr 'movzbq (list (ByteReg 'al) var)))
+        ]
+       [(Prim 'eq? (list e1 e2))
+        (define e1-si (si-atm e1))
+        (define e2-si (si-atm e2))
+        (list (Instr 'cmpq (list e2-si e1-si))
+              (Instr 'sete (list (ByteReg 'al)))
+              (Instr 'movzbq (list (ByteReg 'al) var)))
+        ]
        [(Prim '+ args)
         (match args
           [(list arg1 arg2)
@@ -592,6 +610,19 @@ compiler.rkt> ((type-check-exp '())
 ; gives a non-empty list of instr
 (define (si-tail tail)
   (match tail
+    [(Goto label)
+     (list (Jmp label))]
+    ; TODO one more case
+    [(IfStmt (Prim cmp (list e1 e2)) (Goto label-1) (Goto label-2))
+     (define cc
+       (match cmp
+         ['eq? 'e]
+         ['< 'l]))
+     (define e1-si (si-atm e1))
+     (define e2-si (si-atm e2))
+     (list (Instr 'cmpq (list e2-si e1-si))
+           (JmpIf cc label-1)
+           (Jmp label-2))]
     [(Return exp)
      (append (si-stmt (Assign (Reg 'rax) exp))
              (list (Jmp 'conclusion)))]
@@ -1169,7 +1200,7 @@ compiler.rkt> ((type-check-exp '())
    uniquify
    remove-complex-opera*
    explicate-control
-   ; select-instructions
+   select-instructions
    ; uncover-live
    ; build-interference
    ; allocate-registers
