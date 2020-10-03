@@ -699,7 +699,9 @@ compiler.rkt> ((type-check-exp '())
 (define (liveness instr+ lv-after)
   (match instr+
     [(cons (Jmp label) '()) (list lv-after)]
-    [(cons (JmpIf cc label) instr-d) (list lv-after)]
+    [(cons (JmpIf cc label) instr-d)
+     (let ([l-d (liveness instr-d lv-after)])
+       (cons lv-after l-d))]
     [(cons (Callq label) instr-d)
      (let ([l-d (liveness instr-d lv-after)])
        (cons (car l-d) l-d))]
@@ -717,7 +719,7 @@ compiler.rkt> ((type-check-exp '())
          ([(write-args read-args) (get-write/read instr-a)])
        (let* ([liveness-d (liveness instr-d lv-after)]
               [liveness-a (set-union
-                           (set-subtract (car (print-and-return liveness-d))
+                           (set-subtract (car liveness-d)
                                          write-args)
                            read-args)])
          (cons liveness-a
@@ -738,11 +740,8 @@ compiler.rkt> ((type-check-exp '())
     (begin
       (for/list ([v-data lst])
         (begin
-          ; (displayln v-data)
-          ; (displayln lst)
           (let* ([block (cdr v-data)]
                  [blonk (match block [(Block bl-info instr+) instr+])]
-                 ; [v (car (print-and-return v-data))]
                  [v (car v-data)]
                  [neighbors (get-neighbors* blonk)])
             (for/list ([u neighbors])
@@ -755,13 +754,9 @@ compiler.rkt> ((type-check-exp '())
     [(Program info (CFG e))
      (define cfg-with-edges
        (isomorph e))
-     (displayln 'cfg-edges)
-     (displayln (get-edges cfg-with-edges))
      (define cfg-we-tp (transpose cfg-with-edges))
      (define reverse-top-order
        (tsort cfg-we-tp))
-     ; (displayln 'reverse-top-order)
-     ; (displayln reverse-top-order)
      (Program
       info
       (CFG
@@ -769,18 +764,11 @@ compiler.rkt> ((type-check-exp '())
        (foldr
         (lambda (label cfg)
           (begin
-            ; TODO this assv is failing? or see below
-            (displayln 'label)
-            (displayln label)
-            ; (displayln 'e)
-            ; (displayln e)
             (define block (cdr (assv label e)))
             (define-values (instr+ bl-info)
               (match block
                 [(Block bl-info instr+) (values instr+ bl-info)]))
             (define neighbors (get-neighbors cfg-we-tp label))
-            ; (displayln 'neighbors)
-            ; (displayln neighbors)
             (define live-after
               (foldr
                (lambda (nbr lv-after)
@@ -789,43 +777,21 @@ compiler.rkt> ((type-check-exp '())
                   ; the lv-before of its neighbor
                   ; TODO this assv is failing? or see above
                   (begin
-                    (displayln 'nbr)
-                    ; (displayln nbr)
-                    (displayln 'cfg)
-                    ; (displayln cfg)
                     (match (cdr (assv nbr cfg))
-                          [(Block bl-info instr+)
-                           (car (print-and-return bl-info))]))))
+                      [(Block bl-info instr+)
+                       (car bl-info)]))))
                '()
                neighbors))
-            #;
-            (define liveness-after
-              (if (null? cfg) '()
-                  (match (cdar cfg)
-                    ; we want live-before of the alsfjasldkfj
-                    [(Block bl-info instr+) (car bl-info)])))
             (define liveness-blk (liveness instr+ live-after))
+            (displayln (format "liveness for ~a" label))
+            (for/list ([l liveness-blk]) (displayln l))
             (define blonk (Block liveness-blk instr+))
             (cons `(,label . ,blonk) cfg)))
         '()
         ; remove conclusion from liveness analysis since we have not
         ; created it yet
         (filter (lambda (vtx) (not (eqv? vtx 'conclusion)))
-                reverse-top-order))
-       #;
-       (map
-        (lambda (label-tail)
-          (let* ([label (car label-tail)]
-                 [instr+ (match (cdr label-tail)
-                           ; we just want the instructions from this tail.
-                           ; the old info is meaningless
-                           [(Block '() instr+) instr+])]
-                 [live-after-sets (append (liveness instr+)
-                                          ; this one is the 'after-end' live
-                                          ; vars set
-                                          (list '()))])
-            `(,label . ,(Block live-after-sets instr+))))
-        e)))]))
+                reverse-top-order))))]))
 
 (define uwu unweighted-graph/undirected)
 
