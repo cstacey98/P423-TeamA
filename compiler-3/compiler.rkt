@@ -755,13 +755,11 @@ compiler.rkt> ((type-check-exp '())
        (foldl
         (lambda (label cfg)
           (begin
-            ; (displayln label)
             (define block (cdr (assv label e)))
             (define-values (instr+ bl-info)
               (match block
                 [(Block bl-info instr+) (values instr+ bl-info)]))
             (define neighbors (get-neighbors cfg-with-edges label))
-            (displayln (format "neighbors of ~a: ~a" label neighbors))
             (define live-after
               (foldr
                (lambda (nbr lv-after)
@@ -777,8 +775,6 @@ compiler.rkt> ((type-check-exp '())
                (filter (lambda (vtx) (not (eqv? vtx 'conclusion)))
                 neighbors)))
             (define liveness-blk (liveness instr+ live-after))
-            (displayln (format "liveness for ~a" label))
-            (for/list ([l liveness-blk]) (displayln l))
             (define blonk (Block liveness-blk instr+))
             (cons `(,label . ,blonk) cfg)))
         '()
@@ -803,30 +799,23 @@ compiler.rkt> ((type-check-exp '())
   (match instr+
     [(cons (Jmp label) '())
      (uwu '())]
+    [(cons (JmpIf cc label) instr-d)
+     ; interference is not changed by jmpif, right?
+     (interference-graph (cdr bl-info) instr-d)]
     [(cons (Callq label) instr-d)
-     (let ([graph-d
-            (interference-graph
-             (cdr bl-info) instr-d)])
-       (begin
-         (for/list ([reg caller-saved])
-           (for/list ([var (car bl-info)])
-             ; add-edge! is imperative/has side-effects/mutates graph-d, so we
-             ; abuse the syntax of match clauses here
-             (add-edge! graph-d (Reg reg) var)))
-         graph-d))]
+     (begin
+       (define graph-d
+         (interference-graph (cdr bl-info) instr-d))
+       (for/list ([reg caller-saved])
+         (for/list ([var (car bl-info)])
+           ; add-edge! is imperative/has side-effects/mutates graph-d, so we
+           ; abuse the syntax of match clauses here
+           (add-edge! graph-d (Reg reg) var)))
+       graph-d)]
     ; we're assuming that instr-a is an (Instr . .)
     [(cons instr-a instr-d)
      (let ([graph-d (interference-graph (cdr bl-info) instr-d)])
        (match instr-a
-         [(Instr 'addq (list arg1 arg2))
-          (add-all-var-args (list arg1 arg2) graph-d)
-          (if (Var? arg2)
-              (for/list ([var (car bl-info)])
-                (if (not (vars-eq? arg2 var))
-                    (add-edge! graph-d arg2 var)
-                    'no-interference-addq))
-              'arg2-is-rax-addq)
-          graph-d]
          ; assumption is that var is a variable (you can't negq an immediate...
          ; right?)
          [(Instr 'negq (list arg))
@@ -838,6 +827,15 @@ compiler.rkt> ((type-check-exp '())
                     'no-interference-negq))
               'arg-is-rax-negq)
           graph-d]
+         [(Instr 'addq (list arg1 arg2))
+          (add-all-var-args (list arg1 arg2) graph-d)
+          (if (Var? arg2)
+              (for/list ([var (car bl-info)])
+                (if (not (vars-eq? arg2 var))
+                    (add-edge! graph-d arg2 var)
+                    'no-interference-addq))
+              'arg2-is-rax-addq)
+          graph-d]
          [(Instr 'movq (list arg1 arg2))
           (add-all-var-args (list arg1 arg2) graph-d)
           (if (Var? arg2)
@@ -847,26 +845,86 @@ compiler.rkt> ((type-check-exp '())
                     'no-interference-movq
                     (add-edge! graph-d arg2 var)))
               'arg2-is-rax-movq)
+          graph-d]
+         [(Instr 'xorq (list arg1 arg2))
+          (add-all-var-args (list arg1 arg2) graph-d)
+          (if (Var? arg2)
+              (for/list ([var (car bl-info)])
+                (if (not (vars-eq? arg2 var))
+                    (add-edge! graph-d arg2 var)
+                    'no-interference-xorq))
+              'arg2-is-rax-xorq)
+          graph-d]
+         [(Instr 'cmpq (list arg1 arg2))
+          'cmpq-writes-to-nothing
+          #;(add-all-var-args (list arg1 arg2) graph-d)
+          #;
+          (if (Var? arg2)
+              (for/list ([var (car bl-info)])
+                (if (or (vars-eq? arg2 var)
+                        (vars-eq? arg1 var))
+                    'no-interference-cmpq
+                    (add-edge! graph-d arg2 var)))
+              'arg2-is-rax-cmpq)
+          graph-d]
+         [(Instr 'set (list cc arg))
+          (add-all-var-args (list cc arg) graph-d)
+          (if (Var? arg)
+              (for/list ([var (car bl-info)])
+                (if (vars-eq? arg var)
+                    'no-interference-set
+                    (add-edge! graph-d arg var)))
+              'arg2-is-rax-set)
+          graph-d]
+         [(Instr 'movzbq (list arg1 arg2))
+          (add-all-var-args (list arg1 arg2) graph-d)
+          (if (Var? arg2)
+              (for/list ([var (car bl-info)])
+                (if (or (vars-eq? arg2 var)
+                        (vars-eq? arg1 var))
+                    'no-interference-movzbq
+                    (add-edge! graph-d arg2 var)))
+              'arg2-is-rax-movzbq)
           graph-d]))]))
 
+; original map-lambda
+#;(let*
+      ([label (car label-tail)]
+       [instr+ (match (cdr label-tail)
+                 [(Block bl-info instr+) instr+])]
+       [bl-info (match (cdr label-tail)
+                  [(Block bl-info instr+) bl-info])])
+    ; taking cdr of bl-info so that we only use the
+    ; liveness-after sets; the first before-liveness set
+    ; is (guaranteed to be?) empty
+    (let ([g (interference-graph (cdr bl-info) instr+)])
+      g))
 (define (build-interference p)
   (match p
     [(Program info (CFG e))
      (Program
-      (cons (cons 'conflicts
-                  (map (lambda (label-tail)
-                         (let* ([label (car label-tail)]
-                                [instr+ (match (cdr label-tail)
-                                          [(Block bl-info instr+) instr+])]
-                                [bl-info (match (cdr label-tail)
-                                           [(Block bl-info instr+) bl-info])])
-                           ; taking cdr of bl-info so that we only use the
-                           ; liveness-after sets; the first before-liveness set
-                           ; is (guaranteed to be?) empty
-                           (let ([g (interference-graph (cdr bl-info) instr+)])
-                             g)))
-                       e))
-            info)
+      (cons
+       (cons
+        'conflicts
+        (map
+         (lambda (label-tail)
+           (begin
+             (define label
+               (car label-tail))
+             (define instr+
+               (match (cdr label-tail)
+                 [(Block bl-info instr+) instr+]))
+             (define bl-info
+               (match (cdr label-tail)
+                 [(Block bl-info instr+) bl-info]))
+             ; taking cdr of bl-info so that we only use the
+             ; liveness-after sets; the first before-liveness set
+             ; is (guaranteed to be?) empty
+             (define g (interference-graph (cdr bl-info) instr+))
+             (displayln (get-edges g))
+             g))
+             e))
+       info)
       (CFG e))]))
 
 (define uncolored -1)
@@ -1070,8 +1128,11 @@ compiler.rkt> ((type-check-exp '())
                   (cdr (assf (lambda (var) (vars-eq? var arg)) color-map)))
                  arg))
            args))]
-        [(Jmp label) instr-a]
-        [(Callq label) instr-a])
+        [whatever ; (Jmp label)
+         instr-a]
+        #;[(JmpIf cc label) instr-a]
+        #;[(Callq label) instr-a]
+        )
       (assign-regs-helper instr-d color-map))]))
 
 ; returns a new label-block where vars are replaced with regs or stack-locations
@@ -1146,9 +1207,14 @@ compiler.rkt> ((type-check-exp '())
                     (pi-helper instr-d))
             (cons instr-a
                   (pi-helper instr-d)))]
-       [(Jmp label)
+       [whatever-else ;(Jmp label)
         (cons instr-a
               (pi-helper instr-d))]
+       #;
+       [(JmpIf cc label)
+        (cons instr-a
+              (pi-helper instr-d))]
+      #;
        [(Callq label)
         (cons instr-a
               (pi-helper instr-d))])]))
@@ -1221,21 +1287,25 @@ compiler.rkt> ((type-check-exp '())
   (match arg
     [(Imm n) (format "$~a" n)]
     [(Reg reg) (format "%~a" reg)]
+    [(ByteReg bytereg) (format "%~a" bytereg)]
     [(Deref reg bytes) (format "~a(%~a)" bytes reg)]))
 
 (define (print-instr instr)
   (match instr
+    [(Instr 'set (list cc arg))
+     (format "set~a   ~a" cc (print-arg arg))]
     [(Instr op (list arg1 arg2))
      (format "~a   ~a, ~a" op (print-arg arg1) (print-arg arg2))]
     [(Instr op (list arg))
      (format "~a   ~a" op (print-arg arg))]
     [(Jmp label) (format "jmp ~a" (os-label label))]
+    [(JmpIf cc label) (format "jmp~a ~a" cc (os-label label))]
     [(Callq label) (format "callq ~a" (os-label label))]))
 
-(define (print-start block)
+(define (print-blk label block)
   (let ([instr+ (match block [(Block _ instructions) instructions])])
     (string-append
-     (os-label 'start) ":" newline
+     (os-label label) ":" newline
      (foldr (lambda (instr so-far)
               (string-append indent (print-instr instr) newline
                              so-far))
@@ -1254,9 +1324,17 @@ compiler.rkt> ((type-check-exp '())
 (define (print-x86 p)
   (match p
     [(Program `((stack-space . ,bytes-needed))
-              (CFG (list `(,start-label . ,start-block))))
+              (CFG blocks))
      (string-append
-      (print-start start-block)
+      (foldr
+       (lambda (lbl-blk x86)
+         (string-append (print-blk (car lbl-blk) (cdr lbl-blk))
+                        newline
+                        x86))
+       ""
+       blocks)
+      newline
+      #;(print-start start-block)
       newline
       (print-main (actual-bytes-needed bytes-needed))
       newline
@@ -1272,10 +1350,10 @@ compiler.rkt> ((type-check-exp '())
    explicate-control
    select-instructions
    uncover-live
-   ; build-interference
-   ; allocate-registers
-   ; patch-instructions
-   ; print-x86
+   build-interference
+   allocate-registers
+   patch-instructions
+   print-x86
    ))
 
 ; t = test, just so I can type it quickly lol
