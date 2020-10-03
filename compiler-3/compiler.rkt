@@ -706,14 +706,6 @@ compiler.rkt> ((type-check-exp '())
      (let ([l-d (liveness instr-d lv-after)])
        (cons (car l-d) l-d))]
     ; we're assuming that instr-a is an (Instr . .)
-    #;
-    [(cons instr-a '())
-     (let-values
-         ([(write-args read-args) (get-write/read instr-a)])
-       (let* ([liveness-d lv-after]
-              [liveness-a read-args])
-         (cons liveness-a
-               liveness-d)))]
     [(cons instr-a instr-d)
      (let-values
          ([(write-args read-args) (get-write/read instr-a)])
@@ -760,15 +752,16 @@ compiler.rkt> ((type-check-exp '())
      (Program
       info
       (CFG
-       ; foldr does reverse part of reverse-top-order :)
-       (foldr
+       (foldl
         (lambda (label cfg)
           (begin
+            ; (displayln label)
             (define block (cdr (assv label e)))
             (define-values (instr+ bl-info)
               (match block
                 [(Block bl-info instr+) (values instr+ bl-info)]))
-            (define neighbors (get-neighbors cfg-we-tp label))
+            (define neighbors (get-neighbors cfg-with-edges label))
+            (displayln (format "neighbors of ~a: ~a" label neighbors))
             (define live-after
               (foldr
                (lambda (nbr lv-after)
@@ -781,7 +774,8 @@ compiler.rkt> ((type-check-exp '())
                       [(Block bl-info instr+)
                        (car bl-info)]))))
                '()
-               neighbors))
+               (filter (lambda (vtx) (not (eqv? vtx 'conclusion)))
+                neighbors)))
             (define liveness-blk (liveness instr+ live-after))
             (displayln (format "liveness for ~a" label))
             (for/list ([l liveness-blk]) (displayln l))
