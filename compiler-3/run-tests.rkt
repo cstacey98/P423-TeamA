@@ -3,9 +3,11 @@
 
 (require "utilities.rkt")
 (require "interp-R1.rkt")
+(require "interp-C0.rkt")
 (require "interp.rkt")
 (require "compiler.rkt")
 ;; (debug-level 1)
+;; (AST-output-syntax 'concrete-syntax)
 
 ;; Define the passes to be used by interp-tests and the grader
 ;; Note that your compiler file (or whatever file provides your passes)
@@ -15,10 +17,7 @@
      ("remove complex opera*" ,remove-complex-opera* ,interp-R1)
      ("explicate control" ,explicate-control ,interp-C0)
      ("instruction selection" ,select-instructions ,R1-interp-x86)
-     ;("assign homes" ,assign-homes ,R1-interp-x86)
-     ("uncover live" ,uncover-live ,R1-interp-x86)
-     ("build interference" ,build-interference ,R1-interp-x86)
-     ("allocate registers" ,allocate-registers ,R1-interp-x86)
+     ("assign homes" ,assign-homes ,R1-interp-x86)
      ("patch instructions" ,patch-instructions ,R1-interp-x86)
      ("print x86" ,print-x86 #f)
      ))
