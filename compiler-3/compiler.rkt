@@ -921,7 +921,6 @@ compiler.rkt> ((type-check-exp '())
              ; liveness-after sets; the first before-liveness set
              ; is (guaranteed to be?) empty
              (define g (interference-graph (cdr bl-info) instr+))
-             (displayln (get-edges g))
              g))
              e))
        info)
