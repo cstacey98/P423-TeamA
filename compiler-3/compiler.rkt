@@ -698,18 +698,26 @@ compiler.rkt> ((type-check-exp '())
 ; return a (list of (lists of variables that are live at that point))
 (define (liveness instr+ lv-after)
   (match instr+
-    [(cons (Jmp label) '()) lv-after]
-    [(cons (JmpIf cc label) instr-d) lv-after]
+    [(cons (Jmp label) '()) (list lv-after)]
+    [(cons (JmpIf cc label) instr-d) (list lv-after)]
     [(cons (Callq label) instr-d)
      (let ([l-d (liveness instr-d lv-after)])
        (cons (car l-d) l-d))]
     ; we're assuming that instr-a is an (Instr . .)
+    #;
+    [(cons instr-a '())
+     (let-values
+         ([(write-args read-args) (get-write/read instr-a)])
+       (let* ([liveness-d lv-after]
+              [liveness-a read-args])
+         (cons liveness-a
+               liveness-d)))]
     [(cons instr-a instr-d)
      (let-values
          ([(write-args read-args) (get-write/read instr-a)])
        (let* ([liveness-d (liveness instr-d lv-after)]
               [liveness-a (set-union
-                           (set-subtract (car liveness-d)
+                           (set-subtract (car (print-and-return liveness-d))
                                          write-args)
                            read-args)])
          (cons liveness-a
@@ -729,12 +737,16 @@ compiler.rkt> ((type-check-exp '())
   (let* ([new-g (unweighted-graph/directed '())])
     (begin
       (for/list ([v-data lst])
-        (let* ([block (cdr v-data)]
-               [block (match block [(Block bl-info instr+) instr+])]
-               [v (car v-data)]
-               [neighbors (get-neighbors* block)])
-          (for/list ([u neighbors])
-            (add-edge! new-g v u))))
+        (begin
+          ; (displayln v-data)
+          ; (displayln lst)
+          (let* ([block (cdr v-data)]
+                 [blonk (match block [(Block bl-info instr+) instr+])]
+                 ; [v (car (print-and-return v-data))]
+                 [v (car v-data)]
+                 [neighbors (get-neighbors* blonk)])
+            (for/list ([u neighbors])
+              (add-directed-edge! new-g v u)))))
       new-g)))
 
 ;; TODO: register allocation, etc
@@ -743,9 +755,13 @@ compiler.rkt> ((type-check-exp '())
     [(Program info (CFG e))
      (define cfg-with-edges
        (isomorph e))
+     (displayln 'cfg-edges)
+     (displayln (get-edges cfg-with-edges))
+     (define cfg-we-tp (transpose cfg-with-edges))
      (define reverse-top-order
-       (tsort cfg-with-edges))
-     (displayln reverse-top-order)
+       (tsort cfg-we-tp))
+     ; (displayln 'reverse-top-order)
+     ; (displayln reverse-top-order)
      (Program
       info
       (CFG
@@ -754,12 +770,17 @@ compiler.rkt> ((type-check-exp '())
         (lambda (label cfg)
           (begin
             ; TODO this assv is failing? or see below
+            (displayln 'label)
+            (displayln label)
+            ; (displayln 'e)
+            ; (displayln e)
             (define block (cdr (assv label e)))
             (define-values (instr+ bl-info)
               (match block
                 [(Block bl-info instr+) (values instr+ bl-info)]))
-            (define neighbors (get-neighbors cfg-with-edges label))
-            (displayln neighbors)
+            (define neighbors (get-neighbors cfg-we-tp label))
+            ; (displayln 'neighbors)
+            ; (displayln neighbors)
             (define live-after
               (foldr
                (lambda (nbr lv-after)
@@ -767,9 +788,14 @@ compiler.rkt> ((type-check-exp '())
                   lv-after
                   ; the lv-before of its neighbor
                   ; TODO this assv is failing? or see above
-                  (match (cdr (assv nbr cfg))
-                    [(Block bl-info instr+)
-                     (car bl-info)])))
+                  (begin
+                    (displayln 'nbr)
+                    ; (displayln nbr)
+                    (displayln 'cfg)
+                    ; (displayln cfg)
+                    (match (cdr (assv nbr cfg))
+                          [(Block bl-info instr+)
+                           (car (print-and-return bl-info))]))))
                '()
                neighbors))
             #;
@@ -778,11 +804,14 @@ compiler.rkt> ((type-check-exp '())
                   (match (cdar cfg)
                     ; we want live-before of the alsfjasldkfj
                     [(Block bl-info instr+) (car bl-info)])))
-            (define liveness (liveness instr+ live-after))
-            (define blonk (Block liveness instr+))
+            (define liveness-blk (liveness instr+ live-after))
+            (define blonk (Block liveness-blk instr+))
             (cons `(,label . ,blonk) cfg)))
         '()
-        reverse-top-order)
+        ; remove conclusion from liveness analysis since we have not
+        ; created it yet
+        (filter (lambda (vtx) (not (eqv? vtx 'conclusion)))
+                reverse-top-order))
        #;
        (map
         (lambda (label-tail)
