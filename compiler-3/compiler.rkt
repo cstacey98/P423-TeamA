@@ -921,6 +921,10 @@ compiler.rkt> ((type-check-exp '())
              ; liveness-after sets; the first before-liveness set
              ; is (guaranteed to be?) empty
              (define g (interference-graph (cdr bl-info) instr+))
+             (map
+              (lambda (var)
+                (add-vertex! g var))
+              (car bl-info))
              g))
              e))
        info)
@@ -1395,7 +1399,6 @@ compiler.rkt> ((type-check-exp '())
 
 (define (p prog)
   (displayln (t prog)))
-
 
 
 
