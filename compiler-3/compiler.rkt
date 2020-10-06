@@ -29,85 +29,86 @@
 
 (define (type-check-prim env)
   (lambda (prim)
-    (match prim
-      [(Prim 'read (list)) 'Integer]
-      [(Prim 'eq? (list e1 e2))
-       (define Te1 ((type-check-exp env) e1))
-       (define Te2 ((type-check-exp env) e2))
-       (if (eqv? Te1 Te2)
-           ; assuming that only atom types are int/bool
-           #;
-           (and (eqv? Te1 Te1)
-                (or (eqv? Te1 'Integer)
-                    (eqv? Te1 'Boolean)))
-           'Boolean
-           (error "eq? should take two ints or two bools, given " (list e1 e2)))]
-      [(Prim '< (list e1 e2))
-       (define Te1 ((type-check-exp env) e1))
-       (define Te2 ((type-check-exp env) e2))
-       (if (and (eqv? Te1 'Integer)
-                (eqv? Te2 'Integer))
-           'Boolean
-           (error "< should take two ints, given " (list e1 e2)))]
-      [(Prim '<= (list e1 e2))
-       (define Te1 ((type-check-exp env) e1))
-       (define Te2 ((type-check-exp env) e2))
-       (if (and (eqv? Te1 'Integer)
-                (eqv? Te2 'Integer))
-           'Boolean
-           (error "<= should take two ints, given " (list e1 e2)))]
-      [(Prim '> (list e1 e2))
-       (define Te1 ((type-check-exp env) e1))
-       (define Te2 ((type-check-exp env) e2))
-       (if (and (eqv? Te1 'Integer)
-                (eqv? Te2 'Integer))
-           'Boolean
-           (error "> should take two ints, given " (list e1 e2)))]
-      [(Prim '>= (list e1 e2))
-       (define Te1 ((type-check-exp env) e1))
-       (define Te2 ((type-check-exp env) e2))
-       (if (and (eqv? Te1 'Integer)
-                (eqv? Te2 'Integer))
-           'Boolean
-           (error ">= should take two ints, given " (list e1 e2)))]
-      [(Prim '+ (list e1 e2))
-       (define Te1 ((type-check-exp env) e1))
-       (define Te2 ((type-check-exp env) e2))
-       (if (and (eqv? Te1 'Integer)
-                (eqv? Te2 'Integer))
-           'Integer
-           (error "+ should take two ints, given " (list e1 e2)))]
-      [(Prim '- (list e))
-       (define Te ((type-check-exp env) e))
-       (if (eqv? Te 'Integer)
-           'Integer
-           (error "- should take one int, given " (list e)))]
-      [(Prim '- (list e1 e2))
-       (define Te1 ((type-check-exp env) e1))
-       (define Te2 ((type-check-exp env) e2))
-       (if (and (eqv? Te1 'Integer)
-                (eqv? Te2 'Integer))
-           'Integer
-           (error "- should take two ints, given " (list e1 e2)))]
-      [(Prim 'and (list e1 e2))
-       (define Te1 ((type-check-exp env) e1))
-       (define Te2 ((type-check-exp env) e2))
-       (if (and (eqv? Te1 'Boolean)
-                (eqv? Te2 'Boolean))
-           'Boolean
-           (error "and should take two bools, given " (list e1 e2)))]
-      [(Prim 'or (list e1 e2))
-       (define Te1 ((type-check-exp env) e1))
-       (define Te2 ((type-check-exp env) e2))
-       (if (and (eqv? Te1 'Boolean)
-                (eqv? Te2 'Boolean))
-           'Boolean
-           (error "or should take two bools, given " (list e1 e2)))]
-      [(Prim 'not (list e))
-       (define Te ((type-check-exp env) e))
-       (if (eqv? Te 'Boolean)
-           'Boolean
-           (error "not should take one bool, given " (list e)))])))
+    (let ([recur (type-check-exp env)])
+      (match prim
+        [(Prim 'read (list)) 'Integer]
+        [(Prim 'eq? (list e1 e2))
+         (define Te1 (recur e1))
+         (define Te2 (recur e2))
+         (if (eqv? Te1 Te2)
+             ; assuming that only atom types are int/bool
+             #;
+             (and (eqv? Te1 Te1)
+                  (or (eqv? Te1 'Integer)
+                      (eqv? Te1 'Boolean)))
+             'Boolean
+             (error "eq? should take two ints or two bools, given " (list e1 e2)))]
+        [(Prim '< (list e1 e2))
+         (define Te1 (recur e1))
+         (define Te2 (recur e2))
+         (if (and (eqv? Te1 'Integer)
+                  (eqv? Te2 'Integer))
+             'Boolean
+             (error "< should take two ints, given " (list e1 e2)))]
+        [(Prim '<= (list e1 e2))
+         (define Te1 (recur e1))
+         (define Te2 (recur e2))
+         (if (and (eqv? Te1 'Integer)
+                  (eqv? Te2 'Integer))
+             'Boolean
+             (error "<= should take two ints, given " (list e1 e2)))]
+        [(Prim '> (list e1 e2))
+         (define Te1 (recur e1))
+         (define Te2 (recur e2))
+         (if (and (eqv? Te1 'Integer)
+                  (eqv? Te2 'Integer))
+             'Boolean
+             (error "> should take two ints, given " (list e1 e2)))]
+        [(Prim '>= (list e1 e2))
+         (define Te1 (recur e1))
+         (define Te2 (recur e2))
+         (if (and (eqv? Te1 'Integer)
+                  (eqv? Te2 'Integer))
+             'Boolean
+             (error ">= should take two ints, given " (list e1 e2)))]
+        [(Prim '+ (list e1 e2))
+         (define Te1 (recur e1))
+         (define Te2 (recur e2))
+         (if (and (eqv? Te1 'Integer)
+                  (eqv? Te2 'Integer))
+             'Integer
+             (error "+ should take two ints, given " (list e1 e2)))]
+        [(Prim '- (list e))
+         (define Te (recur e))
+         (if (eqv? Te 'Integer)
+             'Integer
+             (error "- should take one int, given " (list e)))]
+        [(Prim '- (list e1 e2))
+         (define Te1 (recur e1))
+         (define Te2 (recur e2))
+         (if (and (eqv? Te1 'Integer)
+                  (eqv? Te2 'Integer))
+             'Integer
+             (error "- should take two ints, given " (list e1 e2)))]
+        [(Prim 'and (list e1 e2))
+         (define Te1 (recur e1))
+         (define Te2 (recur e2))
+         (if (and (eqv? Te1 'Boolean)
+                  (eqv? Te2 'Boolean))
+             'Boolean
+             (error "and should take two bools, given " (list e1 e2)))]
+        [(Prim 'or (list e1 e2))
+         (define Te1 (recur e1))
+         (define Te2 (recur e2))
+         (if (and (eqv? Te1 'Boolean)
+                  (eqv? Te2 'Boolean))
+             'Boolean
+             (error "or should take two bools, given " (list e1 e2)))]
+        [(Prim 'not (list e))
+         (define Te (recur e))
+         (if (eqv? Te 'Boolean)
+             'Boolean
+             (error "not should take one bool, given " (list e)))]))))
 
 (define (type-check-exp env)
   (lambda (e)
@@ -126,7 +127,9 @@
        (define Tc ((type-check-exp env) cnsq))
        (define Ta ((type-check-exp env) alt))
        (unless (eqv? Tc Ta)
-         (error "consequent and alternative in if should have same type, given " (list cnsq alt)))
+         (error (string-append "consequent and alternative in if should "
+                               "have same type, given")
+                (list Tc Ta)))
        Tc]
       [else
        (error "type-check-exp couldn't match" e)])))
@@ -568,22 +571,32 @@ compiler.rkt> ((type-check-exp '())
        [(Prim 'not (list e))
         (define e-si (si-atm e))
         (if (vars-eq? e var)
-            (Instr 'xorq (list (Imm 1) e-si))
+            (list (Instr 'xorq (list (Imm 1) e-si)))
             (list (Instr 'movq (list e-si var))
                   (Instr 'xorq (list (Imm 1) var))))]
        [(Prim '< (list e1 e2))
         (define e1-si (si-atm e1))
         (define e2-si (si-atm e2))
-        (list (Instr 'cmpq (list e2-si e1-si))
-              (Instr 'set (list 'l (ByteReg 'al)))
-              (Instr 'movzbq (list (ByteReg 'al) var)))
+        (if (and (Imm? e1-si) (Imm? e2-si))
+            (list (Instr 'movq (list e1-si (Reg 'rax)))
+                  (Instr 'cmpq (list e2-si (Reg 'rax)))
+                  (Instr 'set (list 'l (ByteReg 'al)))
+                  (Instr 'movzbq (list (ByteReg 'al) var)))
+            (list (Instr 'cmpq (list e2-si e1-si))
+                  (Instr 'set (list 'l (ByteReg 'al)))
+                  (Instr 'movzbq (list (ByteReg 'al) var))))
         ]
        [(Prim 'eq? (list e1 e2))
         (define e1-si (si-atm e1))
         (define e2-si (si-atm e2))
-        (list (Instr 'cmpq (list e2-si e1-si))
-              (Instr 'set (list 'e (ByteReg 'al)))
-              (Instr 'movzbq (list (ByteReg 'al) var)))
+        (if (and (Imm? e1-si) (Imm? e2-si))
+            (list (Instr 'movq (list e1-si (Reg 'rax)))
+                  (Instr 'cmpq (list e2-si (Reg 'rax)))
+                  (Instr 'set (list 'e (ByteReg 'al)))
+                  (Instr 'movzbq (list (ByteReg 'al) var)))
+            (list (Instr 'cmpq (list e2-si e1-si))
+                  (Instr 'set (list 'e (ByteReg 'al)))
+                  (Instr 'movzbq (list (ByteReg 'al) var))))
         ]
        [(Prim '+ args)
         (match args
@@ -625,6 +638,7 @@ compiler.rkt> ((type-check-exp '())
      (define e1-si (si-atm e1))
      (define e2-si (si-atm e2))
      (list (Instr 'cmpq (list e2-si e1-si))
+           ; (Instr 'set (list cc (ByteReg 'al)))
            (JmpIf cc label-1)
            (Jmp label-2))]
     [(Return exp)
@@ -1302,7 +1316,7 @@ compiler.rkt> ((type-check-exp '())
     [(Instr op (list arg))
      (format "~a   ~a" op (print-arg arg))]
     [(Jmp label) (format "jmp ~a" (os-label label))]
-    [(JmpIf cc label) (format "jmp~a ~a" cc (os-label label))]
+    [(JmpIf cc label) (format "j~a ~a" cc (os-label label))]
     [(Callq label) (format "callq ~a" (os-label label))]))
 
 (define (print-blk label block)
