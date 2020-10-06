@@ -1,62 +1,30 @@
 _start:
-       movq   $1, %rdx
-       cmpq   $1, %rdx
-       je _block178293
-       jmp _block178294
+       movq   $1, %rbx
+       movq   $2, %r12
+       callq _read_int
+       movq   %rax, %rdx
+       cmpq   $0, %rdx
+       je _block558964
+       jmp _block558965
 
-_block178294:
-       cmpq   $1, %rdx
-       je _block178289
-       jmp _block178290
+_block558965:
+       jmp _block558963
 
-_block178292:
-       cmpq   $1, %rdx
-       je _block178289
-       jmp _block178290
+_block558963:
+       movq   %r12, %rdx
+       jmp _block558961
 
-_block178289:
-       jmp _block178285
+_block558964:
+       jmp _block558962
 
-_block178287:
-       jmp _block178285
+_block558962:
+       movq   %rbx, %rdx
+       negq   %rdx
+       jmp _block558961
 
-_block178285:
-       jmp _block178283
-
-_block178290:
-       jmp _block178286
-
-_block178293:
-       jmp _block178286
-
-_block178291:
-       jmp _block178286
-
-_block178288:
-       jmp _block178286
-
-_block178286:
-       jmp _block178284
-
-_block178283:
-       movq   $1, %rdx
-       jmp _block178282
-
-_block178284:
-       movq   $0, %rdx
-       jmp _block178282
-
-_block178282:
-       cmpq   $1, %rdx
-       je _block178280
-       jmp _block178281
-
-_block178280:
-       movq   $42, %rax
-       jmp _conclusion
-
-_block178281:
-       movq   $777, %rax
+_block558961:
+       movq   %rdx, %rax
+       addq   $10, %rax
        jmp _conclusion
 
 

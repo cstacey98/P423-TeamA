@@ -451,7 +451,7 @@ compiler.rkt> ((type-check-exp '())
        (add-edge! cfg-global `(,label-3 . ,b3) `(,label-2 . ,b2))
        (add-edge! cfg-global `(,label-4 . ,b4) `(,label-1 . ,b1))
        (add-edge! cfg-global `(,label-4 . ,b4) `(,label-2 . ,b2))
-       (explicate-pred cnd b3 b4)]
+       (explicate-pred cnd b4 b3)]
       [(Bool b) (values (if b b1 b2) '())]
       [(Var v)
        (values
@@ -502,6 +502,7 @@ compiler.rkt> ((type-check-exp '())
      (values (Return (Prim op es))
              '())]))
 
+#;
 (define b
   '(if (eq? (read) 1)
        (if (eq? (read) 0)
@@ -787,7 +788,7 @@ compiler.rkt> ((type-check-exp '())
                        (car bl-info)]))))
                '()
                (filter (lambda (vtx) (not (eqv? vtx 'conclusion)))
-                neighbors)))
+                       neighbors)))
             (define liveness-blk (liveness instr+ live-after))
             (define blonk (Block liveness-blk instr+))
             (cons `(,label . ,blonk) cfg)))
@@ -809,17 +810,17 @@ compiler.rkt> ((type-check-exp '())
 ; we're assuming that the top of instr+ corresponds to the top of bl-info
 ; TODO: guarantee that all program vars have vertex in graph
 ; (may not have edge though)
-(define (interference-graph bl-info instr+)
+(define (interference-graph bl-info instr+ base-g)
   (match instr+
     [(cons (Jmp label) '())
-     (uwu '())]
+     base-g]
     [(cons (JmpIf cc label) instr-d)
      ; interference is not changed by jmpif, right?
-     (interference-graph (cdr bl-info) instr-d)]
+     (interference-graph (cdr bl-info) instr-d base-g)]
     [(cons (Callq label) instr-d)
      (begin
        (define graph-d
-         (interference-graph (cdr bl-info) instr-d))
+         (interference-graph (cdr bl-info) instr-d base-g))
        (for/list ([reg caller-saved])
          (for/list ([var (car bl-info)])
            ; add-edge! is imperative/has side-effects/mutates graph-d, so we
@@ -828,7 +829,7 @@ compiler.rkt> ((type-check-exp '())
        graph-d)]
     ; we're assuming that instr-a is an (Instr . .)
     [(cons instr-a instr-d)
-     (let ([graph-d (interference-graph (cdr bl-info) instr-d)])
+     (let ([graph-d (interference-graph (cdr bl-info) instr-d base-g)])
        (match instr-a
          ; assumption is that var is a variable (you can't negq an immediate...
          ; right?)
@@ -916,11 +917,9 @@ compiler.rkt> ((type-check-exp '())
 (define (build-interference p)
   (match p
     [(Program info (CFG e))
-     (Program
-      (cons
-       (cons
-        'conflicts
-        (map
+     (define base-g (uwu '()))
+     (define graphsss
+       (map
          (lambda (label-tail)
            (begin
              (define label
@@ -934,14 +933,19 @@ compiler.rkt> ((type-check-exp '())
              ; taking cdr of bl-info so that we only use the
              ; liveness-after sets; the first before-liveness set
              ; is (guaranteed to be?) empty
-             (define g (interference-graph (cdr bl-info) instr+))
+             (define g (interference-graph (cdr bl-info) instr+ base-g))
+             (set! base-g g)
              (map
               (lambda (var)
                 (add-vertex! g var))
               (car bl-info))
              g))
-             e))
-       info)
+         e))
+     #;
+     (for/list ([g graphsss])
+       (displayln (get-edges g)))
+     (Program
+      (cons (cons 'conflicts graphsss) info)
       (CFG e))]))
 
 (define uncolored -1)
@@ -1421,3 +1425,13 @@ compiler.rkt> ((type-check-exp '())
 
 
 
+#|
+#<Program: ((locals))
+#<CFG:
+((start . #<Block: (() (#<Var: a543102>) (#<Var: a543102> #<Var: b543103>) (#<Var: a543102> #<Var: b543103>) (#<Var: tmp543105> #<Var: b543103> #<Var: a543102>) (#<Var: a543102> #<Var: b543103>) (#<Var: a543102> #<Var: b543103>)) (#<Instr: movq (#<Imm: 1> #<Var: a543102>)> #<Instr: movq (#<Imm: 2> #<Var: b543103>)> #<Callq: read_int> #<Instr: movq (#<Reg: rax> #<Var: tmp543105>)> #<Instr: cmpq (#<Imm: 0> #<Var: tmp543105>)> #<JmpIf: e block543109> #<Jmp: block543110>)>)
+ (block543109 . #<Block: ((#<Var: a543102>)) (#<Jmp: block543107>)>)
+ (block543107 . #<Block: ((#<Var: a543102>) (#<Var: x543104>) (#<Var: x543104>)) (#<Instr: movq (#<Var: a543102> #<Var: x543104>)> #<Instr: negq (#<Var: x543104>)> #<Jmp: block543106>)>)
+ (block543110 . #<Block: ((#<Var: b543103>)) (#<Jmp: block543108>)>)
+ (block543108 . #<Block: ((#<Var: b543103>) (#<Var: x543104>)) (#<Instr: movq (#<Var: b543103> #<Var: x543104>)> #<Jmp: block543106>)>)
+ (block543106 . #<Block: ((#<Var: x543104>) () ()) (#<Instr: movq (#<Var: x543104> #<Reg: rax>)> #<Instr: addq (#<Imm: 10> #<Reg: rax>)> #<Jmp: conclusion>)>))>>
+|#

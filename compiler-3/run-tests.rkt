@@ -16,6 +16,7 @@
 ;; should be named "compiler.rkt"
 (define r2-passes
   `( ("uniquify" ,uniquify ,interp-R2)
+     ("shrink" ,shrink ,interp-R2)
      ("type-check" ,type-check ,interp-R2)
      ("remove complex opera*" ,remove-complex-opera* ,interp-R2)
      ("explicate control" ,explicate-control ,interp-C1)
