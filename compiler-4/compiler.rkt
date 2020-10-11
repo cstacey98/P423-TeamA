@@ -26,143 +26,130 @@
 ;; HW1 Passes
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+; I->B or B->B
+(define equality
+  (list 'eq?))
+; I->B
+(define comparison
+  (list '<
+        '>
+        '<=
+        '>=))
+; I->I
+(define arithmetic
+  (list '+
+        '-
+        'read))
+; B->B
+(define bool-algebra
+  (list 'and
+        'or
+        'not))
+
+; Accessors
+(define (get-expr ht)
+  (match ht
+    [(HasType expr type) expr]))
+(define (get-type ht)
+  (match ht
+    [(HasType expr type) type]))
+
+(define (check-args-consistency args recur T)
+  (andmap (lambda (arg) (eq? T (get-type (recur arg)))) args))
+
+(define (list-ind n lst)
+  (cond
+    [(zero? n) (car lst)]
+    [else (list-ind (sub1 n) lst)]))
+
+; TODO
+; (t '(let ([x (vector 1 3 5 #t)]) (vector-ref x 0)))
 
 (define (type-check-prim env)
   (lambda (prim)
     (let ([recur (type-check-exp env)])
       (match prim
-        [(Prim 'read (list)) 'Integer]
-        [(Prim 'eq? (list e1 e2))
-         (define Te1 (recur e1))
-         (define Te2 (recur e2))
-         (if (eqv? Te1 Te2)
-             ; assuming that only atom types are int/bool
-             #;
-             (and (eqv? Te1 Te1)
-                  (or (eqv? Te1 'Integer)
-                      (eqv? Te1 'Boolean)))
-             'Boolean
-             (error "eq? should take two ints or two bools, given " (list e1 e2)))]
-        [(Prim '< (list e1 e2))
-         (define Te1 (recur e1))
-         (define Te2 (recur e2))
-         (if (and (eqv? Te1 'Integer)
-                  (eqv? Te2 'Integer))
-             'Boolean
-             (error "< should take two ints, given " (list e1 e2)))]
-        [(Prim '<= (list e1 e2))
-         (define Te1 (recur e1))
-         (define Te2 (recur e2))
-         (if (and (eqv? Te1 'Integer)
-                  (eqv? Te2 'Integer))
-             'Boolean
-             (error "<= should take two ints, given " (list e1 e2)))]
-        [(Prim '> (list e1 e2))
-         (define Te1 (recur e1))
-         (define Te2 (recur e2))
-         (if (and (eqv? Te1 'Integer)
-                  (eqv? Te2 'Integer))
-             'Boolean
-             (error "> should take two ints, given " (list e1 e2)))]
-        [(Prim '>= (list e1 e2))
-         (define Te1 (recur e1))
-         (define Te2 (recur e2))
-         (if (and (eqv? Te1 'Integer)
-                  (eqv? Te2 'Integer))
-             'Boolean
-             (error ">= should take two ints, given " (list e1 e2)))]
-        [(Prim '+ (list e1 e2))
-         (define Te1 (recur e1))
-         (define Te2 (recur e2))
-         (if (and (eqv? Te1 'Integer)
-                  (eqv? Te2 'Integer))
-             'Integer
-             (error "+ should take two ints, given " (list e1 e2)))]
-        [(Prim '- (list e))
-         (define Te (recur e))
-         (if (eqv? Te 'Integer)
-             'Integer
-             (error "- should take one int, given " (list e)))]
-        [(Prim '- (list e1 e2))
-         (define Te1 (recur e1))
-         (define Te2 (recur e2))
-         (if (and (eqv? Te1 'Integer)
-                  (eqv? Te2 'Integer))
-             'Integer
-             (error "- should take two ints, given " (list e1 e2)))]
-        [(Prim 'and (list e1 e2))
-         (define Te1 (recur e1))
-         (define Te2 (recur e2))
-         (if (and (eqv? Te1 'Boolean)
-                  (eqv? Te2 'Boolean))
-             'Boolean
-             (error "and should take two bools, given " (list e1 e2)))]
-        [(Prim 'or (list e1 e2))
-         (define Te1 (recur e1))
-         (define Te2 (recur e2))
-         (if (and (eqv? Te1 'Boolean)
-                  (eqv? Te2 'Boolean))
-             'Boolean
-             (error "or should take two bools, given " (list e1 e2)))]
-        [(Prim 'not (list e))
-         (define Te (recur e))
-         (if (eqv? Te 'Boolean)
-             'Boolean
-             (error "not should take one bool, given " (list e)))]))))
+        [(Prim op args)
+         (cond
+           [(eq? op 'eq?)
+            (define Te1 (get-type (recur (car args))))
+            (define Te2 (get-type (recur (cadr args))))
+            (if (eq? Te1 Te2)
+                (HasType prim 'Boolean)
+                (error "type error with Prim ~a" op))]
+           [(memv op comparison)
+            (if (check-args-consistency args recur 'Integer)
+                (HasType prim 'Boolean)
+                (error "type error with Prim ~a" op))]
+           [(memv op arithmetic)
+            (if (check-args-consistency args recur 'Integer)
+                (HasType prim 'Integer)
+                (error "type error with Prim ~a" op))]
+           [(memv op bool-algebra)
+            (if (check-args-consistency args recur 'Boolean)
+                (HasType prim 'Boolean)
+                (error "type error with Prim ~a" op))]
+           [(eq? op 'vector)
+            (define component-types (map (compose get-type recur) args))
+            ; TODO this is an issue; see above example
+            (HasType prim `(Vector . ,component-types))]
+           [(eq? op 'vector-ref)
+            (define Tv (get-type (recur (car args))))
+            (define Tcomponents (cdr Tv))
+            (define index (cadr args))
+            (if (>= index (length Tcomponents))
+                (error "trying to access index ~a of vector size ~a"
+                       index (length Tcomponents))
+                (HasType prim (list-ind index Tcomponents)))]
+           [(eq? op 'vector-set)
+            (define Tv (get-type (recur (car args))))
+            (define Tcomponents (cdr Tv))
+            (define index (cadr args))
+            (if (>= index (length Tcomponents))
+                (error "trying to set index ~a of vector size ~a"
+                       index (length Tcomponents))
+                (HasType prim 'Void))])]))))
+
 
 (define (type-check-exp env)
   (lambda (e)
-    (match e
-      [(Var x) (dict-ref env x)]
-      [(Int n) 'Integer]
-      [(Bool b) 'Boolean]
-      [(Prim op args) ((type-check-prim env) e)]
-      [(Let x e body)
-       (define Te ((type-check-exp env) e))
-       (define Tb ((type-check-exp (dict-set env x Te)) body))
-       Tb]
-      [(If cnd cnsq alt)
-       (unless (eqv? 'Boolean ((type-check-exp env) cnd))
-         (error "condition given to if should be bool, given " cnd))
-       (define Tc ((type-check-exp env) cnsq))
-       (define Ta ((type-check-exp env) alt))
-       (unless (eqv? Tc Ta)
-         (error (string-append "consequent and alternative in if should "
-                               "have same type, given")
-                (list Tc Ta)))
-       Tc]
-      [else
-       (error "type-check-exp couldn't match" e)])))
+    (let ([recur (type-check-exp env)])
+      (match e
+        [(Var x) (HasType e (dict-ref env x))]
+        [(Int n) (HasType e 'Integer)]
+        [(Bool b) (HasType e 'Boolean)]
+        [(Void) (HasType e 'Void)]
+        [(Prim op args) (HasType e ((type-check-prim env) e))]
+        [(Let x e body)
+         (define Te (get-type (recur e)))
+         (define Tb (get-type ((type-check-exp (dict-set env x Te)) body)))
+         (HasType e Tb)]
+        [(If cnd cnsq alt)
+         (unless (eq? 'Boolean (get-type (recur cnd)))
+           (error "condition given to if should be bool, given ~a" cnd))
+         (define Tc (get-type (recur cnsq)))
+         (define Ta (get-type (recur alt)))
+         (unless (eq? Tc Ta)
+           (error (string-append "consequent and alternative in if should "
+                                 "have same type, given ~a")
+                  (list Tc Ta)))
+         (HasType e Tc)]
+        [else
+         (error "type-check-exp couldn't match ~a" e)]))))
 
 (define (type-check p)
   (match p
     [(Program info body)
-     (define Tb ((type-check-exp '()) body))
-     (unless (equal? Tb 'Integer)
-       (error "result of the program must be an integer, not " Tb))
-     (Program info body)]))
+     (define typed-body ((type-check-exp '()) body))
+     (unless (equal? 'Integer (get-type typed-body))
+       (error "result of the program must be an integer, not ~a"
+              (get-type typed-body)))
+     (Program info typed-body)]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;
 ; Type checkin' tests ;
 ;;;;;;;;;;;;;;;;;;;;;;;
 #|
-compiler.rkt> ((type-check-exp '()) (parse-exp '1))
-'Integer
-compiler.rkt> ((type-check-exp '()) (parse-exp '#f))
-'Boolean
-compiler.rkt> ((type-check-exp '()) (parse-exp '#t))
-'Boolean
-compiler.rkt> ((type-check-exp '()) (parse-exp '(if #t 1 2)))
-'Integer
-compiler.rkt> ((type-check-exp '()) (parse-exp '(if #t 1 #f)))
-; consequent and alternative in if should have same type, given  (1 #f)
-; Context:
-;  /Applications/Racket v7.8/collects/racket/match/compiler.rkt:507:40 f134
-;  /Applications/Racket v7.8/collects/racket/repl.rkt:11:26
-compiler.rkt> ((type-check-exp '()) (parse-exp '(if #t #t #f)))
-'Boolean
-compiler.rkt> ((type-check-exp '())(parse-exp '(read)))
-'Integer
 compiler.rkt> ((type-check-exp '())
  (parse-exp '(if (not (and (or (< (read) 42) #f)
                            (or (and (<= 5 (+ 3 5))
@@ -186,51 +173,6 @@ compiler.rkt> ((type-check-exp '())
                           (let ([x (not #t)])
                             (if x y z))))))))
 'Integer
-compiler.rkt> ((type-check-exp '())
-               (parse-exp '(if (let ([v (+ 1 (+ 4 (+ (- 5) (- 35 4))))])
-                                (let ([r (+ v 3)])
-                                  (if (eq? v #t)
-                                      #f
-                                      (and (not #f)
-                                           #f))))
-                              3423
-                              4)))
-; eq? should take two ints or two bools, given  (v #t)
-; Context:
-;  /Applications/Racket v7.8/collects/racket/match/compiler.rkt:507:40 f134
-;  /Applications/Racket v7.8/collects/racket/match/compiler.rkt:507:40 f142
-;  /Applications/Racket v7.8/collects/racket/match/compiler.rkt:507:40 f142
-;  /Applications/Racket v7.8/collects/racket/match/compiler.rkt:507:40 f134
-;  /Applications/Racket v7.8/collects/racket/repl.rkt:11:26
-compiler.rkt> ((type-check-exp '())
-               (parse-exp '(if (let ([v (+ 1 #t)])
-                                 (let ([r (+ v 3)])
-                                   (if (eq? #f #t)
-                                       #f
-                                       (and (not #f)
-                                            #f))))
-                               3423
-                               4)))
-; + should take two ints, given  (1 #t)
-; Context:
-;  /Applications/Racket v7.8/collects/racket/match/compiler.rkt:507:40 f142
-;  /Applications/Racket v7.8/collects/racket/match/compiler.rkt:507:40 f134
-;  /Applications/Racket v7.8/collects/racket/repl.rkt:11:26
-compiler.rkt> ((type-check-exp '())
-               (parse-exp '(- (let ([x 1])
-                      (let ([y 3])
-                        (let ([z (+ x (- y))])
-                          (let ([x (not #t)])
-                            (if x y #f))))))))
-; consequent and alternative in if should have same type, given  (y #f)
-; Context:
-;  /Applications/Racket v7.8/collects/racket/match/compiler.rkt:507:40 f134
-;  /Applications/Racket v7.8/collects/racket/match/compiler.rkt:507:40 f142
-;  /Applications/Racket v7.8/collects/racket/match/compiler.rkt:507:40 f142
-;  /Applications/Racket v7.8/collects/racket/match/compiler.rkt:507:40 f142
-;  /Applications/Racket v7.8/collects/racket/match/compiler.rkt:507:40 f142
-;  /Users/zac/co/compiler-3/compiler.rkt:30:2
-;  /Applications/Racket v7.8/collects/racket/repl.rkt:11:26
 |#
 
 (define (shrink-prim p)
@@ -787,7 +729,7 @@ compiler.rkt> ((type-check-exp '())
                       [(Block bl-info instr+)
                        (car bl-info)]))))
                '()
-               (filter (lambda (vtx) (not (eqv? vtx 'conclusion)))
+               (filter (lambda (vtx) (not (eq? vtx 'conclusion)))
                        neighbors)))
             (define liveness-blk (liveness instr+ live-after))
             (define blonk (Block liveness-blk instr+))
@@ -795,7 +737,7 @@ compiler.rkt> ((type-check-exp '())
         '()
         ; remove conclusion from liveness analysis since we have not
         ; created it yet
-        (filter (lambda (vtx) (not (eqv? vtx 'conclusion)))
+        (filter (lambda (vtx) (not (eq? vtx 'conclusion)))
                 reverse-top-order))))]))
 
 (define uwu unweighted-graph/undirected)
@@ -949,7 +891,7 @@ compiler.rkt> ((type-check-exp '())
       (CFG e))]))
 
 (define uncolored -1)
-(define (uncolored? color) (eqv? color uncolored))
+(define (uncolored? color) (eq? color uncolored))
 ; returns an association list mapping variables to:
 ; (Pair number saturation) where saturation is a set of numbers/colors
 ; that this variable cannot have
@@ -1365,16 +1307,16 @@ compiler.rkt> ((type-check-exp '())
 (define test-passes
   (list
    type-check
-   shrink
-   uniquify
-   remove-complex-opera*
-   explicate-control
-   select-instructions
-   uncover-live
-   build-interference
-   allocate-registers
-   patch-instructions
-   print-x86
+   ; shrink
+   ; uniquify
+   ; remove-complex-opera*
+   ; explicate-control
+   ; select-instructions
+   ; uncover-live
+   ; build-interference
+   ; allocate-registers
+   ; patch-instructions
+   ; print-x86
    ))
 
 ; t = test, just so I can type it quickly lol
