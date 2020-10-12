@@ -62,8 +62,6 @@
     [(zero? n) (car lst)]
     [else (list-ind (sub1 n) (cdr lst))]))
 
-; TODO
-; (t '(let ([x (vector 1 3 5 #t)]) (vector-ref x 0)))
 
 (define (type-check-prim env)
   (lambda (prim)
@@ -91,7 +89,6 @@
                 (error "type error with Prim " op))]
            [(eq? op 'vector)
             (define component-types (map (compose get-type recur) args))
-            ; TODO this is an issue; see above example
             (define vec-type (cons 'Vector component-types))
             (HasType prim vec-type)]
            [(eq? op 'vector-ref)
@@ -179,63 +176,119 @@ compiler.rkt> ((type-check-exp '())
 'Integer
 |#
 
-(define (shrink-prim p)
-  (match p
-    [(Prim '<= (list e1 e2))
-     (define shrunk-1 (shrink-exp e1))
-     (define shrunk-2 (shrink-exp e2))
-     (define tmp-var (gensym 'tmp))
-     (Let tmp-var shrunk-1
-          (Prim 'not (list (Prim '< (list shrunk-2 (Var tmp-var))))))]
-    [(Prim '>= (list e1 e2))
-     (define shrunk-1 (shrink-exp e1))
-     (define shrunk-2 (shrink-exp e2))
-     (Prim 'not (list (Prim '< (list shrunk-1 shrunk-2))))
-     ]
-    [(Prim '> (list e1 e2))
-     (define shrunk-1 (shrink-exp e1))
-     (define shrunk-2 (shrink-exp e2))
-     (define tmp-var (gensym 'tmp))
-     (Let tmp-var shrunk-1
-          (Prim '< (list shrunk-2 (Var tmp-var))))
-     ]
-    [(Prim '- (list e1 e2))
-     (define shrunk-1 (shrink-exp e1))
-     (define shrunk-2 (shrink-exp e2))
-     (Prim '+ (list shrunk-1
-                    (Prim '- (list shrunk-2))))]
-    [(Prim 'and (list e1 e2))
-     (define shrunk-1 (shrink-exp e1))
-     (define shrunk-2 (shrink-exp e2))
-     (If shrunk-1 shrunk-2 (Bool #f))]
-    [(Prim 'or (list e1 e2))
-     (define shrunk-1 (shrink-exp e1))
-     (define shrunk-2 (shrink-exp e2))
-     (If shrunk-1 (Bool #t) shrunk-2)]
-    [(Prim op args)
-     (Prim op (map shrink-exp args))]))
+(define op-to-output-type
+  (list '(+ . Integer)
+        '(- . Integer)
+        '(read . Integer)
+        '(< . Boolean)
+        '(eq? . Boolean)
+        '(not . Boolean)
+        '(vector . Vector)
+        '(vector-set! . Void)
+        '(vector-ref . VectorRef)))
 
-(define (shrink-exp e)
-  (match e
-    [(Int n) e]
-    [(Var x) e]
-    [(Bool b) e]
-    [(Prim op args)
-     (shrink-prim e)]
-    [(If cnd cnsq alt)
-     (If (shrink-exp cnd)
-         (shrink-exp cnsq)
-         (shrink-exp alt))]
-    [(Let x e body)
-     (Let x (shrink-exp e)
-          (shrink-exp body))]))
+#|
+compiler.rkt> (t
+               '(let ([x (vector 1 3 5 #t)])
+                  (let ([y (vector-set! x 0 4)])
+                    (if (>= 3 5)
+                        (vector-ref
+                         x
+                         1)
+                        42))))
+; match: no matching clause for #<void>
+; /Users/zac/co/compiler-4/compiler.rkt:54:2
+; Context:
+;  /Applications/Racket v7.8/collects/racket/match/runtime.rkt:24:0 match:error
+;  /Applications/Racket v7.8/collects/racket/match/compiler.rkt:507:40 f54
+;  /Applications/Racket v7.8/collects/racket/match/compiler.rkt:507:40 f54
+;  /Users/zac/co/compiler-4/compiler.rkt:144:0 type-check
+;  /Users/zac/co/compiler-4/compiler.rkt:1392:0 testttt
+;  /Applications/Racket v7.8/collects/racket/repl.rkt:11:26
+|#
+(define (shrink-prim env)
+  (lambda (p)
+    (let ([recur (shrink-exp env)])
+      (match p
+        [(Prim '<= (list e1 e2))
+         (define shrunk-1 (recur e1))
+         (define shrunk-2 (recur e2))
+         (define tmp-var (gensym 'tmp))
+         (recur
+          (Let tmp-var shrunk-1
+               (Prim 'not (list (Prim '< (list shrunk-2 (Var tmp-var)))))))]
+        [(Prim '>= (list e1 e2))
+         (define shrunk-1 (recur e1))
+         (define shrunk-2 (recur e2))
+         (recur (Prim 'not (list (Prim '< (list shrunk-1 shrunk-2)))))
+         ]
+        [(Prim '> (list e1 e2))
+         (define shrunk-1 (recur e1))
+         (define shrunk-2 (recur e2))
+         (define tmp-var (gensym 'tmp))
+         (recur (Let tmp-var shrunk-1
+                     (Prim '< (list shrunk-2 (Var tmp-var)))))
+         ]
+        [(Prim '- (list e1 e2))
+         (define shrunk-1 (recur e1))
+         (define shrunk-2 (recur e2))
+         (recur (Prim '+ (list shrunk-1
+                               (Prim '- (list shrunk-2)))))]
+        [(Prim 'and (list e1 e2))
+         (define shrunk-1 (recur e1))
+         (define shrunk-2 (recur e2))
+         (recur (If shrunk-1 shrunk-2 (Bool #f)))]
+        [(Prim 'or (list e1 e2))
+         (define shrunk-1 (recur e1))
+         (define shrunk-2 (recur e2))
+         (recur (If shrunk-1 (Bool #t) shrunk-2))]
+        [(Prim op args)
+         (define output-type (cdr (assv op op-to-output-type)))
+         (define shrunk-args (map recur args))
+         (define args-types (map get-type shrunk-args))
+         (if (eq? 'Vector output-type)
+             (set! output-type `(Vector . ,args-types))
+             'you-cant-see-me--john-cena)
+         (if (eq? 'VectorRef output-type)
+             (set! output-type
+                   (list-ind (match (cadr args) [(Int n) n])
+                             (cdar args-types)))
+             'you-cant-see-me--john-cena)
+         (HasType (Prim op shrunk-args) output-type)]))))
+
+(define (shrink-exp env)
+  (lambda (e)
+    (let ([recur (shrink-exp env)])
+      (match e
+        [(HasType expr T) e]
+        [(Int n) (HasType e 'Integer)]
+        [(Var x) (HasType e (dict-ref env x))]
+        [(Bool b) (HasType e 'Boolean)]
+        [(Void) (HasType e 'Void)]
+        [(Prim op args)
+         ((shrink-prim env) e)]
+        [(If cnd cnsq alt)
+         (define shrunk-cnd (recur cnd))
+         (define shrunk-cnsq (recur cnsq))
+         (define shrunk-alt (recur alt))
+         (HasType
+          (If shrunk-cnd
+              shrunk-cnsq
+              shrunk-alt)
+          (get-type shrunk-cnsq))]
+        [(Let x expr body)
+         (define shrunk-expr (recur expr))
+         (define new-env (dict-set env x (get-type shrunk-expr)))
+         (define shrunk-body ((shrink-exp new-env) body))
+         (HasType
+          (Let x shrunk-expr
+               shrunk-body)
+          (get-type shrunk-body))]))))
 
 (define (shrink p)
   (match p
-    [(Program info body)
-     (Program
-      info
-      (shrink-exp body))]))
+    [(Program info (HasType body 'Integer))
+     (Program info ((shrink-exp '()) body))]))
 
 ; Our symtab is going to be an association list
 ; A table is a [Listof [Pairof Symbol Int]]
@@ -576,7 +629,6 @@ compiler.rkt> ((type-check-exp '())
   (match tail
     [(Goto label)
      (list (Jmp label))]
-    ; TODO one more case
     [(IfStmt (Prim cmp (list e1 e2)) (Goto label-1) (Goto label-2))
      (define cc
        (match cmp
@@ -701,7 +753,6 @@ compiler.rkt> ((type-check-exp '())
               (add-directed-edge! new-g v u)))))
       new-g)))
 
-;; TODO: register allocation, etc
 (define (uncover-live p)
   (match p
     [(Program info (CFG e))
@@ -727,7 +778,6 @@ compiler.rkt> ((type-check-exp '())
                  (set-union
                   lv-after
                   ; the lv-before of its neighbor
-                  ; TODO this assv is failing? or see above
                   (begin
                     (match (cdr (assv nbr cfg))
                       [(Block bl-info instr+)
@@ -1311,7 +1361,7 @@ compiler.rkt> ((type-check-exp '())
 (define test-passes
   (list
    type-check
-   ; shrink
+   shrink
    ; uniquify
    ; remove-complex-opera*
    ; explicate-control
