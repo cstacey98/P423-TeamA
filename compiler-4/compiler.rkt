@@ -60,7 +60,7 @@
 (define (list-ind n lst)
   (cond
     [(zero? n) (car lst)]
-    [else (list-ind (sub1 n) lst)]))
+    [else (list-ind (sub1 n) (cdr lst))]))
 
 ; TODO
 ; (t '(let ([x (vector 1 3 5 #t)]) (vector-ref x 0)))
@@ -76,38 +76,41 @@
             (define Te2 (get-type (recur (cadr args))))
             (if (eq? Te1 Te2)
                 (HasType prim 'Boolean)
-                (error "type error with Prim ~a" op))]
+                (error "type error with Prim " op))]
            [(memv op comparison)
             (if (check-args-consistency args recur 'Integer)
                 (HasType prim 'Boolean)
-                (error "type error with Prim ~a" op))]
+                (error "type error with Prim " op))]
            [(memv op arithmetic)
             (if (check-args-consistency args recur 'Integer)
                 (HasType prim 'Integer)
-                (error "type error with Prim ~a" op))]
+                (error "type error with Prim " op))]
            [(memv op bool-algebra)
             (if (check-args-consistency args recur 'Boolean)
                 (HasType prim 'Boolean)
-                (error "type error with Prim ~a" op))]
+                (error "type error with Prim " op))]
            [(eq? op 'vector)
             (define component-types (map (compose get-type recur) args))
             ; TODO this is an issue; see above example
-            (HasType prim `(Vector . ,component-types))]
+            (define vec-type (cons 'Vector component-types))
+            (HasType prim vec-type)]
            [(eq? op 'vector-ref)
             (define Tv (get-type (recur (car args))))
             (define Tcomponents (cdr Tv))
-            (define index (cadr args))
+            (define index (match (cadr args) [(Int n) n]))
             (if (>= index (length Tcomponents))
-                (error "trying to access index ~a of vector size ~a"
-                       index (length Tcomponents))
+                (error (format "trying to access index ~a of vector size ~a"
+                               index
+                               (length Tcomponents)))
                 (HasType prim (list-ind index Tcomponents)))]
            [(eq? op 'vector-set)
             (define Tv (get-type (recur (car args))))
             (define Tcomponents (cdr Tv))
-            (define index (cadr args))
+            (define index (match (cadr args) [(Int n) n]))
             (if (>= index (length Tcomponents))
-                (error "trying to set index ~a of vector size ~a"
-                       index (length Tcomponents))
+                (error (format "trying to set index ~a of vector size ~a"
+                               index
+                               (length Tcomponents)))
                 (HasType prim 'Void))])]))))
 
 
@@ -115,39 +118,40 @@
   (lambda (e)
     (let ([recur (type-check-exp env)])
       (match e
-        [(Var x) (HasType e (dict-ref env x))]
+        [(Var x)
+         (HasType e (dict-ref env x))]
         [(Int n) (HasType e 'Integer)]
         [(Bool b) (HasType e 'Boolean)]
         [(Void) (HasType e 'Void)]
-        [(Prim op args) (HasType e ((type-check-prim env) e))]
-        [(Let x e body)
-         (define Te (get-type (recur e)))
+        [(Prim op args) ((type-check-prim env) e)]
+        [(Let x rhs body)
+         (define Te (get-type (recur rhs)))
          (define Tb (get-type ((type-check-exp (dict-set env x Te)) body)))
          (HasType e Tb)]
         [(If cnd cnsq alt)
          (unless (eq? 'Boolean (get-type (recur cnd)))
-           (error "condition given to if should be bool, given ~a" cnd))
+           (error "condition given to if should be bool, given " cnd))
          (define Tc (get-type (recur cnsq)))
          (define Ta (get-type (recur alt)))
          (unless (eq? Tc Ta)
            (error (string-append "consequent and alternative in if should "
-                                 "have same type, given ~a")
+                                 "have same type, given ")
                   (list Tc Ta)))
          (HasType e Tc)]
         [else
-         (error "type-check-exp couldn't match ~a" e)]))))
+         (error "type-check-exp couldn't match " e)]))))
 
 (define (type-check p)
   (match p
     [(Program info body)
      (define typed-body ((type-check-exp '()) body))
      (unless (equal? 'Integer (get-type typed-body))
-       (error "result of the program must be an integer, not ~a"
+       (error "result of the program must be an integer, not "
               (get-type typed-body)))
      (Program info typed-body)]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;
-; Type checkin' tests ;
+; Type chicken' tests ;
 ;;;;;;;;;;;;;;;;;;;;;;;
 #|
 compiler.rkt> ((type-check-exp '())
