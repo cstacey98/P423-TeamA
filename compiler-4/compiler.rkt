@@ -7,6 +7,7 @@
 (require "utilities.rkt")
 (require graph)
 ;(provide (all-defined-out))
+; (AST-output-syntax 'concrete-syntax)
 
 (provide
  type-check
@@ -306,6 +307,7 @@ compiler.rkt> (t
 (define (uniquify-exp symtab)
   (lambda (e)
     (match e
+      ; TODO (?): make simpler hastype matching (revert but add hastype case)
       [(HasType (Var x) t)
        (HasType (Var (search-symtab symtab x)) t)]
       [(HasType (Int n) 'Integer) (HasType (Int n) 'Integer)]
@@ -336,12 +338,136 @@ compiler.rkt> (t
     [(Program info e)
      (Program info ((uniquify-exp '()) e))]))
 
+
+; TODO fix and test this
+(define (expose-prim p)
+  (match p
+    [(HasType (Prim 'vector components) types)
+     ; TODO less shit
+     (define v-name (gensym 'v))
+     (define len (length components))
+     (define vars
+       (map (lambda (n) (gensym (format "x-~a-" n)))
+            (build-list len identity)))
+     (define assignments
+       (assign-all vars 0 (Var v-name) types))
+     (define decl-and-assg
+       (HasType
+        (Let v-name
+             (Allocate len types)
+             #;(HasType (Allocate len types) 'unknown)
+             assignments)
+        types))
+     (define n-bytes (* 8 (add1 len)))
+     (define new-space-needed
+       (HasType
+        (Prim
+         '+
+         (list
+          (Global 'free_ptr)
+          #;(HasType (Global 'free_ptr) 'Integer)
+          (HasType (Int n-bytes) 'Integer)))
+        'Integer))
+     (define have-enough-space?
+       (HasType
+        (Prim
+         '<
+         (list
+          new-space-needed
+          (Global 'fromspace_end)
+          #;
+          (HasType
+           (Global 'fromspace_end)
+           'Integer)))
+        'Boolean))
+     (define do-nothing
+       (HasType (Void) 'Void))
+     (define call-collect
+       (Collect n-bytes)
+       #;(HasType (Collect n-bytes) 'Void)
+       )
+
+     (define check-collect?
+       (HasType
+        (Let (gensym '_)
+             (HasType
+              (If have-enough-space?
+                  do-nothing
+                  call-collect)
+              'Void))
+        types))
+     (assign-components vars components check-collect?)
+     ]
+    [(HasType (Prim op args) t)
+     (HasType (Prim op (map expose-alloc-exp args)) t)]))
+
+(define (assign-components var-names components after-assigning)
+  (match var-names
+    ['() after-assigning]
+    [`(,x-i . ,xs-d)
+     (HasType
+      (Let
+       x-i
+       ; assuming components is a list of `HasType`s
+       (car components)
+       (assign-components xs-d (cdr components) after-assigning))
+      (get-type after-assigning))]))
+
+(define (assign-all to-assign n-assigned vec-name types)
+  (match to-assign
+    ['() (HasType vec-name types)]
+    [`(,a . ,d)
+     (HasType
+      (Let (gensym '_)
+           (HasType
+            (Prim 'vector-set!
+                  (list (HasType vec-name types)
+                        (HasType (Int n-assigned) 'Integer)
+                        (HasType (Var a) (list-ind n-assigned (cdr types)))))
+            'Void)
+           (assign-all d (add1 n-assigned) vec-name types))
+      types)]))
+
+
+(define (expose-alloc-exp e)
+  (match e
+    [(HasType (Prim op args) t)
+     (expose-prim e)]
+    [(HasType expr t) (HasType (expose-alloc-exp expr) t)]
+    [(Int n) e]
+    [(Var x) e]
+    [(Bool b) e]
+    [(Void) e]
+    [(If cnd cnsq alt)
+     (define cnd-e (expose-alloc-exp cnd))
+     (define cnsq-e (expose-alloc-exp cnsq))
+     (define alt-e (expose-alloc-exp alt))
+     (If cnd-e cnsq-e alt-e)]
+    [(Let x rhs body)
+     (define rhs-e (expose-alloc-exp rhs))
+     (define body-e (expose-alloc-exp body))
+     (Let x rhs-e body-e)]
+    [(Prim op args)
+     (displayln 'this-shant-happen)
+     (expose-prim e)]))
+
+
+(define (expose-allocation p)
+  (match p
+    [(Program info e)
+     (Program info (expose-alloc-exp e))]))
+
+
+
 ; 'type' predicate for atomicity
 (define (atomic? e)
   (match e
+    [(HasType expr t)
+     (atomic? expr)]
     [(Var x) #t]
     [(Int n) #t]
     [(Bool b) #t]
+    [(Void) #t]
     [whatever #f]))
 
 ; split lst into two sublists (maintaining order)
@@ -362,63 +488,69 @@ compiler.rkt> (t
 ; then is basically a continuation/callback
 (define (rco-atom to-atomize)
   (match to-atomize
+    [(HasType expr t)
+     (define-values (expr-rco expr-vars) (rco-atom expr))
+     (values (HasType expr-rco t) expr-vars)]
     [(Var x) (values (Var x) '())]
     [(Int n) (values (Int n) '())]
+    [(Bool b) (values (Bool b) '())]
+    [(Void) (values (Void) '())]
     [(If cnd cnsq alt)
      (let ([new-name (gensym 'tmp)])
-       (values new-name (list (cons new-name (If cnd cnsq alt)))))]
+       (values (Var new-name) (list (cons new-name (If cnd cnsq alt)))))]
     [(Let x e body)
-     (let ([new-name (gensym 'tmp)])
-       (values new-name (list (cons new-name (Let x e body)))))]
+     (displayln 'let)
+     (let ([new-name (pe (gensym 'tmp))])
+       (values (Var new-name) (list (cons new-name (Let x e body)))))]
     [(Prim op es)
-     (let ([new-name (gensym 'tmp)])
-       (values new-name (list (cons new-name (Prim op es)))))]))
+     (displayln op)
+     (let ([new-name (pe (gensym 'tmp))])
+       (values (Var new-name) (list (cons new-name (Prim op es)))))]))
 
+(define (get-var-name v)
+  (match v
+    [(Var x) x]
+    [(HasType expr t) (get-var-name expr)]))
 
 (define (rco-exp exp)
   (match exp
+    [(HasType expr t)
+     (HasType (rco-exp expr) t)]
     [(Var x) (Var x)]
     [(Int n) (Int n)]
     [(Bool b) (Bool b)]
+    [(Void) (Void)]
     [(If cnd cnsq alt)
      (If (rco-exp cnd)
          (rco-exp cnsq)
          (rco-exp alt))]
     [(Let x e body)
-     ; bro it was that easy??????
      (Let x (rco-exp e) (rco-exp body))]
     [(Prim op es)
-     #;
-     (foldr
-      (lambda (new-arg rst)
-        (if )) exp es)
-     (let-values
-         ; split where you find the first complex operand :D
-         ([(atomic-front complex-back)
-           (split-where (lambda (e) (not (atomic? e))) es)])
-       (match complex-back
-         ['() (Prim op es)]
-         ; if there is nothing complex left, return what we have.
-         ; else, bind the complex operand to a variable (atomic) and recur
-         [`(,complex-a . ,complex-d)
-          (let-values ([(new-name bindings) (rco-atom complex-a)])
-            (let ([bound-to (cdr (assv new-name bindings))])
-              (Let new-name
-                   (rco-exp bound-to)
-                   (rco-exp (Prim op (append atomic-front
-                                             (list (Var new-name))
-                                             complex-d))))))]))]))
+     ; split where you find the first complex operand :D
+     (define-values (atomic-front complex-back)
+       (split-where (lambda (e) (not (atomic? e))) es))
+     (match complex-back
+       ['() (Prim op es)]
+       ; if there is nothing complex left, return what we have.
+       ; else, bind the complex operand to a variable (atomic) and recur
+       [`(,complex-a . ,complex-d)
+        (define-values (new-name bindings) (rco-atom complex-a))
+        (define var-name (get-var-name new-name))
+        (define bound-to (cdr (assv var-name bindings)))
+        (define body-updated
+          (Prim op (append atomic-front
+                           (list new-name)
+                           complex-d)))
+        (Let var-name
+             (rco-exp bound-to)
+             (rco-exp body-updated))])]))
 
 ;; remove-complex-opera* : R1 -> R1
 (define (remove-complex-opera* p)
   (match p
     [(Program info e)
-     (Program info (rco-exp e))
-     #;
-     (let ([x (Program info (rco-exp e))])
-       (begin
-         (displayln x)
-         x))]))
+     (Program info (rco-exp e))]))
 
 
 ; what we need in this:
@@ -1047,7 +1179,7 @@ compiler.rkt> (t
            saturations
            u-neighbors)))
 
-(define (print-and-return e)
+(define (pe e)
   (begin (displayln e)
          e))
 
@@ -1367,7 +1499,8 @@ compiler.rkt> (t
    type-check
    shrink
    uniquify
-   ; remove-complex-opera*
+   expose-allocation
+   remove-complex-opera*
    ; explicate-control
    ; select-instructions
    ; uncover-live
