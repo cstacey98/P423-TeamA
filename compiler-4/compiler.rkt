@@ -306,25 +306,29 @@ compiler.rkt> (t
 (define (uniquify-exp symtab)
   (lambda (e)
     (match e
-      [(Var x)
-       (Var (search-symtab symtab x))]
-      [(Int n) (Int n)]
-      [(Bool b) (Bool b)]
-      [(If cnd cnsq alt)
+      [(HasType (Var x) t)
+       (HasType (Var (search-symtab symtab x)) t)]
+      [(HasType (Int n) 'Integer) (HasType (Int n) 'Integer)]
+      [(HasType (Bool b) 'Boolean) (HasType (Bool b) 'Boolean)]
+      [(HasType (If cnd cnsq alt) t)
        (let* ([cnd-uniq ((uniquify-exp symtab) cnd)]
               [cnsq-uniq ((uniquify-exp symtab) cnsq)]
               [alt-uniq ((uniquify-exp symtab) alt)])
-         (If cnd-uniq cnsq-uniq alt-uniq))]
-      [(Let x e body)
+         (HasType (If cnd-uniq cnsq-uniq alt-uniq) t))]
+      [(HasType (Let x e body) t)
        (let* ([e-uniq ((uniquify-exp symtab) e)]
               [symtab-x (extend-symtab symtab x)]
               [x-uniq (search-symtab symtab-x x)]
               [body-uniq ((uniquify-exp symtab-x) body)])
-         (Let x-uniq
-              e-uniq
-              body-uniq))]
-      [(Prim op es)
-       (Prim op (for/list ([e es]) ((uniquify-exp symtab) e)))])))
+         (HasType
+          (Let x-uniq
+               e-uniq
+               body-uniq)
+          t))]
+      [(HasType (Prim op es) t)
+       (HasType (Prim op (for/list ([e es])
+                           ((uniquify-exp symtab) e)))
+                t)])))
 
 ;; uniquify : R1 -> R1
 (define (uniquify p)
@@ -1362,7 +1366,7 @@ compiler.rkt> (t
   (list
    type-check
    shrink
-   ; uniquify
+   uniquify
    ; remove-complex-opera*
    ; explicate-control
    ; select-instructions
