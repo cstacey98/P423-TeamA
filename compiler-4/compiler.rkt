@@ -491,23 +491,22 @@ compiler.rkt> (t
 (define (rco-atom to-atomize)
   (match to-atomize
     [(HasType expr t)
-     (define-values (expr-rco expr-vars) (rco-atom expr))
-     (values (HasType expr-rco t) expr-vars)]
-    [(Var x) (values (Var x) '())]
-    [(Int n) (values (Int n) '())]
-    [(Bool b) (values (Bool b) '())]
-    [(Void) (values (Void) '())]
-    [(If cnd cnsq alt)
-     (let ([new-name (gensym 'tmp)])
-       (values (Var new-name) (list (cons new-name (If cnd cnsq alt)))))]
-    [(Let x e body)
-     (displayln 'let)
-     (let ([new-name (pe (gensym 'tmp))])
-       (values (Var new-name) (list (cons new-name (Let x e body)))))]
-    [(Prim op es)
-     (displayln op)
-     (let ([new-name (pe (gensym 'tmp))])
-       (values (Var new-name) (list (cons new-name (Prim op es)))))]))
+     (cond
+       #;
+       [(HasType? to-atomize)
+        (match to-atomize
+          [(HasType expr t)
+           (define-values (expr-rco expr-vars) (rco-atom expr))
+           (if (GlobalValue? expr) (displayln expr-rco) (void))
+           (values
+            (HasType expr-rco t)
+            expr-vars)])]
+       [(atomic? expr) (values to-atomize '())]
+       [else
+        (let ([new-name (gensym 'tmp)])
+          (values
+           (HasType (Var new-name) t)
+           (list (cons new-name to-atomize))))])]))
 
 (define (get-var-name v)
   (match v
@@ -517,36 +516,42 @@ compiler.rkt> (t
 (define (rco-exp exp)
   (match exp
     [(HasType expr t)
-     (HasType (rco-exp expr) t)]
-    [(Var x) (Var x)]
-    [(Int n) (Int n)]
-    [(Bool b) (Bool b)]
-    [(Void) (Void)]
-    [(If cnd cnsq alt)
-     (If (rco-exp cnd)
-         (rco-exp cnsq)
-         (rco-exp alt))]
-    [(Let x e body)
-     (Let x (rco-exp e) (rco-exp body))]
-    [(Prim op es)
-     ; split where you find the first complex operand :D
-     (define-values (atomic-front complex-back)
-       (split-where (lambda (e) (not (atomic? e))) es))
-     (match complex-back
-       ['() (Prim op es)]
-       ; if there is nothing complex left, return what we have.
-       ; else, bind the complex operand to a variable (atomic) and recur
-       [`(,complex-a . ,complex-d)
-        (define-values (new-name bindings) (rco-atom complex-a))
-        (define var-name (get-var-name new-name))
-        (define bound-to (cdr (assv var-name bindings)))
-        (define body-updated
-          (Prim op (append atomic-front
-                           (list new-name)
-                           complex-d)))
-        (Let var-name
-             (rco-exp bound-to)
-             (rco-exp body-updated))])]))
+     (HasType
+      (match expr
+        [thanks-weixi
+         #:when (atomic? thanks-weixi)
+         thanks-weixi]
+        [(Allocate n-items types) exp]
+        [(Collect n-bytes) exp]
+        [(GlobalValue name) exp]
+        [(If cnd cnsq alt)
+         (If (rco-exp cnd)
+             (rco-exp cnsq)
+             (rco-exp alt))]
+        [(Let x e body)
+         (Let x (rco-exp e) (rco-exp body))]
+        [(Prim op es)
+         ; split where you find the first complex operand :D
+         (define-values (atomic-front complex-back)
+           (split-where (lambda (e) (not (atomic? e))) es))
+         (match complex-back
+           ['() (Prim op es)]
+           ; if there is nothing complex left, return what we have.
+           ; else, bind the complex operand to a variable (atomic) and recur
+           [`(,complex-a . ,complex-d)
+            (define-values (new-name bindings) (rco-atom complex-a))
+            (define var-name (get-var-name new-name))
+            (define bound-to (cdr (assv var-name bindings)))
+            (define body-updated
+              (HasType
+               (Prim op (append atomic-front
+                                (list new-name)
+                                complex-d))
+               t))
+            (Let var-name
+                 (rco-exp bound-to)
+                 (rco-exp body-updated))])])
+      t)]))
 
 ;; remove-complex-opera* : R1 -> R1
 (define (remove-complex-opera* p)
@@ -561,66 +566,74 @@ compiler.rkt> (t
 
 ; page 69, nice, in book
 (define (explicate-pred p b1 b2)
-  (begin
-    (define label-1 (gensym 'block))
-    (define label-2 (gensym 'block))
-    #;
-    (define label-2
-      (match b2
-        [(Goto l2) l2]
-        [whatever
-         (define l2 (gensym 'block))
-         (add-vertex! cfg-global `(,l2 . ,b2))
-         l2]))
-    (add-vertex! cfg-global `(,label-1 . ,b1))
-    (add-vertex! cfg-global `(,label-2 . ,b2))
-    (match p
-      [(If cnd cnsq alt)
-       (define-values (b3 alt-vars)
-         (explicate-pred alt (Goto label-1) (Goto label-2)))
-       (define-values (b4 cnsq-vars)
-         (explicate-pred cnsq (Goto label-1) (Goto label-2)))
-       (define label-3 (gensym 'block))
-       (define label-4 (gensym 'block))
-       (add-vertex! cfg-global `(,label-3 . ,b3))
-       (add-vertex! cfg-global `(,label-4 . ,b4))
-       (add-edge! cfg-global `(,label-3 . ,b3) `(,label-1 . ,b1))
-       (add-edge! cfg-global `(,label-3 . ,b3) `(,label-2 . ,b2))
-       (add-edge! cfg-global `(,label-4 . ,b4) `(,label-1 . ,b1))
-       (add-edge! cfg-global `(,label-4 . ,b4) `(,label-2 . ,b2))
-       (explicate-pred cnd b4 b3)]
-      [(Bool b) (values (if b b1 b2) '())]
-      [(Var v)
-       (values
-        (IfStmt (Prim 'eq? (list (Var v) (Bool #t)))
-                (Goto label-1)
-                (Goto label-2))
-        '())]
-      [(Prim 'not (list e))
-       (explicate-pred e (Goto label-2) (Goto label-1))]
-      [(Prim op (list e1 e2))
-       (values (IfStmt p (Goto label-1) (Goto label-2)) '())]
-      [(Let lhs rhs body)
-       (define-values (body-exp body-vars)
-         (explicate-pred body (Goto label-1) (Goto label-2)))
-       (define-values (new-tail new-assignment-vars)
-         (explicate-assign lhs rhs body-exp))
-       (values new-tail (append body-vars new-assignment-vars))
-       ]
-      #;
-      [whatever
-       (define-values (p-exp p-vars) (explicate-pred ))
-       (define-values (p-exp p-vars) (explicate-tail p))
-       (values p '())]
-      )))
+  (match p
+    [(HasType expr t)
+     ;(define-values (pred-expl pred-vars) (explicate-pred expr b1 b2))
+     ;(values (HasType pred-expl t) pred-vars)
+     (explicate-pred expr b1 b2)]
+    [whatever
+     (define label-1 (gensym 'block))
+     (define label-2 (gensym 'block))
+     (add-vertex! cfg-global `(,label-1 . ,b1))
+     (add-vertex! cfg-global `(,label-2 . ,b2))
+     ; we don't like the idea of a double-match on the same data, but the world
+     ; is in shambles anyway
+     (match p
+       [(If cnd cnsq alt)
+        (define-values (b3 alt-vars)
+          (explicate-pred alt (Goto label-1) (Goto label-2)))
+        (define-values (b4 cnsq-vars)
+          (explicate-pred cnsq (Goto label-1) (Goto label-2)))
+        (define label-3 (gensym 'block))
+        (define label-4 (gensym 'block))
+        (add-vertex! cfg-global `(,label-3 . ,b3))
+        (add-vertex! cfg-global `(,label-4 . ,b4))
+        (add-edge! cfg-global `(,label-3 . ,b3) `(,label-1 . ,b1))
+        (add-edge! cfg-global `(,label-3 . ,b3) `(,label-2 . ,b2))
+        (add-edge! cfg-global `(,label-4 . ,b4) `(,label-1 . ,b1))
+        (add-edge! cfg-global `(,label-4 . ,b4) `(,label-2 . ,b2))
+        (explicate-pred cnd b4 b3)]
+       [(Bool b) (values (if b b1 b2) '())]
+       [(Var v)
+        (values
+         (IfStmt (Prim 'eq? (list (Var v) (Bool #t)))
+                 (Goto label-1)
+                 (Goto label-2))
+         '())]
+       [(Prim 'not (list e))
+        (explicate-pred e (Goto label-2) (Goto label-1))]
+       [(Prim op (list e1 e2))
+        (values
+         (IfStmt
+          (Prim op (list (get-expr e1) (get-expr e2)))
+          (Goto label-1)
+          (Goto label-2))
+         '())]
+       [(Let lhs rhs body)
+        (define-values (body-exp body-vars)
+          (explicate-pred body (Goto label-1) (Goto label-2)))
+        (define-values (new-tail new-assignment-vars)
+          (explicate-assign lhs rhs body-exp))
+        (values new-tail (append body-vars new-assignment-vars))])]))
 
   ; R1 -> C0 x Listof(Variable)
   ; applied to exps in tail position
 (define (explicate-tail exp)
   (match exp
+    [(HasType expr t)
+     (displayln 'YO)
+     (explicate-tail expr)
+     ; (define-values (expr-expl expr-vars) (explicate-tail expr))
+     ; (values (HasType expr-expl t) expr-vars)
+     ]
     [(Var x) (values (Return (Var x)) '())]
     [(Int n) (values (Return (Int n)) '())]
     [(Bool b) (values (Return (Bool b)) '())]
+    [(Void) (values (Return (Void)) '())]
+    [(Allocate n-items types)
+     (values (Return (Allocate n-items types)) '())]
+    [(GlobalValue name)
+     (values (Return (GlobalValue name)) '())]
     [(If cnd cnsq alt)
      (define-values (b1 b1-vars) (explicate-tail cnsq))
      (define-values (b2 b2-vars) (explicate-tail alt))
@@ -633,48 +646,49 @@ compiler.rkt> (t
        (explicate-assign lhs rhs body-c0))
      (values
       new-tail
-      (append new-assignment-vars
+      (append (list (HasType (Var lhs) (get-type rhs)))
+              new-assignment-vars
               body-vars))]
     [(Prim op es)
-     (values (Return (Prim op es))
+     (values (Return (Prim op (map get-expr es)))
              '())]))
-
-#;
-(define b
-  '(if (eq? (read) 1)
-       (if (eq? (read) 0)
-           (+ 10 32)
-           (+ 700 77))
-       (if (eq? (read) 2)
-           (+ 52 3)
-           (+ 701 7))))
 
 ; Variable x R1 x C0 -> Tail x Listof(Variable)
 ; applied to exps that occur on the rhs of a let clause
 (define (explicate-assign lhs rhs c0)
   (match rhs
-    [(Let x e body)
-     (define-values (body-tail body-vars) (explicate-assign lhs body c0))
-     (define-values (assign-tail assign-vars) (explicate-assign x e body-tail))
-     (values assign-tail (cons x (append body-vars assign-vars)))]
-    [(If cnd cnsq alt)
-     (define label-1 (gensym 'block))
-     (add-vertex! cfg-global `(,label-1 . ,c0))
-     (define-values (b2-tail b2-vars)
-       (explicate-assign lhs cnsq (Goto label-1)))
-     (define-values (b3-tail b3-vars)
-       (explicate-assign lhs alt (Goto label-1)))
-     (define-values (b4-tail b4-vars)
-       (explicate-pred cnd b2-tail b3-tail))
-     (values b4-tail (append b4-vars b3-vars b2-vars))
-     ]
-    [whatever
-     (values (Seq (Assign (Var lhs) rhs) c0) '())]))
+    [(HasType expr t)
+     (match expr
+       [(Let x e body)
+        (define-values (body-tail body-vars)
+          (explicate-assign lhs body c0))
+        (define-values (assign-tail assign-vars)
+          (explicate-assign x e body-tail))
+
+        (values
+         assign-tail
+         (cons (HasType (Var x) t)
+               (append body-vars assign-vars)))]
+       [(If cnd cnsq alt)
+        (define label-1 (gensym 'block))
+        (add-vertex! cfg-global `(,label-1 . ,c0))
+        (define-values (b2-tail b2-vars)
+          (explicate-assign lhs cnsq (Goto label-1)))
+        (define-values (b3-tail b3-vars)
+          (explicate-assign lhs alt (Goto label-1)))
+        (define-values (b4-tail b4-vars)
+          (explicate-pred cnd b2-tail b3-tail))
+        (values b4-tail (append b4-vars b3-vars b2-vars))
+        ]
+       [whatever
+        (values (Seq (Assign (Var lhs) rhs) c0) '())])]
+    [whatever (displayln 'frick) (displayln rhs) (displayln c0)]))
 
 ;; explicate-control : R1 -> C0
 (define (explicate-control p)
   (match p
     [(Program info e)
+     (pe e)
      (set! cfg-global (unweighted-graph/directed '()))
      (define-values (start-block start-locals)
        (explicate-tail e))
@@ -701,6 +715,7 @@ compiler.rkt> (t
 ; select instructions for statements
 (define (si-stmt stmt)
   (match stmt
+    [(Collect n-bytes) (list (Collect n-bytes))]
     [(Assign var exp)
      (match exp
        [(Var x) (list (Instr 'movq (list (Var x) var)))]
@@ -1502,8 +1517,8 @@ compiler.rkt> (t
    shrink
    uniquify
    expose-allocation
-   ; remove-complex-opera*
-   ; explicate-control
+   remove-complex-opera*
+   explicate-control
    ; select-instructions
    ; uncover-live
    ; build-interference
@@ -1553,20 +1568,3 @@ compiler.rkt> (t
 (define (p prog)
   (displayln (t prog)))
 
-
-
-
-
-
-
-
-#|
-#<Program: ((locals))
-#<CFG:
-((start . #<Block: (() (#<Var: a543102>) (#<Var: a543102> #<Var: b543103>) (#<Var: a543102> #<Var: b543103>) (#<Var: tmp543105> #<Var: b543103> #<Var: a543102>) (#<Var: a543102> #<Var: b543103>) (#<Var: a543102> #<Var: b543103>)) (#<Instr: movq (#<Imm: 1> #<Var: a543102>)> #<Instr: movq (#<Imm: 2> #<Var: b543103>)> #<Callq: read_int> #<Instr: movq (#<Reg: rax> #<Var: tmp543105>)> #<Instr: cmpq (#<Imm: 0> #<Var: tmp543105>)> #<JmpIf: e block543109> #<Jmp: block543110>)>)
- (block543109 . #<Block: ((#<Var: a543102>)) (#<Jmp: block543107>)>)
- (block543107 . #<Block: ((#<Var: a543102>) (#<Var: x543104>) (#<Var: x543104>)) (#<Instr: movq (#<Var: a543102> #<Var: x543104>)> #<Instr: negq (#<Var: x543104>)> #<Jmp: block543106>)>)
- (block543110 . #<Block: ((#<Var: b543103>)) (#<Jmp: block543108>)>)
- (block543108 . #<Block: ((#<Var: b543103>) (#<Var: x543104>)) (#<Instr: movq (#<Var: b543103> #<Var: x543104>)> #<Jmp: block543106>)>)
- (block543106 . #<Block: ((#<Var: x543104>) () ()) (#<Instr: movq (#<Var: x543104> #<Reg: rax>)> #<Instr: addq (#<Imm: 10> #<Reg: rax>)> #<Jmp: conclusion>)>))>>
-|#
