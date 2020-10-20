@@ -7,7 +7,7 @@
 (require "utilities.rkt")
 (require graph)
 ;(provide (all-defined-out))
-; (AST-output-syntax 'concrete-syntax)
+(AST-output-syntax 'concrete-syntax)
 
 (provide
  type-check
@@ -354,8 +354,9 @@ compiler.rkt> (t
      (define decl-and-assg
        (HasType
         (Let v-name
+             #;
              (Allocate len types)
-             #;(HasType (Allocate len types) 'unknown)
+             (HasType (Allocate len types) types)
              assignments)
         types))
      (define n-bytes (* 8 (add1 len)))
@@ -364,8 +365,8 @@ compiler.rkt> (t
         (Prim
          '+
          (list
-          (Global 'free_ptr)
-          #;(HasType (Global 'free_ptr) 'Integer)
+          #;(GlobalValue 'free_ptr)
+          (HasType (GlobalValue 'free_ptr) 'Integer)
           (HasType (Int n-bytes) 'Integer)))
         'Integer))
      (define have-enough-space?
@@ -374,17 +375,17 @@ compiler.rkt> (t
          '<
          (list
           new-space-needed
-          (Global 'fromspace_end)
           #;
+          (GlobalValue 'fromspace_end)
           (HasType
-           (Global 'fromspace_end)
+           (GlobalValue 'fromspace_end)
            'Integer)))
         'Boolean))
      (define do-nothing
        (HasType (Void) 'Void))
      (define call-collect
-       (Collect n-bytes)
-       #;(HasType (Collect n-bytes) 'Void)
+       #;(Collect n-bytes)
+       (HasType (Collect n-bytes) 'Void)
        )
 
      (define check-collect?
@@ -394,7 +395,8 @@ compiler.rkt> (t
               (If have-enough-space?
                   do-nothing
                   call-collect)
-              'Void))
+              'Void)
+             decl-and-assg)
         types))
      (assign-components vars components check-collect?)
      ]
@@ -1500,7 +1502,7 @@ compiler.rkt> (t
    shrink
    uniquify
    expose-allocation
-   remove-complex-opera*
+   ; remove-complex-opera*
    ; explicate-control
    ; select-instructions
    ; uncover-live
