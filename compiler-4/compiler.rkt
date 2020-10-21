@@ -102,7 +102,7 @@
                                index
                                (length Tcomponents)))
                 (HasType prim (list-ind index Tcomponents)))]
-           [(eq? op 'vector-set)
+           [(eq? op 'vector-set!)
             (define Tv (get-type (recur (car args))))
             (define Tcomponents (cdr Tv))
             (define index (match (cadr args) [(Int n) n]))
@@ -345,7 +345,7 @@ compiler.rkt> (t
   (match p
     [(HasType (Prim 'vector components) types)
      ; TODO less shit
-     (define v-name (gensym 'v))
+     (define v-name (gensym 'vec-init-))
      (define len (length components))
      (define vars
        (map (lambda (n) (gensym (format "x-~a-" n)))
@@ -425,6 +425,7 @@ compiler.rkt> (t
            (HasType
             (Prim 'vector-set!
                   (list (HasType vec-name types)
+                        ; n-assigned
                         (HasType (Int n-assigned) 'Integer)
                         (HasType (Var a) (list-ind n-assigned (cdr types)))))
             'Void)
@@ -681,7 +682,8 @@ compiler.rkt> (t
         (values b4-tail (append b4-vars b3-vars b2-vars))
         ]
        [whatever
-        (values (Seq (Assign (Var lhs) rhs) c0) '())])]
+        ; TODO
+        (values (Seq (Assign (Var lhs) (remove-ht-expr expr)) c0) '())])]
     [whatever (displayln 'frick)]))
 
 ;; explicate-control : R1 -> C0
@@ -694,6 +696,15 @@ compiler.rkt> (t
      (add-vertex! cfg-global `(start . ,start-block))
      (Program (list (cons 'locals start-locals))
               (CFG (get-vertices cfg-global)))]))
+
+
+(define (remove-ht-expr expr)
+  (cond
+    [(HasType? expr) (remove-ht-expr (get-expr expr))]
+    [(Prim? expr)
+     (match expr
+       [(Prim op args) (Prim op (map remove-ht-expr args))])]
+    [else expr]))
 
 
 (define (uncover-locals p)
@@ -721,17 +732,66 @@ compiler.rkt> (t
   (match atm
     [(Var x) (Var x)]
     [(Int n) (Imm n)]
+    [(Void) (Imm 0)]
+    [(GlobalValue name) (Global name)]
     [(Bool b) (if b (Imm 1) (Imm 0))]))
+
+; start with (Vector type*), then give (type*) part to this
+(define (vec-types-to-pointer-mask types)
+  (match types
+    ['() 0]
+    [`(,type-a . ,types-d)
+     (define pm-d
+       (arithmetic-shift (vec-types-to-pointer-mask types-d) 1))
+     (if (and (list? type-a)
+              (eq? (car type-a) 'Vector))
+         (bitwise-ior 1 pm-d)
+         pm-d)]))
 
 ; select instructions for statements
 (define (si-stmt stmt)
   (match stmt
-    [(Collect n-bytes) (list (Collect n-bytes))]
+    [(Collect n-bytes)
+     (list (Instr 'movq (list (Reg 'r15) (Reg 'rdi)))
+           (Instr 'movq (list (Imm n-bytes) (Reg 'rsi)))
+           (Callq 'collect))]
     [(Assign var exp)
      (match exp
        [(Var x) (list (Instr 'movq (list (Var x) var)))]
        [(Int n) (list (Instr 'movq (list (Imm n) var)))]
+       [(Void) (list (Instr 'movq (list (si-atm exp) var)))]
        [(Bool b) (list (Instr 'movq (list (si-atm exp) var)))]
+       [(GlobalValue name) (list (Instr 'movq (list (si-atm exp) var)))]
+       ; can't really assign collect to anything, as per syntax in book
+       [(Collect n-bytes)
+        (si-stmt exp)]
+       [(Allocate len types)
+        (define var-prime var)
+        (define pointer-mask
+          (vec-types-to-pointer-mask (cdr types)))
+        (define forwarding 1)
+        (define tagg
+          (bitwise-ior (arithmetic-shift pointer-mask 7)
+                       (arithmetic-shift len 1)
+                       forwarding))
+        (list (Instr 'movq (list (Global 'free_ptr) var-prime))
+              (Instr 'addq (list (Imm (* 8 (add1 len))) (Global 'free_ptr)))
+              (Instr 'movq (list var-prime (Reg 'r11)))
+              (Instr 'movq (list (Imm tagg) (Deref 'r11 0))))]
+       [(Prim 'vector-ref (list vec n))
+        ; TODO this is possibly wrong... unless?
+        (define vec-prime (si-atm vec))
+        (set! n (match n [(Int n_) n_]))
+        (list (Instr 'movq (list vec-prime (Reg 'r11)))
+              (Instr 'movq (list (Deref 'r11 (* -8 (add1 n))) var)))]
+       [(Prim 'vector-set! (list vec n arg))
+        ; TODO this is possibly wrong... unless?
+        (define vec-prime (si-atm vec))
+        (define arg-prime (si-atm arg))
+        (set! n (match n [(Int n_) n_]))
+        (list (Instr 'movq (list vec-prime (Reg 'r11)))
+              (Instr 'movq (list arg-prime (Deref 'r11 (* 8 (add1 n)))))
+              (Instr 'movq (list (Imm 0) var)))]
        [(Prim 'not (list e))
         (define e-si (si-atm e))
         (if (vars-eq? e var)
@@ -1531,7 +1591,7 @@ compiler.rkt> (t
    remove-complex-opera*
    explicate-control
    uncover-locals
-   ; select-instructions
+   select-instructions
    ; uncover-live
    ; build-interference
    ; allocate-registers
