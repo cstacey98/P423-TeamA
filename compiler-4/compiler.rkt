@@ -7,7 +7,8 @@
 (require "utilities.rkt")
 (require graph)
 ;(provide (all-defined-out))
-(AST-output-syntax 'concrete-syntax)
+(AST-output-syntax 'abstract-syntax)
+; (AST-output-syntax 'concrete-syntax)
 
 (provide
  type-check
@@ -621,7 +622,6 @@ compiler.rkt> (t
 (define (explicate-tail exp)
   (match exp
     [(HasType expr t)
-     (displayln 'YO)
      (explicate-tail expr)
      ; (define-values (expr-expl expr-vars) (explicate-tail expr))
      ; (values (HasType expr-expl t) expr-vars)
@@ -682,19 +682,30 @@ compiler.rkt> (t
         ]
        [whatever
         (values (Seq (Assign (Var lhs) rhs) c0) '())])]
-    [whatever (displayln 'frick) (displayln rhs) (displayln c0)]))
+    [whatever (displayln 'frick)]))
 
 ;; explicate-control : R1 -> C0
 (define (explicate-control p)
   (match p
     [(Program info e)
-     (pe e)
      (set! cfg-global (unweighted-graph/directed '()))
      (define-values (start-block start-locals)
        (explicate-tail e))
      (add-vertex! cfg-global `(start . ,start-block))
      (Program (list (cons 'locals start-locals))
               (CFG (get-vertices cfg-global)))]))
+
+
+(define (uncover-locals p)
+  (match p
+    [(Program (list `(locals . ,has-types)) e)
+     (Program
+      (list
+       `(locals . ,(map (lambda (ht)
+                          (cons (get-expr ht) (get-type ht)))
+                        has-types)))
+      e)]))
+
 
 ; Checks if two vars are equal.
 (define (vars-eq? var1 var2)
@@ -1519,6 +1530,7 @@ compiler.rkt> (t
    expose-allocation
    remove-complex-opera*
    explicate-control
+   uncover-locals
    ; select-instructions
    ; uncover-live
    ; build-interference
