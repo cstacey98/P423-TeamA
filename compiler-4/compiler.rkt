@@ -7,8 +7,8 @@
 (require "utilities.rkt")
 (require graph)
 ;(provide (all-defined-out))
-(AST-output-syntax 'abstract-syntax)
 #;
+(AST-output-syntax 'abstract-syntax)
 (AST-output-syntax 'concrete-syntax)
 
 (provide
@@ -1108,7 +1108,6 @@ compiler.rkt> (t
                (for/list ([var (car bl-info)])
                  (let ([type (cdr (assv (get-var-name var) types))])
                    (if (is-vector? type)
-                       #;(and (list? type) (eq? 'Vector (car type)))
                        (add-edge! graph-d var (Reg reg))
                        (void)))))
              graph-d)
@@ -1205,7 +1204,6 @@ compiler.rkt> (t
     (for/list ([var lv-set])
       (let ([type (cdr (assv var types))])
         (if (is-vector? type)
-            #;(and (list? type) (eq? 'Vector (car type)))
             (for/list ([reg callee-saved])
               (add-edge! g (Var var) (Reg reg)))
             (void))))))
