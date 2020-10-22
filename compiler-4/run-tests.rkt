@@ -2,8 +2,7 @@
 #lang racket
 
 (require "utilities.rkt")
-;(require "interp-R1.rkt")
-;(require "interp-C0.rkt")
+;(require "interp-R1.rkt");(require "interp-C0.rkt")
 (require "interp-R2.rkt")
 (require "interp-C1.rkt")
 (require "interp.rkt")

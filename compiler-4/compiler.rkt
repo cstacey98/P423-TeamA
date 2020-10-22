@@ -7,7 +7,8 @@
 (require "utilities.rkt")
 (require graph)
 ;(provide (all-defined-out))
-; (AST-output-syntax 'abstract-syntax)
+(AST-output-syntax 'abstract-syntax)
+#;
 (AST-output-syntax 'concrete-syntax)
 
 (provide
@@ -57,8 +58,8 @@
     [(HasType expr type) type]
     [whatever (error (format "Called get-type on non-HasType ~a" ht))]))
 
-(define (check-args-consistency args recur T)
-  (andmap (lambda (arg) (eq? T (get-type (recur arg)))) args))
+(define (check-args-consistency args T)
+  (andmap (lambda (arg) (eq? T (get-type arg))) args))
 
 (define (list-ind n lst)
   (cond
@@ -71,53 +72,61 @@
     (let ([recur (type-check-exp env)])
       (match prim
         [(Prim op args)
+         (define args-tc (map recur args))
          (cond
            [(eq? op 'eq?)
-            (define Te1 (get-type (recur (car args))))
-            (define Te2 (get-type (recur (cadr args))))
+            (define e1-tc (recur (car args)))
+            (define e2-tc (recur (cadr args)))
+            (define Te1 (get-type e1-tc))
+            (define Te2 (get-type e2-tc))
             (if (eq? Te1 Te2)
-                (HasType prim 'Boolean)
+                (HasType (Prim op (list e1-tc e2-tc)) 'Boolean)
                 (error "type error with Prim " op))]
            [(memv op comparison)
-            (if (check-args-consistency args recur 'Integer)
-                (HasType prim 'Boolean)
+            (if (check-args-consistency args-tc 'Integer)
+                (HasType (Prim op args-tc) 'Boolean)
                 (error "type error with Prim " op))]
            [(memv op arithmetic)
-            (if (check-args-consistency args recur 'Integer)
-                (HasType prim 'Integer)
+            (if (check-args-consistency args-tc 'Integer)
+                (HasType (Prim op args-tc) 'Integer)
                 (error "type error with Prim " op))]
            [(memv op bool-algebra)
-            (if (check-args-consistency args recur 'Boolean)
-                (HasType prim 'Boolean)
+            (if (check-args-consistency args-tc 'Boolean)
+                (HasType (Prim op args-tc) 'Boolean)
                 (error "type error with Prim " op))]
            [(eq? op 'vector)
-            (define component-types (map (compose get-type recur) args))
-            (define vec-type (cons 'Vector component-types))
-            (HasType prim vec-type)]
+            (define components-tc (map recur args))
+            (define vec-type (cons 'Vector (map get-type components-tc)))
+            (HasType (Prim op components-tc) vec-type)]
            [(eq? op 'vector-ref)
-            (define Tv (get-type (recur (car args))))
+            (define args-tc (map recur args))
+            (define v-tc (recur (car args)))
+            (define Tv (get-type v-tc))
             (define Tcomponents (cdr Tv))
             (define index (match (cadr args) [(Int n) n]))
             (if (>= index (length Tcomponents))
                 (error (format "trying to access index ~a of vector size ~a"
                                index
                                (length Tcomponents)))
-                (HasType prim (list-ind index Tcomponents)))]
+                (HasType (Prim op args-tc) (list-ind index Tcomponents)))]
            [(eq? op 'vector-set!)
-            (define Tv (get-type (recur (car args))))
+            (define args-tc (map recur args))
+            (define v-tc (recur (car args)))
+            (define Tv (get-type v-tc))
             (define Tcomponents (cdr Tv))
             (define index (match (cadr args) [(Int n) n]))
             (if (>= index (length Tcomponents))
                 (error (format "trying to set index ~a of vector size ~a"
                                index
                                (length Tcomponents)))
-                (HasType prim 'Void))])]))))
+                (HasType (Prim op args-tc) 'Void))])]))))
 
 
 (define (type-check-exp env)
   (lambda (e)
     (let ([recur (type-check-exp env)])
       (match e
+        [(HasType expr t) (recur expr)]
         [(Var x)
          (HasType e (dict-ref env x))]
         [(Int n) (HasType e 'Integer)]
@@ -125,19 +134,25 @@
         [(Void) (HasType e 'Void)]
         [(Prim op args) ((type-check-prim env) e)]
         [(Let x rhs body)
-         (define Te (get-type (recur rhs)))
-         (define Tb (get-type ((type-check-exp (dict-set env x Te)) body)))
-         (HasType e Tb)]
+         (define rhs-tc (recur rhs))
+         (define body-tc
+           ((type-check-exp (dict-set env x (get-type rhs-tc))) body))
+         (HasType
+          (Let x rhs-tc body-tc)
+          (get-type body-tc))]
         [(If cnd cnsq alt)
-         (unless (eq? 'Boolean (get-type (recur cnd)))
+         (define cnd-tc (recur cnd))
+         (define cnsq-tc (recur cnsq))
+         (define alt-tc (recur alt))
+         (unless (eq? 'Boolean (get-type cnd-tc))
            (error "condition given to if should be bool, given " cnd))
-         (define Tc (get-type (recur cnsq)))
-         (define Ta (get-type (recur alt)))
+         (define Tc (get-type cnsq-tc))
+         (define Ta (get-type alt-tc))
          (unless (eq? Tc Ta)
            (error (string-append "consequent and alternative in if should "
                                  "have same type, given ")
                   (list Tc Ta)))
-         (HasType e Tc)]
+         (HasType (If cnd-tc cnsq-tc alt-tc) Tc)]
         [else
          (error "type-check-exp couldn't match " e)]))))
 
@@ -219,32 +234,58 @@ compiler.rkt> (t
          (define tmp-var (gensym 'tmp))
          (recur
           (Let tmp-var shrunk-1
-               (Prim 'not (list (Prim '< (list shrunk-2 (Var tmp-var)))))))]
+               (HasType
+                (Prim
+                 'not
+                 (list
+                  (HasType
+                   (Prim
+                    '<
+                    (list shrunk-2
+                          (HasType (Var tmp-var)
+                                   (get-type shrunk-1))))
+                   'Boolean)))
+                'Boolean)))]
         [(Prim '>= (list e1 e2))
          (define shrunk-1 (recur e1))
          (define shrunk-2 (recur e2))
-         (recur (Prim 'not (list (Prim '< (list shrunk-1 shrunk-2)))))
+         (recur
+          (Prim
+           'not
+           (list
+            (HasType
+             (Prim
+              '<
+              (list shrunk-1 shrunk-2))
+             'Boolean))))
          ]
         [(Prim '> (list e1 e2))
          (define shrunk-1 (recur e1))
          (define shrunk-2 (recur e2))
          (define tmp-var (gensym 'tmp))
-         (recur (Let tmp-var shrunk-1
-                     (Prim '< (list shrunk-2 (Var tmp-var)))))
+         (recur
+          (Let tmp-var shrunk-1
+               (HasType
+                (Prim '< (list shrunk-2 (Var tmp-var)))
+                'Boolean)))
          ]
         [(Prim '- (list e1 e2))
          (define shrunk-1 (recur e1))
          (define shrunk-2 (recur e2))
-         (recur (Prim '+ (list shrunk-1
-                               (Prim '- (list shrunk-2)))))]
+         (recur
+          (Prim
+           '+
+           (list shrunk-1
+                 (HasType (Prim '- (list shrunk-2))
+                          (get-type shrunk-2)))))]
         [(Prim 'and (list e1 e2))
          (define shrunk-1 (recur e1))
          (define shrunk-2 (recur e2))
-         (recur (If shrunk-1 shrunk-2 (Bool #f)))]
+         (recur (If shrunk-1 shrunk-2 (HasType (Bool #f) 'Boolean)))]
         [(Prim 'or (list e1 e2))
          (define shrunk-1 (recur e1))
          (define shrunk-2 (recur e2))
-         (recur (If shrunk-1 (Bool #t) shrunk-2))]
+         (recur (If shrunk-1 (HasType (Bool #t) 'Boolean) shrunk-2))]
         [(Prim op args)
          (define output-type (cdr (assv op op-to-output-type)))
          (define shrunk-args (map recur args))
@@ -254,44 +295,54 @@ compiler.rkt> (t
              'you-cant-see-me--john-cena)
          (if (eq? 'VectorRef output-type)
              (set! output-type
-                   (list-ind (match (cadr args) [(Int n) n])
+                   (list-ind (match (cadr args) [(HasType (Int n) 'Integer) n])
                              (cdar args-types)))
              'you-cant-see-me--john-cena)
-         (HasType (Prim op shrunk-args) output-type)]))))
+         (Prim op shrunk-args)
+         #;(HasType (Prim op shrunk-args) output-type)
+         ]))))
 
 (define (shrink-exp env)
   (lambda (e)
     (let ([recur (shrink-exp env)])
       (match e
-        [(HasType expr T) e]
-        [(Int n) (HasType e 'Integer)]
-        [(Var x) (HasType e (dict-ref env x))]
-        [(Bool b) (HasType e 'Boolean)]
-        [(Void) (HasType e 'Void)]
+        [(HasType expr T)
+         (HasType (recur expr) T)]
+        [(Int n) e]
+        [(Var x) e]
+        [(Bool b) e]
+        [(Void) e]
         [(Prim op args)
          ((shrink-prim env) e)]
         [(If cnd cnsq alt)
          (define shrunk-cnd (recur cnd))
          (define shrunk-cnsq (recur cnsq))
          (define shrunk-alt (recur alt))
-         (HasType
-          (If shrunk-cnd
-              shrunk-cnsq
-              shrunk-alt)
-          (get-type shrunk-cnsq))]
+         (If shrunk-cnd
+             shrunk-cnsq
+             shrunk-alt)
+         #;(get-type shrunk-cnsq)
+         ]
         [(Let x expr body)
          (define shrunk-expr (recur expr))
          (define new-env (dict-set env x (get-type shrunk-expr)))
          (define shrunk-body ((shrink-exp new-env) body))
-         (HasType
-          (Let x shrunk-expr
-               shrunk-body)
-          (get-type shrunk-body))]))))
+         (Let x shrunk-expr
+              shrunk-body)
+         #;(get-type shrunk-body)
+         ]))))
 
 (define (shrink p)
   (match p
+    #;
     [(Program info (HasType body 'Integer))
-     (Program info ((shrink-exp '()) body))]))
+     (Program info ((shrink-exp '()) (pe body)))]
+    [(Program info body)
+     ; nice try
+     (if (not (HasType? body))
+         (set! body ((type-check-exp '()) body))
+         (void))
+     (Program info ((shrink-exp '()) (pe body)))]))
 
 ; Our symtab is going to be an association list
 ; A table is a [Listof [Pairof Symbol Int]]
@@ -310,29 +361,28 @@ compiler.rkt> (t
   (lambda (e)
     (match e
       ; TODO (?): make simpler hastype matching (revert but add hastype case)
-      [(HasType (Var x) t)
-       (HasType (Var (search-symtab symtab x)) t)]
-      [(HasType (Int n) 'Integer) (HasType (Int n) 'Integer)]
-      [(HasType (Bool b) 'Boolean) (HasType (Bool b) 'Boolean)]
-      [(HasType (If cnd cnsq alt) t)
+      [(HasType expr t)
+       (HasType ((uniquify-exp symtab) expr) t)]
+      [(Var x) (Var (search-symtab symtab x))]
+      [(Int n) (Int n)]
+      [(Bool b) (Bool b)]
+      [(If cnd cnsq alt)
        (let* ([cnd-uniq ((uniquify-exp symtab) cnd)]
               [cnsq-uniq ((uniquify-exp symtab) cnsq)]
               [alt-uniq ((uniquify-exp symtab) alt)])
-         (HasType (If cnd-uniq cnsq-uniq alt-uniq) t))]
-      [(HasType (Let x e body) t)
+         (If cnd-uniq cnsq-uniq alt-uniq))]
+      [(Let x e body)
        (let* ([e-uniq ((uniquify-exp symtab) e)]
               [symtab-x (extend-symtab symtab x)]
               [x-uniq (search-symtab symtab-x x)]
               [body-uniq ((uniquify-exp symtab-x) body)])
-         (HasType
-          (Let x-uniq
-               e-uniq
-               body-uniq)
-          t))]
-      [(HasType (Prim op es) t)
-       (HasType (Prim op (for/list ([e es])
-                           ((uniquify-exp symtab) e)))
-                t)])))
+         
+         (Let x-uniq
+              e-uniq
+              body-uniq))]
+      [(Prim op es)
+       (Prim op (for/list ([e es])
+                  ((uniquify-exp symtab) e)))])))
 
 ;; uniquify : R1 -> R1
 (define (uniquify p)
@@ -747,7 +797,9 @@ compiler.rkt> (t
     [`(,type-a . ,types-d)
      (define pm-d
        (arithmetic-shift (vec-types-to-pointer-mask types-d) 1))
-     (if (and (list? type-a)
+     (if (is-vector? type-a)
+         #;
+         (and (list? type-a)
               (eq? (car type-a) 'Vector))
          (bitwise-ior 1 pm-d)
          pm-d)]))
@@ -1055,7 +1107,8 @@ compiler.rkt> (t
              (for/list ([reg callee-saved])
                (for/list ([var (car bl-info)])
                  (let ([type (cdr (assv (get-var-name var) types))])
-                   (if (and (list? type) (eq? 'Vector (car type)))
+                   (if (is-vector? type)
+                       #;(and (list? type) (eq? 'Vector (car type)))
                        (add-edge! graph-d var (Reg reg))
                        (void)))))
              graph-d)
@@ -1151,7 +1204,8 @@ compiler.rkt> (t
   (for/list ([lv-set bl-info])
     (for/list ([var lv-set])
       (let ([type (cdr (assv var types))])
-        (if (and (list? type) (eq? 'Vector (car type)))
+        (if (is-vector? type)
+            #;(and (list? type) (eq? 'Vector (car type)))
             (for/list ([reg callee-saved])
               (add-edge! g (Var var) (Reg reg)))
             (void))))))
@@ -1206,15 +1260,21 @@ compiler.rkt> (t
                   (lambda (edge) (vars-eq? (car edge) v))
                   (get-edges g))]
                 [v-neighbors (map cadr v-edges)]
-                [v-regs (filter Reg? v-neighbors)]
+                [v-regs (filter
+                         (lambda
+                             (v)
+                           (and (Reg? v)
+                                (assv v usable-regs-to-color)))
+                         v-neighbors)]
                 [v-saturations
                  (map
                   (lambda (reg)
-                    (let ([reg-name
+                    (let* ([reg-name
                            (match reg
-                             [(Reg reg-name) reg-name])])
+                             [(Reg reg-name) reg-name])]
+                          [collll (assv reg-name usable-regs-to-color)])
                       ; good god
-                      (cdr (assv reg-name regs-to-color))))
+                      (cdr collll)))
                   v-regs)])
            ; we want to make sure that each v cannot go in any registers to
            ; which they already have an edge, no matter what
@@ -1354,28 +1414,64 @@ compiler.rkt> (t
    ))
 
 ; flipp
-(define regs-to-color
+(define usable-regs-to-color
   (map (lambda (p) (cons (cdr p) (car p))) usable-regs))
 
 (define n-usable-regs (length usable-regs))
 
 ; we're not proud of this approach but we only noticed the problem at 8p on
 ; monday, thinking that we had finished the previous friday lol
-(define stack-vars-needed -1000)
-; color is a natural number (or ,uncolored; see above)
-(define (color-to-location color)
-  (let ([reg (assv color usable-regs)])
-    (if reg
-        (Reg (cdr reg))
-        ; need a positive multiple of -8, and we can get non-interfering
-        ; stack locations by reducing our universe to just these stack vars
-        ; ... or email team A
-        (let ([stack-loc (add1 (- color n-usable-regs))])
-          (begin
-            (set! stack-vars-needed (max stack-vars-needed stack-loc))
-            (Deref 'rbp (* -8 stack-loc)))))))
+(define color-to-call-stack '())
+(define call-stack-vars-needed 0)
 
-(define (assign-regs-helper instr+ color-map)
+(define color-to-root-stack '())
+(define root-stack-vars-needed 0)
+
+(define (use-root-stack color)
+  (begin
+    (set! root-stack-vars-needed (+ 1 root-stack-vars-needed))
+    (set! color-to-root-stack
+          (cons (cons color root-stack-vars-needed) color-to-root-stack))
+    root-stack-vars-needed))
+
+(define (use-call-stack color)
+  (begin
+    (set! call-stack-vars-needed (+ 1 call-stack-vars-needed))
+    (set! color-to-call-stack
+          (cons (cons color call-stack-vars-needed) color-to-call-stack))
+    call-stack-vars-needed))
+
+(define (is-vector? t)
+  (and (list? t)
+       (eq? 'Vector (car t))))
+
+; color is a natural number (or ,uncolored; see above)
+(define (color-to-location color type-mappings arg)
+  (match (assv color usable-regs)
+    [`(,name . ,val) (Reg val)]
+    ; need a positive multiple of -8, and we can get non-interfering
+    ; stack locations by reducing our universe to just these stack vars
+    ; ... or email team A
+    [whatever
+     (define which-stack
+       (if (is-vector? (cdr (assv arg type-mappings)))
+           'r15
+           'rbp))
+     (define stack-loc
+       (if (eq? which-stack 'r15)
+           (let ([r-loc (assv color color-to-root-stack)])
+             (if r-loc
+                 (cdr r-loc)
+                 (use-root-stack color)))
+           (let ([c-loc (assv color color-to-call-stack)])
+             (if c-loc
+                 (cdr c-loc)
+                 (use-call-stack color)))))
+     ;(set! call-stack-vars-needed (max call-stack-vars-needed stack-loc))
+
+     (Deref which-stack (* -8 stack-loc))]))
+
+(define (assign-regs-helper instr+ color-map type-mappings)
   (match instr+
     ['() '()]
     [`(,instr-a . ,instr-d)
@@ -1391,7 +1487,9 @@ compiler.rkt> (t
                  (color-to-location
                   ; assv uses eqv instead of our vars-eq? :|
                   ; the cdr is the color
-                  (cdr (assf (lambda (var) (vars-eq? var arg)) color-map)))
+                  (cdr (assf (lambda (var) (vars-eq? var arg)) color-map))
+                  type-mappings
+                  arg)
                  arg))
            args))]
         [whatever ; (Jmp label)
@@ -1399,16 +1497,16 @@ compiler.rkt> (t
         #;[(JmpIf cc label) instr-a]
         #;[(Callq label) instr-a]
         )
-      (assign-regs-helper instr-d color-map))]))
+      (assign-regs-helper instr-d color-map type-mappings))]))
 
 ; returns a new label-block where vars are replaced with regs or stack-locations
-(define (assign-regs-or-stack node color-map)
+(define (assign-regs-or-stack node color-map type-mappings)
   (let-values ([(label bl-info instr+)
                 (match node
                   [`(,label . ,(Block bl-info instr+))
                    (values label bl-info instr+)])])
     `(,label . ,(Block bl-info
-                       (assign-regs-helper instr+ color-map))))
+                       (assign-regs-helper instr+ color-map type-mappings))))
   #;
   (for/list
       ([block-instr+
@@ -1440,7 +1538,7 @@ compiler.rkt> (t
                 (CFG (for/list
                          ([node nodes]
                           [color-map colored-mappings])
-                       (assign-regs-or-stack node color-map)))))]))
+                       (assign-regs-or-stack node color-map local-vars)))))]))
 
 (define book-example
   #;'(let ([v 1])
@@ -1491,7 +1589,7 @@ compiler.rkt> (t
     [(Program info (CFG nodes))
      (Program (list (cons 'stack-space
                           ; want a non-negative size
-                          (* 8 (max 0 stack-vars-needed))))
+                          (* 8 (max 0 call-stack-vars-needed))))
               (CFG
                (map
                 (lambda (node)
@@ -1551,6 +1649,7 @@ compiler.rkt> (t
 
 (define (print-arg arg)
   (match arg
+    [(Global name) (format "~a(%rip)" name)]
     [(Imm n) (format "$~a" n)]
     [(Reg reg) (format "%~a" reg)]
     [(ByteReg bytereg) (format "%~a" bytereg)]
@@ -1619,9 +1718,9 @@ compiler.rkt> (t
    select-instructions
    uncover-live
    build-interference
-   ; allocate-registers
-   ; patch-instructions
-   ; print-x86
+   allocate-registers
+   patch-instructions
+   print-x86
    ))
 
 ; t = test, just so I can type it quickly lol
