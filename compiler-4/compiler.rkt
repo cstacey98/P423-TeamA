@@ -7,8 +7,8 @@
 (require "utilities.rkt")
 (require graph)
 ;(provide (all-defined-out))
-(AST-output-syntax 'abstract-syntax)
-; (AST-output-syntax 'concrete-syntax)
+; (AST-output-syntax 'abstract-syntax)
+(AST-output-syntax 'concrete-syntax)
 
 (provide
  type-check
@@ -54,7 +54,8 @@
     [(HasType expr type) expr]))
 (define (get-type ht)
   (match ht
-    [(HasType expr type) type]))
+    [(HasType expr type) type]
+    [whatever (error (format "Called get-type on non-HasType ~a" ht))]))
 
 (define (check-args-consistency args recur T)
   (andmap (lambda (arg) (eq? T (get-type (recur arg)))) args))
@@ -408,6 +409,9 @@ compiler.rkt> (t
   (match var-names
     ['() after-assigning]
     [`(,x-i . ,xs-d)
+     #;
+     (define i
+       (add1 (- (length (cdr (get-type after-assigning))) (length xs-d))))
      (HasType
       (Let
        x-i
@@ -668,7 +672,7 @@ compiler.rkt> (t
 
         (values
          assign-tail
-         (cons (HasType (Var x) t)
+         (cons (HasType (Var x) (get-type e))
                (append body-vars assign-vars)))]
        [(If cnd cnsq alt)
         (define label-1 (gensym 'block))
@@ -713,7 +717,7 @@ compiler.rkt> (t
      (Program
       (list
        `(locals . ,(map (lambda (ht)
-                          (cons (get-expr ht) (get-type ht)))
+                          (cons (get-var-name (get-expr ht)) (get-type ht)))
                         has-types)))
       e)]))
 
@@ -1030,26 +1034,35 @@ compiler.rkt> (t
 ; we're assuming that the top of instr+ corresponds to the top of bl-info
 ; TODO: guarantee that all program vars have vertex in graph
 ; (may not have edge though)
-(define (interference-graph bl-info instr+ base-g)
+(define (interference-graph bl-info instr+ base-g types)
   (match instr+
     [(cons (Jmp label) '())
      base-g]
     [(cons (JmpIf cc label) instr-d)
      ; interference is not changed by jmpif, right?
-     (interference-graph (cdr bl-info) instr-d base-g)]
+     (interference-graph (cdr bl-info) instr-d base-g types)]
     [(cons (Callq label) instr-d)
      (begin
        (define graph-d
-         (interference-graph (cdr bl-info) instr-d base-g))
+         (interference-graph (cdr bl-info) instr-d base-g types))
        (for/list ([reg caller-saved])
          (for/list ([var (car bl-info)])
            ; add-edge! is imperative/has side-effects/mutates graph-d, so we
            ; abuse the syntax of match clauses here
            (add-edge! graph-d (Reg reg) var)))
-       graph-d)]
+       (if (eq? label 'collect)
+           (begin
+             (for/list ([reg callee-saved])
+               (for/list ([var (car bl-info)])
+                 (let ([type (cdr (assv (get-var-name var) types))])
+                   (if (and (list? type) (eq? 'Vector (car type)))
+                       (add-edge! graph-d var (Reg reg))
+                       (void)))))
+             graph-d)
+           graph-d))]
     ; we're assuming that instr-a is an (Instr . .)
     [(cons instr-a instr-d)
-     (let ([graph-d (interference-graph (cdr bl-info) instr-d base-g)])
+     (let ([graph-d (interference-graph (cdr bl-info) instr-d base-g types)])
        (match instr-a
          ; assumption is that var is a variable (you can't negq an immediate...
          ; right?)
@@ -1134,9 +1147,19 @@ compiler.rkt> (t
     ; is (guaranteed to be?) empty
     (let ([g (interference-graph (cdr bl-info) instr+)])
       g))
+(define (vector-interference bl-info types g)
+  (for/list ([lv-set bl-info])
+    (for/list ([var lv-set])
+      (let ([type (cdr (assv var types))])
+        (if (and (list? type) (eq? 'Vector (car type)))
+            (for/list ([reg callee-saved])
+              (add-edge! g (Var var) (Reg reg)))
+            (void))))))
+
 (define (build-interference p)
   (match p
-    [(Program info (CFG e))
+    [(Program (list `(locals . ,types)) (CFG e))
+     (define info (list `(locals . ,types)))
      (define base-g (uwu '()))
      (define graphsss
        (map
@@ -1153,7 +1176,7 @@ compiler.rkt> (t
              ; taking cdr of bl-info so that we only use the
              ; liveness-after sets; the first before-liveness set
              ; is (guaranteed to be?) empty
-             (define g (interference-graph (cdr bl-info) instr+ base-g))
+             (define g (interference-graph (cdr bl-info) instr+ base-g types))
              (set! base-g g)
              (map
               (lambda (var)
@@ -1166,6 +1189,8 @@ compiler.rkt> (t
        (displayln (get-edges g)))
      (Program
       (cons (cons 'conflicts graphsss) info)
+      #;
+      (cons (cons 'conflicts (map get-edges graphsss)) info)
       (CFG e))]))
 
 (define uncolored -1)
@@ -1592,8 +1617,8 @@ compiler.rkt> (t
    explicate-control
    uncover-locals
    select-instructions
-   ; uncover-live
-   ; build-interference
+   uncover-live
+   build-interference
    ; allocate-registers
    ; patch-instructions
    ; print-x86
