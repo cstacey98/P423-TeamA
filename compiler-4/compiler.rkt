@@ -344,7 +344,7 @@ compiler.rkt> (t
      (if (not (HasType? body))
          (set! body ((type-check-exp '()) body))
          (void))
-     (Program info ((shrink-exp '()) (pe body)))]))
+     (Program info ((shrink-exp '()) body))]))
 
 ; Our symtab is going to be an association list
 ; A table is a [Listof [Pairof Symbol Int]]
@@ -1483,7 +1483,6 @@ compiler.rkt> (t
           (map
            (lambda (arg)
              (if (Var? arg)
-                 ; https://www.youtube.com/watch?v=OMm1RLF32ig
                  (color-to-location
                   ; assv uses eqv instead of our vars-eq? :|
                   ; the cdr is the color
@@ -1534,7 +1533,8 @@ compiler.rkt> (t
             (map (lambda (g) (color-mappings g local-vars))
                  intf-graphs)])
        ; don't need the intf-graph anymore
-       (Program (list `(locals . ,local-vars))
+       (Program (list `(num-spills . (,call-stack-vars-needed
+                                      . ,root-stack-vars-needed)))
                 (CFG (for/list
                          ([node nodes]
                           [color-map colored-mappings])
@@ -1586,13 +1586,14 @@ compiler.rkt> (t
 ;; patch-instructions : psuedo-x86 -> x86
 (define (patch-instructions p)
   (match p
-    [(Program info (CFG nodes))
+    [(Program (list `(num-spills . (,call-stack . ,root-stack)))
+              (CFG nodes))
      (Program (list (cons 'stack-space
                           ; want a non-negative size
-                          (* 8 (max 0 call-stack-vars-needed)))
+                          (* 8 call-stack))
                     (cons 'root-stack-space
                           ; want a non-negative size
-                          (* 8 (max 0 root-stack-vars-needed))))
+                          (* 8 root-stack)))
               (CFG
                (map
                 (lambda (node)
