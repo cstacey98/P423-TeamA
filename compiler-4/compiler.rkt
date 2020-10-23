@@ -1670,6 +1670,7 @@ compiler.rkt> (t
 
 (define (print-arg arg)
   (match arg
+    ; Not sure if we should prefix these names with _?
     [(Global name) (format "~a(%rip)" (os-label name))]
     [(Imm n) (format "$~a" n)]
     [(Reg reg) (format "%~a" reg)]

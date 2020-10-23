@@ -7,7 +7,7 @@
 ; (require "interp-C2.rkt")
 (require "interp.rkt")
 (require "compiler.rkt")
-(debug-level 4)
+; (debug-level 4)
 (AST-output-syntax 'abstract-syntax)
 
 (define interp-R-after-expose
