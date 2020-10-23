@@ -15,8 +15,10 @@
  type-check
  shrink
  uniquify
+ expose-allocation
  remove-complex-opera*
  explicate-control
+ uncover-locals
  select-instructions
  uncover-live
  build-interference
@@ -1587,7 +1589,10 @@ compiler.rkt> (t
     [(Program info (CFG nodes))
      (Program (list (cons 'stack-space
                           ; want a non-negative size
-                          (* 8 (max 0 call-stack-vars-needed))))
+                          (* 8 (max 0 call-stack-vars-needed)))
+                    (cons 'root-stack-space
+                          ; want a non-negative size
+                          (* 8 (max 0 root-stack-vars-needed))))
               (CFG
                (map
                 (lambda (node)
@@ -1610,8 +1615,12 @@ compiler.rkt> (t
 (define newline "\n")
 
 
-(define (print-conclusion bytes-needed)
+(define (print-conclusion bytes-needed root-bytes-needed)
   (string-append (os-label 'conclusion) ":" newline
+                 indent (print-instr
+                         (Instr 'subq (list (Imm root-bytes-needed)
+                                            (Reg 'r15))))
+                        newline
                  indent (format "addq   $~a, %rsp" bytes-needed) newline
                  ; indent "popq   %rbp" newline
                  (print-callee-saved-regs #f)
@@ -1634,7 +1643,7 @@ compiler.rkt> (t
        ""
        (reverse callee-saved))))
 
-(define (print-main bytes-needed)
+(define (print-main bytes-needed root-bytes-needed)
   (string-append #;indent ".globl " (os-label 'main) newline
                  (os-label 'main) ":" newline
                  ; odd number of callee-saved and subq one register --> boom
@@ -1643,11 +1652,24 @@ compiler.rkt> (t
                  ; indent "pushq  %rbp" newline
                  indent "movq   %rsp, %rbp" newline
                  indent (format "subq   $~a, %rsp" bytes-needed) newline
+                 indent (print-instr
+                         (Instr 'movq (list (Imm 16384) (Reg 'rdi)))) newline
+                 indent (print-instr
+                         (Instr 'movq (list (Imm 16) (Reg 'rsi)))) newline
+                 indent (print-instr (Callq 'initialize)) newline
+                 indent (print-instr
+                         (Instr 'movq (list (Global 'rootstack_begin)
+                                            (Reg 'r15)))) newline
+                 indent "movq $0, (%r15)" newline
+                 indent (print-instr
+                         (Instr 'addq
+                                (list (Imm root-bytes-needed) (Reg 'r15))))
+                        newline
                  indent "jmp " (os-label 'start)))
 
 (define (print-arg arg)
   (match arg
-    [(Global name) (format "~a(%rip)" name)]
+    [(Global name) (format "~a(%rip)" (os-label name))]
     [(Imm n) (format "$~a" n)]
     [(Reg reg) (format "%~a" reg)]
     [(ByteReg bytereg) (format "%~a" bytereg)]
@@ -1686,7 +1708,8 @@ compiler.rkt> (t
 ;; print-x86 : x86 -> string
 (define (print-x86 p)
   (match p
-    [(Program `((stack-space . ,bytes-needed))
+    [(Program `((stack-space . ,bytes-needed)
+                (root-stack-space . ,root-bytes-needed))
               (CFG blocks))
      (string-append
       (foldr
@@ -1699,9 +1722,11 @@ compiler.rkt> (t
       newline
       #;(print-start start-block)
       newline
-      (print-main (actual-bytes-needed bytes-needed))
+      (print-main (actual-bytes-needed bytes-needed)
+                  (actual-bytes-needed root-bytes-needed))
       newline
-      (print-conclusion (actual-bytes-needed bytes-needed)))]))
+      (print-conclusion (actual-bytes-needed bytes-needed)
+                        (actual-bytes-needed root-bytes-needed)))]))
 
 ; all the passes needed to be used in (t .)
 (define test-passes
