@@ -738,8 +738,8 @@ compiler.rkt> (t
         (values b4-tail (append b4-vars b3-vars b2-vars))
         ]
        [whatever
-        ; TODO
-        (values (Seq (Assign (Var lhs) (remove-ht-expr expr)) c0) '())])]
+        ; Added (Var lhs) to locals since it is a new local.
+        (values (Seq (Assign (Var lhs) (remove-ht-expr expr)) c0) `(,(HasType (Var lhs) t) . ()))])]
     [whatever (displayln 'frick)]))
 
 ;; explicate-control : R1 -> C0
@@ -1069,6 +1069,7 @@ compiler.rkt> (t
                        neighbors)))
             (define liveness-blk (liveness instr+ live-after))
             (define blonk (Block liveness-blk instr+))
+            (displayln liveness-blk)
             (cons `(,label . ,blonk) cfg)))
         '()
         ; remove conclusion from liveness analysis since we have not
@@ -1236,6 +1237,7 @@ compiler.rkt> (t
               (lambda (var)
                 (add-vertex! g var))
               (car bl-info))
+             (displayln (get-vertices g))
              g))
          e))
      #;
@@ -1486,7 +1488,11 @@ compiler.rkt> (t
                  (color-to-location
                   ; assv uses eqv instead of our vars-eq? :|
                   ; the cdr is the color
-                  (cdr (assf (lambda (var) (vars-eq? var arg)) color-map))
+                  (let ([x (assf (lambda (var) (vars-eq? var arg)) color-map)])
+                    ; HOW IS THIS POSSIBLE
+                    (if (eqv? x #f)
+                        (raise (format "var ~a not found" x))
+                        (cdr x)))
                   type-mappings
                   arg)
                  arg))
@@ -1743,9 +1749,9 @@ compiler.rkt> (t
    select-instructions
    uncover-live
    build-interference
-   allocate-registers
-   patch-instructions
-   print-x86
+   #; allocate-registers
+   #;patch-instructions
+   #;print-x86
    ))
 
 ; t = test, just so I can type it quickly lol
@@ -1789,3 +1795,37 @@ compiler.rkt> (t
 (define (p prog)
   (displayln (t prog)))
 
+(define vector-test
+  '(let ([x1 (vector 1)])
+      (let ([x2 (vector 2)])
+        (let ([x3 (vector 3)])
+          (let ([x4 (vector 4)])
+            (let ([x5 (vector 5)])
+              (let ([x6 (vector 6)])
+                (let ([x7 (vector 7)])
+                  (let ([x8 (vector 8)])
+                    (let ([x9 (vector 9)])
+                      (let ([z1 (vector 1)])
+                        (let ([z2 (vector 2)])
+                          (let ([z3 (vector 3)])
+                            (let ([z4 (vector 4)])
+                              (let ([z5 (vector 5)])
+                                (let ([z6 (vector 6)])
+                                  (let ([z7 (vector 7)])
+                                    (+ (vector-ref x1 0)
+                                       (+ (vector-ref x2 0)
+                                          (+ (vector-ref x3 0)
+                                             (+ (vector-ref x4 0)
+                                                (+ (vector-ref x5 0)
+                                                   (+ (vector-ref x6 0)
+                                                      (+ (vector-ref x7 0)
+                                                         (+ (vector-ref x8 0)
+                                                            (+ (vector-ref x9 0)
+                                                               (+ (vector-ref z1 0)
+                                                                  (+ (vector-ref z2 0)
+                                                                     (+ (vector-ref z3 0)
+                                                                        (+ (vector-ref z4 0)
+                                                                           (+ (vector-ref z5 0)
+                                                                              (+ (vector-ref z6 0)
+                                                                                 (vector-ref z6 0)))))))))))))))))))))))))))))))))
+              

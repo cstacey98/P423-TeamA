@@ -1,55 +1,55 @@
-_start:
-       movq   $1, %rdx
-       movq   $2, %rdi
-       movq   _free_ptr(%rip), %rcx
-       movq   %rcx, %rsi
-       addq   $24, %rsi
-       movq   _fromspace_end(%rip), %rcx
-       cmpq   %rcx, %rsi
-       jl _block328119
-       jmp _block328120
+start:
+       movq   $1, %rsi
+       movq   $2, %rcx
+       movq   free_ptr(%rip), %rdx
+       movq   %rdx, %rdi
+       addq   $24, %rdi
+       movq   fromspace_end(%rip), %rdx
+       cmpq   %rdx, %rdi
+       jl block14215
+       jmp block14216
 
-_block328120:
-       jmp _block328118
+block14215:
+       jmp block14213
 
-_block328118:
-       jmp _block328116
+block14213:
+       jmp block14211
 
-_block328116:
+block14211:
+       movq   $0, %rdx
+       jmp block14210
+
+block14216:
+       jmp block14214
+
+block14214:
+       jmp block14212
+
+block14212:
        movq   %r15, %rdi
        movq   $24, %rsi
-       callq _collect
-       jmp _block328114
+       callq collect
+       jmp block14210
 
-_block328119:
-       jmp _block328117
-
-_block328117:
-       jmp _block328115
-
-_block328115:
-       movq   $0, %rcx
-       jmp _block328114
-
-_block328114:
-       movq   _free_ptr(%rip), %rcx
-       addq   $24, _free_ptr(%rip)
-       movq   %rcx, %r11
+block14210:
+       movq   free_ptr(%rip), %rdx
+       addq   $24, free_ptr(%rip)
+       movq   %rdx, %r11
        movq   $5, 0(%r11)
-       movq   %rcx, %r11
-       movq   %rdx, 8(%r11)
-       movq   $0, %rdx
-       movq   %rcx, %r11
-       movq   %rdi, 16(%r11)
-       movq   $0, %rdx
-       movq   %rcx, %rdx
+       movq   %rdx, %r11
+       movq   %rsi, 8(%r11)
+       movq   $0, %rsi
+       movq   %rdx, %r11
+       movq   %rcx, 16(%r11)
+       movq   $0, %rcx
+       movq   %rdx, %rdx
        movq   $42, %rax
-       jmp _conclusion
+       jmp conclusion
 
 
 
-.globl _main
-_main:
+.globl main
+main:
        pushq  %rsp
        pushq  %rbp
        pushq  %rbx
@@ -61,12 +61,12 @@ _main:
        subq   $0, %rsp
        movq   $16384, %rdi
        movq   $16, %rsi
-       callq _initialize
-       movq   _rootstack_begin(%rip), %r15
+       callq initialize
+       movq   rootstack_begin(%rip), %r15
        movq $0, (%r15)
        addq   $0, %r15
-       jmp _start
-_conclusion:
+       jmp start
+conclusion:
        subq   $0, %r15
        addq   $0, %rsp
        popq   %r15
