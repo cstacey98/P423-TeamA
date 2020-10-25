@@ -7,8 +7,8 @@
 (require "utilities.rkt")
 (require graph)
 ;(provide (all-defined-out))
-(AST-output-syntax 'abstract-syntax)
 #;
+(AST-output-syntax 'abstract-syntax)
 (AST-output-syntax 'concrete-syntax)
 
 (provide
@@ -768,8 +768,8 @@ compiler.rkt> (t
      (define-values (start-block start-locals)
        (explicate-tail e))
      (add-vertex! cfg-global `(start . ,start-block))
-     (Program (list (cons 'locals start-locals))
-              (CFG (get-vertices cfg-global)))]))
+     (pe (Program (list (cons 'locals start-locals))
+                  (CFG (get-vertices cfg-global))))]))
 
 
 (define (remove-ht-expr expr)
@@ -867,7 +867,7 @@ compiler.rkt> (t
         (define vec-prime (si-atm vec))
         (set! n (match n [(Int n_) n_]))
         (list (Instr 'movq (list vec-prime (Reg 'r11)))
-              (Instr 'movq (list (Deref 'r11 (* -8 (add1 n))) var)))]
+              (Instr 'movq (list (Deref 'r11 (* 8 (add1 n))) var)))]
        [(Prim 'vector-set! (list vec n arg))
         ; TODO this is possibly wrong... unless?
         (define vec-prime (si-atm vec))
@@ -963,12 +963,12 @@ compiler.rkt> (t
      (Program
       info
       (CFG (map
-            (lambda (label-tail)
-              (let* ([label (car label-tail)]
-                     [tail (cdr label-tail)]
-                     [instr+ (si-tail tail)])
-                `(,label . ,(Block '() instr+))))
-            e)))]))
+               (lambda (label-tail)
+                 (let* ([label (car label-tail)]
+                        [tail (cdr label-tail)]
+                        [instr+ (si-tail tail)])
+                   `(,label . ,(Block '() instr+))))
+               e)))]))
 
 ; removed 'rax
 (define caller-saved (list 'rdx 'rcx 'rsi 'rdi 'r8 'r9 'r10 'r11))
@@ -1095,7 +1095,8 @@ compiler.rkt> (t
                        neighbors)))
             (define liveness-blk (liveness instr+ live-after))
             (define blonk (Block liveness-blk instr+))
-            #;(displayln liveness-blk)
+            (displayln label)
+            (displayln liveness-blk)
             (cons `(,label . ,blonk) cfg)))
         '()
         ; remove conclusion from liveness analysis since we have not
@@ -1434,11 +1435,11 @@ compiler.rkt> (t
    `(4 . r8)
    `(5 . r9)
    `(6 . r10)
-   `(7 . r11)
-   `(8 . rbx)
-   `(9 . r12)
-   `(10 . r13)
-   `(11 . r14)
+   ;`(7 . r11)
+   `(7 . rbx)
+   `(8 . r12)
+   `(9 . r13)
+   `(10 . r14)
    ))
 
 ; flipp
@@ -1564,6 +1565,7 @@ compiler.rkt> (t
     [(Program (list `(conflicts . ,intf-graphs)
                     `(locals . ,local-vars))
               (CFG nodes))
+     #;(displayln (get-edges (car intf-graphs)))
      (let ([colored-mappings
             (map (lambda (g) (color-mappings g local-vars))
                  intf-graphs)])
@@ -1589,6 +1591,8 @@ compiler.rkt> (t
            (let ([z (+ x w)])
              (+ z (- y))))))))
 
+(define (mem-ref? arg)
+  (or (Deref? arg) (Global? arg)))
 
 (define (pi-helper p)
   (match p
@@ -1599,8 +1603,8 @@ compiler.rkt> (t
         (cons instr-a
               (pi-helper instr-d))]
        [(Instr op (list arg1 arg2))
-        (if (and (Deref? arg1)
-                 (Deref? arg2))
+        (if (and (mem-ref? arg1)
+                 (mem-ref? arg2))
             (append (list (Instr 'movq (list arg1 (Reg 'rax)))
                           (Instr op (list (Reg 'rax) arg2)))
                     (pi-helper instr-d))
