@@ -7,8 +7,8 @@
 (require "utilities.rkt")
 (require graph)
 ;(provide (all-defined-out))
-#;
 (AST-output-syntax 'abstract-syntax)
+#;
 (AST-output-syntax 'concrete-syntax)
 
 (provide
@@ -68,6 +68,13 @@
     [(zero? n) (car lst)]
     [else (list-ind (sub1 n) (cdr lst))]))
 
+(define (can-be-eq? t1 t2)
+  (match t1
+    ['Integer (eq? t1 t2)]
+    ['Boolean (eq? t1 t2)]
+    [`(Vector ,component-types ...)
+     (is-vector? t2)]
+    [whatever #f]))
 
 (define (type-check-prim env)
   (lambda (prim)
@@ -81,7 +88,7 @@
             (define e2-tc (recur (cadr args)))
             (define Te1 (get-type e1-tc))
             (define Te2 (get-type e2-tc))
-            (if (eq? Te1 Te2)
+            (if (can-be-eq? Te1 Te2)
                 (HasType (Prim op (list e1-tc e2-tc)) 'Boolean)
                 (error "type error with Prim " op))]
            [(memv op comparison)
@@ -397,7 +404,8 @@ compiler.rkt> (t
 (define (expose-prim p)
   (match p
     [(HasType (Prim 'vector components) types)
-     ; TODO less shit
+     (define components-exposed (map expose-alloc-exp components))
+
      (define v-name (gensym 'vec-init-))
      (define len (length components))
      (define vars
@@ -452,7 +460,7 @@ compiler.rkt> (t
               'Void)
              decl-and-assg)
         types))
-     (assign-components vars components check-collect?)
+     (assign-components vars components-exposed check-collect?)
      ]
     [(HasType (Prim op args) t)
      (HasType (Prim op (map expose-alloc-exp args)) t)]))
@@ -661,12 +669,21 @@ compiler.rkt> (t
        [(Prim 'not (list e))
         (explicate-pred e (Goto label-2) (Goto label-1))]
        [(Prim op (list e1 e2))
+        #:when (or (eq? 'eq? op) (eq? '< op))
         (values
          (IfStmt
           (Prim op (list (get-expr e1) (get-expr e2)))
           (Goto label-1)
           (Goto label-2))
          '())]
+       [(Prim 'vector-ref (list vec n))
+        (define refboi (gensym 'tmp-vec-ref-))
+        (explicate-assign
+         refboi (HasType p 'Boolean) ; can safely assume this bc expl-*pred*
+         (IfStmt
+          (Prim 'eq? (list (Bool #t) (Var refboi)))
+          (Goto label-1)
+          (Goto label-2)))]
        [(Let lhs rhs body)
         (define-values (body-exp body-vars)
           (explicate-pred body (Goto label-1) (Goto label-2)))
@@ -739,7 +756,8 @@ compiler.rkt> (t
         ]
        [whatever
         ; Added (Var lhs) to locals since it is a new local.
-        (values (Seq (Assign (Var lhs) (remove-ht-expr expr)) c0) `(,(HasType (Var lhs) t) . ()))])]
+        (values (Seq (Assign (Var lhs) (remove-ht-expr expr)) c0)
+                `(,(HasType (Var lhs) t) . ()))])]
     [whatever (displayln 'frick)]))
 
 ;; explicate-control : R1 -> C0
@@ -768,9 +786,11 @@ compiler.rkt> (t
     [(Program (list `(locals . ,has-types)) e)
      (Program
       (list
-       `(locals . ,(map (lambda (ht)
-                          (cons (get-var-name (get-expr ht)) (get-type ht)))
-                        has-types)))
+       `(locals
+         .
+         ,(map (lambda (ht)
+                 (cons (get-var-name (get-expr ht)) (get-type ht)))
+               has-types)))
       e)]))
 
 
@@ -780,7 +800,13 @@ compiler.rkt> (t
     [(Var s1)
      (match var2
        [(Var s2) (eq? s1 s2)]
+       [y
+        #:when (symbol? y)
+        (eq? s1 y)]
        [whatever #f])]
+    [y
+     #:when (symbol? y)
+     (vars-eq? (Var y) var2)]
     [whatever #f]))
 
 ; select instructions for atoms
@@ -1069,7 +1095,7 @@ compiler.rkt> (t
                        neighbors)))
             (define liveness-blk (liveness instr+ live-after))
             (define blonk (Block liveness-blk instr+))
-            (displayln liveness-blk)
+            #;(displayln liveness-blk)
             (cons `(,label . ,blonk) cfg)))
         '()
         ; remove conclusion from liveness analysis since we have not
@@ -1237,7 +1263,7 @@ compiler.rkt> (t
               (lambda (var)
                 (add-vertex! g var))
               (car bl-info))
-             (displayln (get-vertices g))
+             #;(displayln (get-vertices g))
              g))
          e))
      #;
@@ -1455,8 +1481,11 @@ compiler.rkt> (t
     ; stack locations by reducing our universe to just these stack vars
     ; ... or email team A
     [whatever
+     (define var-type
+       (assf (lambda (var)
+               (vars-eq? var arg)) type-mappings))
      (define which-stack
-       (if (is-vector? (cdr (assv arg type-mappings)))
+       (if (is-vector? (cdr var-type))
            'r15
            'rbp))
      (define stack-loc
@@ -1719,6 +1748,7 @@ compiler.rkt> (t
     [(Program `((stack-space . ,bytes-needed)
                 (root-stack-space . ,root-bytes-needed))
               (CFG blocks))
+     (displayln 'finishing-a-test...)
      (string-append
       (foldr
        (lambda (lbl-blk x86)
@@ -1749,9 +1779,9 @@ compiler.rkt> (t
    select-instructions
    uncover-live
    build-interference
-   #; allocate-registers
-   #;patch-instructions
-   #;print-x86
+   allocate-registers
+   patch-instructions
+   print-x86
    ))
 
 ; t = test, just so I can type it quickly lol
