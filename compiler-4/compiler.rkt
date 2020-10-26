@@ -120,15 +120,21 @@
                 (HasType (Prim op args-tc) (list-ind index Tcomponents)))]
            [(eq? op 'vector-set!)
             (define args-tc (map recur args))
-            (define v-tc (recur (car args)))
+            (define v-tc (car args-tc))
             (define Tv (get-type v-tc))
             (define Tcomponents (cdr Tv))
             (define index (match (cadr args) [(Int n) n]))
+            (define new-val-type (get-type (caddr args-tc)))
+            (define vec-index-type (list-ind index Tcomponents))
             (if (>= index (length Tcomponents))
                 (error (format "trying to set index ~a of vector size ~a"
                                index
                                (length Tcomponents)))
-                (HasType (Prim op args-tc) 'Void))])]))))
+                (if (equal? vec-index-type new-val-type)
+                    (HasType (Prim op args-tc) 'Void)
+                    (error (format "new value has type ~a , vector at index has type ~a"
+                                   new-val-type
+                                   vec-index-type))))])]))))
 
 
 (define (type-check-exp env)
@@ -768,8 +774,8 @@ compiler.rkt> (t
      (define-values (start-block start-locals)
        (explicate-tail e))
      (add-vertex! cfg-global `(start . ,start-block))
-     (pe (Program (list (cons 'locals start-locals))
-                  (CFG (get-vertices cfg-global))))]))
+     (Program (list (cons 'locals start-locals))
+                  (CFG (get-vertices cfg-global)))]))
 
 
 (define (remove-ht-expr expr)
@@ -885,7 +891,19 @@ compiler.rkt> (t
        [(Prim '< (list e1 e2))
         (define e1-si (si-atm e1))
         (define e2-si (si-atm e2))
-        (if (and (Imm? e1-si) (Imm? e2-si))
+        ; Need to watch out for immediates (can be the case where only e2 is.)
+        (if (or (Imm? e1-si) (Imm? e2-si))
+          (let ([to-move (if (Imm? e1-si) e1-si e2-si)]
+                [cmp-before (if (Imm? e1-si) e2-si (Reg 'rax))]
+                [cmp-after (if (Imm? e1-si) (Reg' rax) e1-si)])
+            (list (Instr 'movq (list to-move (Reg 'rax)))
+                  (Instr 'cmpq (list cmp-before cmp-after))
+                  (Instr 'set (list 'l (ByteReg 'al)))
+                  (Instr 'movzbq (list (ByteReg 'al) var))))
+          (list (Instr 'cmpq (list e2-si e1-si))
+                (Instr 'set (list 'l (ByteReg 'al)))
+                (Instr 'movzbq (list (ByteReg 'al) var))))
+        #;(if (and (Imm? e1-si) (Imm? e2-si))
             (list (Instr 'movq (list e1-si (Reg 'rax)))
                   (Instr 'cmpq (list e2-si (Reg 'rax)))
                   (Instr 'set (list 'l (ByteReg 'al)))
@@ -897,14 +915,17 @@ compiler.rkt> (t
        [(Prim 'eq? (list e1 e2))
         (define e1-si (si-atm e1))
         (define e2-si (si-atm e2))
-        (if (and (Imm? e1-si) (Imm? e2-si))
-            (list (Instr 'movq (list e1-si (Reg 'rax)))
-                  (Instr 'cmpq (list e2-si (Reg 'rax)))
-                  (Instr 'set (list 'e (ByteReg 'al)))
-                  (Instr 'movzbq (list (ByteReg 'al) var)))
-            (list (Instr 'cmpq (list e2-si e1-si))
+        (if (or (Imm? e1-si) (Imm? e2-si))
+          (let ([to-move (if (Imm? e1-si) e1-si e2-si)]
+                [cmp-before (if (Imm? e1-si) e2-si (Reg 'rax))]
+                [cmp-after (if (Imm? e1-si) (Reg' rax) e1-si)])
+            (list (Instr 'movq (list to-move (Reg 'rax)))
+                  (Instr 'cmpq (list cmp-before cmp-after))
                   (Instr 'set (list 'e (ByteReg 'al)))
                   (Instr 'movzbq (list (ByteReg 'al) var))))
+          (list (Instr 'cmpq (list e2-si e1-si))
+                (Instr 'set (list 'e (ByteReg 'al)))
+                (Instr 'movzbq (list (ByteReg 'al) var))))
         ]
        [(Prim '+ args)
         (match args
@@ -944,7 +965,18 @@ compiler.rkt> (t
          ['< 'l]))
      (define e1-si (si-atm e1))
      (define e2-si (si-atm e2))
-     (list (Instr 'cmpq (list e2-si e1-si))
+     (if (or (Imm? e1-si) (Imm? e2-si))
+       (let ([to-move (if (Imm? e1-si) e1-si e2-si)]
+             [cmp-before (if (Imm? e1-si) e2-si (Reg 'rax))]
+             [cmp-after (if (Imm? e1-si) (Reg' rax) e1-si)])
+         (list (Instr 'movq (list to-move (Reg 'rax)))
+               (Instr 'cmpq (list cmp-before cmp-after))
+               (JmpIf cc label-1)
+               (Jmp label-2)))
+       (list (Instr 'cmpq (list e2-si e1-si))
+             (JmpIf cc label-1)
+             (Jmp label-2)))
+     #;(list (Instr 'cmpq (list e2-si e1-si))
            ; (Instr 'set (list cc (ByteReg 'al)))
            (JmpIf cc label-1)
            (Jmp label-2))]
@@ -1095,8 +1127,6 @@ compiler.rkt> (t
                        neighbors)))
             (define liveness-blk (liveness instr+ live-after))
             (define blonk (Block liveness-blk instr+))
-            (displayln label)
-            (displayln liveness-blk)
             (cons `(,label . ,blonk) cfg)))
         '()
         ; remove conclusion from liveness analysis since we have not
@@ -1242,8 +1272,27 @@ compiler.rkt> (t
   (match p
     [(Program (list `(locals . ,types)) (CFG e))
      (define info (list `(locals . ,types)))
-     (define base-g (uwu '()))
-     (define graphsss
+     (define intf-graph
+       (foldr
+        (lambda (label-tail acc-graph)
+          (begin
+            (define label
+              (car label-tail))
+            (define instr+
+              (match (cdr label-tail)
+                [(Block bl-info instr+) instr+]))
+            (define bl-info
+              (match (cdr label-tail)
+                [(Block bl-info instr+) bl-info]))
+            (define new-g (interference-graph (cdr bl-info) instr+ acc-graph types))
+            (map
+             (lambda (var)
+               (add-vertex! new-g var))
+             (car bl-info))
+            new-g))
+        (uwu '())
+        e))
+     #;(define graphsss
        (map
          (lambda (label-tail)
            (begin
@@ -1267,11 +1316,8 @@ compiler.rkt> (t
              #;(displayln (get-vertices g))
              g))
          e))
-     #;
-     (for/list ([g graphsss])
-       (displayln (get-edges g)))
      (Program
-      (cons (cons 'conflicts graphsss) info)
+      (cons (cons 'conflicts intf-graph) info)
       #;
       (cons (cons 'conflicts (map get-edges graphsss)) info)
       (CFG e))]))
@@ -1293,7 +1339,9 @@ compiler.rkt> (t
                          (lambda
                              (v)
                            (and (Reg? v)
-                                (assv v usable-regs-to-color)))
+                                (match v
+                                  [(Reg reg-name)
+                                   (assv reg-name usable-regs-to-color)])))
                          v-neighbors)]
                 [v-saturations
                  (map
@@ -1562,20 +1610,17 @@ compiler.rkt> (t
 ; see: color-mappings
 (define (allocate-registers p)
   (match p
-    [(Program (list `(conflicts . ,intf-graphs)
+    [(Program (list `(conflicts . ,intf-graph)
                     `(locals . ,local-vars))
               (CFG nodes))
      #;(displayln (get-edges (car intf-graphs)))
-     (let ([colored-mappings
-            (map (lambda (g) (color-mappings g local-vars))
-                 intf-graphs)])
+     (let* ([color-map (color-mappings intf-graph local-vars)]
+            [cfg-nodes (for/list ([node nodes])
+                         (assign-regs-or-stack node color-map local-vars))])
        ; don't need the intf-graph anymore
        (Program (list `(num-spills . (,call-stack-vars-needed
                                       . ,root-stack-vars-needed)))
-                (CFG (for/list
-                         ([node nodes]
-                          [color-map colored-mappings])
-                       (assign-regs-or-stack node color-map local-vars)))))]))
+                (CFG cfg-nodes)))]))
 
 (define book-example
   #;'(let ([v 1])
@@ -1862,4 +1907,13 @@ compiler.rkt> (t
                                                                            (+ (vector-ref z5 0)
                                                                               (+ (vector-ref z6 0)
                                                                                  (vector-ref z6 0)))))))))))))))))))))))))))))))))
-              
+
+(define vec-vec-test
+  '(vector-ref (vector-ref (vector (vector 42)) 0) 0))
+
+(define big-vec-test '(let ([v0 (vector 0 1 2 3 4 5 6 7 8 9
+                                        10 11 12 13 14 15 16 17 18 19
+                                        20 21 22 23 24 25 26 27 28 29
+                                        30 31 32 33 34 35 36 37 38 39
+                                        40 41 42 43 44 45 46 47 48 49)])
+                        (vector-ref v0 42)))

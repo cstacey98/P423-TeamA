@@ -1,36 +1,36 @@
 start:
-       movq   $42, %rbx
+       movq   $0, %rbx
        movq   free_ptr(%rip), %rdx
-       movq   %rdx, %rcx
-       addq   $16, %rcx
-       movq   fromspace_end(%rip), %rdx
-       cmpq   %rdx, %rcx
-       jl block165848
-       jmp block165849
+       movq   %rdx, %rdx
+       addq   $16, %rdx
+       movq   fromspace_end(%rip), %rcx
+       cmpq   %rcx, %rdx
+       jl block166121
+       jmp block166122
 
-block165848:
-       jmp block165846
+block166121:
+       jmp block166119
 
-block165846:
-       jmp block165844
+block166119:
+       jmp block166117
 
-block165844:
+block166117:
        movq   $0, %rdx
-       jmp block165843
+       jmp block166116
 
-block165849:
-       jmp block165847
+block166122:
+       jmp block166120
 
-block165847:
-       jmp block165845
+block166120:
+       jmp block166118
 
-block165845:
+block166118:
        movq   %r15, %rdi
        movq   $16, %rsi
        callq collect
-       jmp block165843
+       jmp block166116
 
-block165843:
+block166116:
        movq   free_ptr(%rip), %rdx
        addq   $16, free_ptr(%rip)
        movq   %rdx, %r11
@@ -40,36 +40,36 @@ block165843:
        movq   $0, %rcx
        movq   %rdx, -24(%r15)
        movq   free_ptr(%rip), %rdx
-       movq   %rdx, %rcx
-       addq   $16, %rcx
-       movq   fromspace_end(%rip), %rdx
-       cmpq   %rdx, %rcx
-       jl block165841
-       jmp block165842
+       movq   %rdx, %rdx
+       addq   $16, %rdx
+       movq   fromspace_end(%rip), %rcx
+       cmpq   %rcx, %rdx
+       jl block166114
+       jmp block166115
 
-block165842:
-       jmp block165840
+block166115:
+       jmp block166113
 
-block165840:
-       jmp block165838
+block166113:
+       jmp block166111
 
-block165838:
+block166111:
        movq   %r15, %rdi
        movq   $16, %rsi
        callq collect
-       jmp block165836
+       jmp block166109
 
-block165841:
-       jmp block165839
+block166114:
+       jmp block166112
 
-block165839:
-       jmp block165837
+block166112:
+       jmp block166110
 
-block165837:
+block166110:
        movq   $0, %rdx
-       jmp block165836
+       jmp block166109
 
-block165836:
+block166109:
        movq   free_ptr(%rip), %rdx
        addq   $16, free_ptr(%rip)
        movq   %rdx, %r11
@@ -78,8 +78,13 @@ block165836:
        movq   -24(%r15), %rax
        movq   %rax, 8(%r11)
        movq   $0, %rcx
-       movq   %rdx, %rdx
+       movq   %rdx, %rcx
+       movq   %rcx, %r11
+       movq   8(%r11), %rdx
        movq   %rdx, %r11
+       movq   $42, 8(%r11)
+       movq   $0, %rdx
+       movq   %rcx, %r11
        movq   8(%r11), %rdx
        movq   %rdx, %r11
        movq   8(%r11), %rax

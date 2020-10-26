@@ -5,32 +5,32 @@ start:
        addq   $16, %rcx
        movq   fromspace_end(%rip), %rdx
        cmpq   %rdx, %rcx
-       jl block165848
-       jmp block165849
+       jl block164455
+       jmp block164456
 
-block165848:
-       jmp block165846
+block164456:
+       jmp block164454
 
-block165846:
-       jmp block165844
+block164454:
+       jmp block164452
 
-block165844:
-       movq   $0, %rdx
-       jmp block165843
-
-block165849:
-       jmp block165847
-
-block165847:
-       jmp block165845
-
-block165845:
+block164452:
        movq   %r15, %rdi
        movq   $16, %rsi
        callq collect
-       jmp block165843
+       jmp block164450
 
-block165843:
+block164455:
+       jmp block164453
+
+block164453:
+       jmp block164451
+
+block164451:
+       movq   $0, %rdx
+       jmp block164450
+
+block164450:
        movq   free_ptr(%rip), %rdx
        addq   $16, free_ptr(%rip)
        movq   %rdx, %r11
@@ -38,38 +38,39 @@ block165843:
        movq   %rdx, %r11
        movq   %rbx, 8(%r11)
        movq   $0, %rcx
+       movq   %rdx, %rdx
        movq   %rdx, -24(%r15)
        movq   free_ptr(%rip), %rdx
        movq   %rdx, %rcx
        addq   $16, %rcx
        movq   fromspace_end(%rip), %rdx
        cmpq   %rdx, %rcx
-       jl block165841
-       jmp block165842
+       jl block164448
+       jmp block164449
 
-block165842:
-       jmp block165840
+block164448:
+       jmp block164446
 
-block165840:
-       jmp block165838
+block164449:
+       jmp block164447
 
-block165838:
+block164447:
+       jmp block164445
+
+block164445:
        movq   %r15, %rdi
        movq   $16, %rsi
        callq collect
-       jmp block165836
+       jmp block164443
 
-block165841:
-       jmp block165839
+block164446:
+       jmp block164444
 
-block165839:
-       jmp block165837
-
-block165837:
+block164444:
        movq   $0, %rdx
-       jmp block165836
+       jmp block164443
 
-block165836:
+block164443:
        movq   free_ptr(%rip), %rdx
        addq   $16, free_ptr(%rip)
        movq   %rdx, %r11
@@ -97,7 +98,7 @@ main:
        pushq  %r14
        pushq  %r15
        movq   %rsp, %rbp
-       subq   $376, %rsp
+       subq   $80, %rsp
        movq   $16384, %rdi
        movq   $16, %rsi
        callq initialize
@@ -107,7 +108,7 @@ main:
        jmp start
 conclusion:
        subq   $160, %r15
-       addq   $376, %rsp
+       addq   $80, %rsp
        popq   %r15
        popq   %r14
        popq   %r13

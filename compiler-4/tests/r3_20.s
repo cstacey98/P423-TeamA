@@ -1,36 +1,36 @@
 start:
-       movq   $42, %rbx
+       movq   $0, %rbx
        movq   free_ptr(%rip), %rdx
-       movq   %rdx, %rcx
-       addq   $16, %rcx
-       movq   fromspace_end(%rip), %rdx
-       cmpq   %rdx, %rcx
-       jl block165848
-       jmp block165849
+       movq   %rdx, %rdx
+       addq   $16, %rdx
+       movq   fromspace_end(%rip), %rcx
+       cmpq   %rcx, %rdx
+       jl block164523
+       jmp block164524
 
-block165848:
-       jmp block165846
+block164524:
+       jmp block164522
 
-block165846:
-       jmp block165844
+block164522:
+       jmp block164520
 
-block165844:
-       movq   $0, %rdx
-       jmp block165843
-
-block165849:
-       jmp block165847
-
-block165847:
-       jmp block165845
-
-block165845:
+block164520:
        movq   %r15, %rdi
        movq   $16, %rsi
        callq collect
-       jmp block165843
+       jmp block164518
 
-block165843:
+block164523:
+       jmp block164521
+
+block164521:
+       jmp block164519
+
+block164519:
+       movq   $0, %rdx
+       jmp block164518
+
+block164518:
        movq   free_ptr(%rip), %rdx
        addq   $16, free_ptr(%rip)
        movq   %rdx, %r11
@@ -39,50 +39,56 @@ block165843:
        movq   %rbx, 8(%r11)
        movq   $0, %rcx
        movq   %rdx, -24(%r15)
+       movq   $0, %rbx
        movq   free_ptr(%rip), %rdx
        movq   %rdx, %rcx
        addq   $16, %rcx
        movq   fromspace_end(%rip), %rdx
        cmpq   %rdx, %rcx
-       jl block165841
-       jmp block165842
+       jl block164516
+       jmp block164517
 
-block165842:
-       jmp block165840
+block164516:
+       jmp block164514
 
-block165840:
-       jmp block165838
+block164514:
+       jmp block164512
 
-block165838:
+block164512:
+       movq   $0, %rdx
+       jmp block164511
+
+block164517:
+       jmp block164515
+
+block164515:
+       jmp block164513
+
+block164513:
        movq   %r15, %rdi
        movq   $16, %rsi
        callq collect
-       jmp block165836
+       jmp block164511
 
-block165841:
-       jmp block165839
-
-block165839:
-       jmp block165837
-
-block165837:
-       movq   $0, %rdx
-       jmp block165836
-
-block165836:
+block164511:
        movq   free_ptr(%rip), %rdx
        addq   $16, free_ptr(%rip)
        movq   %rdx, %r11
-       movq   $131, 0(%r11)
+       movq   $3, 0(%r11)
        movq   %rdx, %r11
-       movq   -24(%r15), %rax
-       movq   %rax, 8(%r11)
+       movq   %rbx, 8(%r11)
        movq   $0, %rcx
        movq   %rdx, %rdx
-       movq   %rdx, %r11
-       movq   8(%r11), %rdx
-       movq   %rdx, %r11
-       movq   8(%r11), %rax
+       cmpq   %rdx, -24(%r15)
+       je block164509
+       jmp block164510
+
+block164509:
+       movq   $777, %rax
+       jmp conclusion
+
+block164510:
+       movq   $42, %rax
        jmp conclusion
 
 
@@ -97,7 +103,7 @@ main:
        pushq  %r14
        pushq  %r15
        movq   %rsp, %rbp
-       subq   $376, %rsp
+       subq   $80, %rsp
        movq   $16384, %rdi
        movq   $16, %rsi
        callq initialize
@@ -107,7 +113,7 @@ main:
        jmp start
 conclusion:
        subq   $160, %r15
-       addq   $376, %rsp
+       addq   $80, %rsp
        popq   %r15
        popq   %r14
        popq   %r13

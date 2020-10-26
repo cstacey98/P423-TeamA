@@ -5,32 +5,32 @@ start:
        addq   $16, %rcx
        movq   fromspace_end(%rip), %rdx
        cmpq   %rdx, %rcx
-       jl block165848
-       jmp block165849
+       jl block166027
+       jmp block166028
 
-block165848:
-       jmp block165846
+block166028:
+       jmp block166026
 
-block165846:
-       jmp block165844
+block166026:
+       jmp block166024
 
-block165844:
-       movq   $0, %rdx
-       jmp block165843
-
-block165849:
-       jmp block165847
-
-block165847:
-       jmp block165845
-
-block165845:
+block166024:
        movq   %r15, %rdi
        movq   $16, %rsi
        callq collect
-       jmp block165843
+       jmp block166022
 
-block165843:
+block166027:
+       jmp block166025
+
+block166025:
+       jmp block166023
+
+block166023:
+       movq   $0, %rdx
+       jmp block166022
+
+block166022:
        movq   free_ptr(%rip), %rdx
        addq   $16, free_ptr(%rip)
        movq   %rdx, %r11
@@ -39,44 +39,48 @@ block165843:
        movq   %rbx, 8(%r11)
        movq   $0, %rcx
        movq   %rdx, -24(%r15)
+       movq   $21, %rbx
        movq   free_ptr(%rip), %rdx
        movq   %rdx, %rcx
-       addq   $16, %rcx
+       addq   $24, %rcx
        movq   fromspace_end(%rip), %rdx
        cmpq   %rdx, %rcx
-       jl block165841
-       jmp block165842
+       jl block166020
+       jmp block166021
 
-block165842:
-       jmp block165840
+block166020:
+       jmp block166018
 
-block165840:
-       jmp block165838
+block166018:
+       jmp block166016
 
-block165838:
-       movq   %r15, %rdi
-       movq   $16, %rsi
-       callq collect
-       jmp block165836
-
-block165841:
-       jmp block165839
-
-block165839:
-       jmp block165837
-
-block165837:
+block166016:
        movq   $0, %rdx
-       jmp block165836
+       jmp block166015
 
-block165836:
+block166021:
+       jmp block166019
+
+block166019:
+       jmp block166017
+
+block166017:
+       movq   %r15, %rdi
+       movq   $24, %rsi
+       callq collect
+       jmp block166015
+
+block166015:
        movq   free_ptr(%rip), %rdx
-       addq   $16, free_ptr(%rip)
+       addq   $24, free_ptr(%rip)
        movq   %rdx, %r11
-       movq   $131, 0(%r11)
+       movq   $133, 0(%r11)
        movq   %rdx, %r11
        movq   -24(%r15), %rax
        movq   %rax, 8(%r11)
+       movq   $0, %rcx
+       movq   %rdx, %r11
+       movq   %rbx, 16(%r11)
        movq   $0, %rcx
        movq   %rdx, %rdx
        movq   %rdx, %r11

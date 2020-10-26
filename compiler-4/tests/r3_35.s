@@ -1,101 +1,105 @@
-_start:
-       movq   $777, %rcx
-       movq   _free_ptr(%rip), %rdx
-       movq   %rdx, %rsi
-       addq   $16, %rsi
-       movq   _fromspace_end(%rip), %rdx
-       cmpq   %rdx, %rsi
-       jl _block65340
-       jmp _block65341
+start:
+       movq   $777, %rbx
+       movq   free_ptr(%rip), %rdx
+       movq   %rdx, %rcx
+       addq   $16, %rcx
+       movq   fromspace_end(%rip), %rdx
+       cmpq   %rdx, %rcx
+       jl block165995
+       jmp block165996
 
-_block65340:
-       jmp _block65338
+block165996:
+       jmp block165994
 
-_block65338:
-       jmp _block65336
+block165994:
+       jmp block165992
 
-_block65336:
+block165995:
+       jmp block165993
+
+block165993:
+       jmp block165991
+
+block165991:
        movq   $0, %rdx
-       jmp _block65335
+       jmp block165990
 
-_block65341:
-       jmp _block65339
-
-_block65339:
-       jmp _block65337
-
-_block65337:
+block165992:
        movq   %r15, %rdi
        movq   $16, %rsi
-       callq _collect
-       jmp _block65335
+       callq collect
+       jmp block165990
 
-_block65335:
-       movq   _free_ptr(%rip), %rdx
-       addq   $16, _free_ptr(%rip)
+block165990:
+       movq   free_ptr(%rip), %rdx
+       addq   $16, free_ptr(%rip)
        movq   %rdx, %r11
        movq   $3, 0(%r11)
        movq   %rdx, %r11
-       movq   %rcx, 8(%r11)
+       movq   %rbx, 8(%r11)
        movq   $0, %rcx
+       movq   %rdx, -24(%r15)
+       movq   -24(%r15), %rax
+       movq   %rax, -56(%r15)
+       movq   -24(%r15), %rax
+       movq   %rax, -24(%r15)
+       movq   free_ptr(%rip), %rdx
        movq   %rdx, %rdx
-       movq   %rdx, %rdx
-       movq   %rdx, %rsi
-       movq   _free_ptr(%rip), %rcx
-       movq   %rcx, %rcx
-       addq   $24, %rcx
-       movq   _fromspace_end(%rip), %rdi
-       cmpq   %rdi, %rcx
-       jl _block65333
-       jmp _block65334
+       addq   $24, %rdx
+       movq   fromspace_end(%rip), %rcx
+       cmpq   %rcx, %rdx
+       jl block165988
+       jmp block165989
 
-_block65334:
-       jmp _block65332
+block165988:
+       jmp block165986
 
-_block65332:
-       jmp _block65330
+block165986:
+       jmp block165984
 
-_block65330:
+block165984:
+       movq   $0, %rdx
+       jmp block165983
+
+block165989:
+       jmp block165987
+
+block165987:
+       jmp block165985
+
+block165985:
        movq   %r15, %rdi
        movq   $24, %rsi
-       callq _collect
-       jmp _block65328
+       callq collect
+       jmp block165983
 
-_block65333:
-       jmp _block65331
-
-_block65331:
-       jmp _block65329
-
-_block65329:
-       movq   $0, %rcx
-       jmp _block65328
-
-_block65328:
-       movq   _free_ptr(%rip), %rcx
-       addq   $24, _free_ptr(%rip)
-       movq   %rcx, %r11
+block165983:
+       movq   free_ptr(%rip), %rdx
+       addq   $24, free_ptr(%rip)
+       movq   %rdx, %r11
        movq   $389, 0(%r11)
-       movq   %rcx, %r11
-       movq   %rdx, 8(%r11)
-       movq   $0, %rdi
-       movq   %rcx, %r11
-       movq   %rsi, 16(%r11)
-       movq   $0, %rsi
-       movq   %rcx, %rcx
-       movq   %rcx, %r11
-       movq   8(%r11), %rcx
-       movq   %rcx, %r11
-       movq   $42, 8(%r11)
+       movq   %rdx, %r11
+       movq   -56(%r15), %rax
+       movq   %rax, 8(%r11)
        movq   $0, %rcx
        movq   %rdx, %r11
+       movq   -24(%r15), %rax
+       movq   %rax, 16(%r11)
+       movq   $0, %rcx
+       movq   %rdx, %rdx
+       movq   %rdx, %r11
+       movq   8(%r11), %rdx
+       movq   %rdx, %r11
+       movq   $42, 8(%r11)
+       movq   $0, %rdx
+       movq   -24(%r15), %r11
        movq   8(%r11), %rax
-       jmp _conclusion
+       jmp conclusion
 
 
 
-.globl _main
-_main:
+.globl main
+main:
        pushq  %rsp
        pushq  %rbp
        pushq  %rbx
@@ -104,17 +108,17 @@ _main:
        pushq  %r14
        pushq  %r15
        movq   %rsp, %rbp
-       subq   $336, %rsp
+       subq   $376, %rsp
        movq   $16384, %rdi
        movq   $16, %rsi
-       callq _initialize
-       movq   _rootstack_begin(%rip), %r15
+       callq initialize
+       movq   rootstack_begin(%rip), %r15
        movq $0, (%r15)
-       addq   $16, %r15
-       jmp _start
-_conclusion:
-       subq   $16, %r15
-       addq   $336, %rsp
+       addq   $160, %r15
+       jmp start
+conclusion:
+       subq   $160, %r15
+       addq   $376, %rsp
        popq   %r15
        popq   %r14
        popq   %r13
