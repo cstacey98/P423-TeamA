@@ -138,6 +138,9 @@
                              new-val-type
                              vec-index-type))))])]))))
 
+(define param-regs
+  (list 'rdi 'rsi 'rdx 'rcx 'r8 'r9))
+
 (define (fun-def-name d)
   (match d
     [(Def f (list `[,xs : ,ps] ...) rt info body) f]))
@@ -270,7 +273,7 @@
          (recur
           (Let tmp-var shrunk-1
                (HasType
-                (Prim '< (list shrunk-2 (Var tmp-var)))
+                (Prim '< (list shrunk-2 (HasType (Var tmp-var) 'Integer)))
                 'Boolean)))
          ]
         [(Prim '- (list e1 e2))
@@ -334,19 +337,38 @@
          (Let x shrunk-expr
               shrunk-body)
          #;(get-type shrunk-body)
-         ]))))
+         ]
+        [(Apply fn args)
+         (Apply fn (map recur args))]))))
+
+(define (shrink-def env)
+  (lambda (e)
+    (match e
+      [(Def f (and args (list `[,xs : ,ts] ...)) rt info body)
+       (define new-env (append (map cons xs ts) env))
+       (Def f args rt info ((shrink-exp new-env) body))]
+      #;
+      [whatever
+       (error 'bollocks)])))
 
 (define (shrink p)
   (match p
-    #;
-    [(Program info (HasType body 'Integer))
-     (Program info ((shrink-exp '()) (pe body)))]
-    [(Program info body)
+    [(ProgramDefsExp info defs body)
      ; nice try
      (if (not (HasType? body))
          (set! body ((type-check-exp '()) body))
          (void))
-     (Program info ((shrink-exp '()) body))]))
+     (define new-env
+       (for/list ([d defs])
+         (cons (fun-def-name d) (fun-def-type d))))
+     ; (map displayln defs)
+     (define shrunk-defs
+       (map (shrink-def new-env) defs))
+     (define shrunk-body ((shrink-exp new-env) body))
+     (ProgramDefs
+      info
+      (append shrunk-defs
+              (list (Def 'main '() 'Integer '() shrunk-body))))]))
 
 ; Our symtab is going to be an association list
 ; A table is a [Listof [Pairof Symbol Int]]
@@ -1808,7 +1830,6 @@
 (define test-passes
   (list
    type-check
-   #;
    shrink
    #;
    uniquify
