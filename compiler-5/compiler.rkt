@@ -14,6 +14,7 @@
 (provide
  type-check
  shrink
+ reveal-functions
  uniquify
  expose-allocation
  remove-complex-opera*
@@ -369,6 +370,45 @@
       info
       (append shrunk-defs
               (list (Def 'main '() 'Integer '() shrunk-body))))]))
+
+
+(define (reveal-fun-in-body e)
+  (match e
+    [(HasType doot t)
+     (HasType (reveal-fun-in-body doot) t)]
+    [(Apply
+      (HasType (Var f) ft)
+      args)
+     (Apply
+      (HasType (FunRef f) ft)
+      (map reveal-fun-in-body args))]
+    [y #:when (atomic? y) y]
+    [(Prim op args)
+     (Prim op (map reveal-fun-in-body args))]
+    [(If cnd cnsq alt)
+     (If (reveal-fun-in-body cnd)
+         (reveal-fun-in-body cnsq)
+         (reveal-fun-in-body alt))]
+    [(Let x rhs body)
+     (Let
+      x
+      (reveal-fun-in-body rhs)
+      (reveal-fun-in-body body))]))
+
+(define (reveal-functions p)
+  (match p
+    [(ProgramDefs info defs)
+     (ProgramDefs
+      info
+      (map
+       (lambda (d)
+         (match d
+           [(Def name typed-args rt f-info body)
+            (Def name typed-args rt f-info (reveal-fun-in-body body))]))
+       defs))]))
+
+
+
 
 ; Our symtab is going to be an association list
 ; A table is a [Listof [Pairof Symbol Int]]
@@ -1831,6 +1871,7 @@
   (list
    type-check
    shrink
+   reveal-functions
    #;
    uniquify
    #;
