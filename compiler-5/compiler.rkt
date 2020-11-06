@@ -15,6 +15,7 @@
  type-check
  shrink
  reveal-functions
+ limit-functions
  uniquify
  expose-allocation
  remove-complex-opera*
@@ -408,6 +409,107 @@
        defs))]))
 
 
+(define (first-n n ls)
+  (match ls
+    ['() (values '() '())]
+    [`(,a . ,d)
+     (cond
+       [(zero? n)
+        (values '() ls)]
+       [else
+        (define-values (rec-front rec-back) (first-n (sub1 n) d))
+        (values (cons a rec-front) rec-back)])]))
+
+(define (limit-args args)
+  (begin
+    (define-values (var-params vec-params) (first-n 5 args))
+    (define vec-types
+      (match vec-params
+        [(list `[,xs : ,ts] ...) ts]))
+    (define vec-params-name (gensym 'vec-args-))
+    (append var-params
+            `([,vec-params-name : ,(cons 'Vector vec-types)]))))
+
+(define (get-input-types funref-type)
+  (begin
+    (define-values (inputs _)
+      (first-n (- (length funref-type) 2) funref-type))
+    inputs))
+
+(define (get-output-type funref-type)
+  (last funref-type))
+
+(define (limit-exp body args-assoc new-args)
+  (match body
+    [(HasType (FunRef f) ft)
+     (define param-ts (get-input-types ft))
+     (define output-t (get-output-type ft))
+
+     (define new-param-ts
+       (let-values ([(front back) (first-n 5 param-ts)])
+         (append front
+                 (list (cons 'Vector back)))))
+     (HasType
+      (FunRef f)
+      (append new-param-ts (list '-> output-t)))]
+    [(HasType e t)
+     (HasType (limit-exp e args-assoc new-args) t)]
+    [(Var x)
+     (define index (assv x args-assoc))
+     (if (and index (>= (cdr index) 5))
+         (Prim 'vector-ref (list (HasType (Var (car (list-ind 5 new-args)))
+                                          (caddr (list-ind 5 new-args)))
+                                 (HasType (Int (- (cdr index) 5)) 'Integer)))
+         body)]
+    [e #:when (atomic? e) e]
+    [(Apply f params)
+     (define params-l
+       (map
+        (lambda (p) (limit-exp p args-assoc new-args))
+        params))
+     (define-values (front back) (first-n 5 params-l))
+     (define new-f (limit-exp f args-assoc new-args))
+     (cond
+       [(zero? (length back))
+        (Apply new-f front)]
+       [else
+        (define t-back (map get-type back))
+        (define new-back (HasType (Prim 'vector back) (cons 'Vector t-back)))
+        (Apply new-f (append front (list new-back)))])]
+    [(Prim op args)
+     (Prim op (map (lambda (a) (limit-exp a args-assoc new-args)) args))]
+    [(If cnd cnsq alt)
+     (define cnd-l (limit-exp cnd args-assoc new-args))
+     (define cnsq-l (limit-exp cnsq args-assoc new-args))
+     (define alt-l (limit-exp alt args-assoc new-args))
+     (If cnd-l cnsq-l alt-l)]
+    [(Let x rhs b)
+     (define rhs-l (limit-exp rhs args-assoc new-args))
+     (define b-l (limit-exp b args-assoc new-args))
+     (Let x rhs-l b-l)]))
+
+(define (limit-funs-def def)
+  (match def
+    [(Def f (and args (list `[,xs : ,ts] ...)) rt info body)
+     (define new-args (if (>= (length args) 6)
+                          (limit-args args)
+                          args))
+     (define args-seen -1)
+     (define args-assoc
+       (map
+        (lambda (a)
+          (match a
+            [`[,x : ,t]
+             (set! args-seen (add1 args-seen))
+             `(,x . ,args-seen)]))
+        args))
+     (define new-body (limit-exp body args-assoc new-args))
+     (Def f new-args rt info new-body)]))
+
+(define (limit-functions p)
+  (match p
+    [(ProgramDefs info defs)
+     (ProgramDefs info (map limit-funs-def defs))]))
 
 
 ; Our symtab is going to be an association list
@@ -425,36 +527,57 @@
 
 (define (uniquify-exp symtab)
   (lambda (e)
-    (match e
-      ; TODO (?): make simpler hastype matching (revert but add hastype case)
-      [(HasType expr t)
-       (HasType ((uniquify-exp symtab) expr) t)]
-      [(Var x) (Var (search-symtab symtab x))]
-      [(Int n) (Int n)]
-      [(Bool b) (Bool b)]
-      [(If cnd cnsq alt)
-       (let* ([cnd-uniq ((uniquify-exp symtab) cnd)]
-              [cnsq-uniq ((uniquify-exp symtab) cnsq)]
-              [alt-uniq ((uniquify-exp symtab) alt)])
-         (If cnd-uniq cnsq-uniq alt-uniq))]
-      [(Let x e body)
-       (let* ([e-uniq ((uniquify-exp symtab) e)]
-              [symtab-x (extend-symtab symtab x)]
-              [x-uniq (search-symtab symtab-x x)]
-              [body-uniq ((uniquify-exp symtab-x) body)])
-         
-         (Let x-uniq
-              e-uniq
-              body-uniq))]
-      [(Prim op es)
-       (Prim op (for/list ([e es])
-                  ((uniquify-exp symtab) e)))])))
+    (let ([recur (uniquify-exp symtab)])
+      (match e
+        ; TODO (?): make simpler hastype matching (revert but add hastype case)
+        [(HasType expr t)
+         (HasType (recur expr) t)]
+        [(FunRef f) (FunRef f)]
+        [(Apply f args)
+         (Apply (recur f)
+                (map recur args))]
+        [(Var x) (Var (search-symtab symtab x))]
+        [(Int n) (Int n)]
+        [(Bool b) (Bool b)]
+        [(If cnd cnsq alt)
+         (let* ([cnd-uniq (recur cnd)]
+                [cnsq-uniq (recur cnsq)]
+                [alt-uniq (recur alt)])
+           (If cnd-uniq cnsq-uniq alt-uniq))]
+        [(Let x e body)
+         (let* ([e-uniq (recur e)]
+                [symtab-x (extend-symtab symtab x)]
+                [x-uniq (search-symtab symtab-x x)]
+                [body-uniq ((uniquify-exp symtab-x) body)])
+           
+           (Let x-uniq
+                e-uniq
+                body-uniq))]
+        [(Prim op es)
+         (Prim
+          op
+          (for/list ([e es])
+            (recur e)))]))))
+
+(define (uniquify-def env)
+  (lambda (def)
+    (match def
+      [(Def f (and args (list `[,xs : ,ts] ...)) rt info body)
+       (define new-env
+         (map (lambda (x) (cons x (gensym x))) xs))
+       (define new-args
+         (map (lambda (x t) `[,(cdr x) : ,t]) new-env ts))
+       (Def f
+         new-args
+         rt
+         info
+         ((uniquify-exp (append new-env env)) body))])))
 
 ;; uniquify : R1 -> R1
 (define (uniquify p)
   (match p
-    [(Program info e)
-     (Program info ((uniquify-exp '()) e))]))
+    [(ProgramDefs info defs)
+     (ProgramDefs info (map (uniquify-def '()) defs))]))
 
 
 ; TODO fix and test this
@@ -559,10 +682,11 @@
     [(HasType (Prim op args) t)
      (expose-prim e)]
     [(HasType expr t) (HasType (expose-alloc-exp expr) t)]
-    [(Int n) e]
-    [(Var x) e]
-    [(Bool b) e]
-    [(Void) e]
+    [y #:when (atomic? y) e]
+    [(Apply f args)
+     (Apply (expose-alloc-exp f)
+            (map expose-alloc-exp args))]
+    [(FunRef f) e]
     [(If cnd cnsq alt)
      (define cnd-e (expose-alloc-exp cnd))
      (define cnsq-e (expose-alloc-exp cnsq))
@@ -576,11 +700,15 @@
      (displayln 'this-shant-happen)
      (expose-prim e)]))
 
+(define (expose-alloc-def def)
+  (match def
+    [(Def f args rt info body)
+     (Def f args rt info (expose-alloc-exp body))]))
 
 (define (expose-allocation p)
   (match p
-    [(Program info e)
-     (Program info (expose-alloc-exp e))]))
+    [(ProgramDefs info defs)
+     (ProgramDefs info (map expose-alloc-def defs))]))
 
 
 
@@ -615,15 +743,6 @@
   (match to-atomize
     [(HasType expr t)
      (cond
-       #;
-       [(HasType? to-atomize)
-        (match to-atomize
-          [(HasType expr t)
-           (define-values (expr-rco expr-vars) (rco-atom expr))
-           (if (GlobalValue? expr) (displayln expr-rco) (void))
-           (values
-            (HasType expr-rco t)
-            expr-vars)])]
        [(atomic? expr) (values to-atomize '())]
        [else
         (let ([new-name (gensym 'tmp)])
@@ -636,29 +755,51 @@
     [(Var x) x]
     [(HasType expr t) (get-var-name expr)]))
 
-(define (rco-exp exp)
-  (match exp
+(define (rco-exp e)
+  (match e
     [(HasType expr t)
      (HasType
       (match expr
         [thanks-weixi
          #:when (atomic? thanks-weixi)
          thanks-weixi]
-        [(Allocate n-items types) exp]
-        [(Collect n-bytes) exp]
-        [(GlobalValue name) exp]
+        [(Apply f args)
+         (define-values (atomic-front complex-back)
+           (split-where (compose not atomic?) args))
+         (match complex-back
+           ['() expr]
+           ; if there is nothing complex left, return what we have.
+           ; else, bind the complex operand to a variable (atomic) and recur
+           [`(,complex-a . ,complex-d)
+            (define f^ (rco-exp f))
+            (define-values (new-name bindings) (rco-atom complex-a))
+            (define var-name (get-var-name new-name))
+            (define bound-to (cdr (assv var-name bindings)))
+            (define body-updated
+              (HasType
+               (Apply f^ (append atomic-front
+                                 (list new-name)
+                                 complex-d))
+               t))
+            (Let var-name
+                 (rco-exp bound-to)
+                 (rco-exp body-updated))])]
+        [(FunRef f) expr]
+        [(Allocate n-items types) expr]
+        [(Collect n-bytes) expr]
+        [(GlobalValue name) expr]
         [(If cnd cnsq alt)
          (If (rco-exp cnd)
              (rco-exp cnsq)
              (rco-exp alt))]
-        [(Let x e body)
-         (Let x (rco-exp e) (rco-exp body))]
+        [(Let x rhs body)
+         (Let x (rco-exp rhs) (rco-exp body))]
         [(Prim op es)
          ; split where you find the first complex operand :D
          (define-values (atomic-front complex-back)
-           (split-where (lambda (e) (not (atomic? e))) es))
+           (split-where (compose not atomic?) es))
          (match complex-back
-           ['() (Prim op es)]
+           ['() expr]
            ; if there is nothing complex left, return what we have.
            ; else, bind the complex operand to a variable (atomic) and recur
            [`(,complex-a . ,complex-d)
@@ -676,11 +817,16 @@
                  (rco-exp body-updated))])])
       t)]))
 
+(define (rco-def def)
+  (match def
+    [(Def f args rt info body)
+     (Def f args rt info (rco-exp body))]))
+
 ;; remove-complex-opera* : R1 -> R1
 (define (remove-complex-opera* p)
   (match p
-    [(Program info e)
-     (Program info (rco-exp e))]))
+    [(ProgramDefs info defs)
+     (ProgramDefs info (map rco-def defs))]))
 
 
 ; what we need in this:
@@ -1872,11 +2018,9 @@
    type-check
    shrink
    reveal-functions
-   #;
+   limit-functions
    uniquify
-   #;
    expose-allocation
-   #;
    remove-complex-opera*
    #;
    explicate-control
@@ -1922,40 +2066,6 @@
 
 (define (p prog)
   (displayln (t prog)))
-
-(define vector-test
-  '(let ([x1 (vector 1)])
-      (let ([x2 (vector 2)])
-        (let ([x3 (vector 3)])
-          (let ([x4 (vector 4)])
-            (let ([x5 (vector 5)])
-              (let ([x6 (vector 6)])
-                (let ([x7 (vector 7)])
-                  (let ([x8 (vector 8)])
-                    (let ([x9 (vector 9)])
-                      (let ([z1 (vector 1)])
-                        (let ([z2 (vector 2)])
-                          (let ([z3 (vector 3)])
-                            (let ([z4 (vector 4)])
-                              (let ([z5 (vector 5)])
-                                (let ([z6 (vector 6)])
-                                  (let ([z7 (vector 7)])
-                                    (+ (vector-ref x1 0)
-                                       (+ (vector-ref x2 0)
-                                          (+ (vector-ref x3 0)
-                                             (+ (vector-ref x4 0)
-                                                (+ (vector-ref x5 0)
-                                                   (+ (vector-ref x6 0)
-                                                      (+ (vector-ref x7 0)
-                                                         (+ (vector-ref x8 0)
-                                                            (+ (vector-ref x9 0)
-                                                               (+ (vector-ref z1 0)
-                                                                  (+ (vector-ref z2 0)
-                                                                     (+ (vector-ref z3 0)
-                                                                        (+ (vector-ref z4 0)
-                                                                           (+ (vector-ref z5 0)
-                                                                              (+ (vector-ref z6 0)
-                                                                                 (vector-ref z6 0)))))))))))))))))))))))))))))))))
 
 (define vec-vec-test
   '(vector-ref (vector-ref (vector (vector 42)) 0) 0))
