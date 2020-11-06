@@ -532,7 +532,7 @@
         ; TODO (?): make simpler hastype matching (revert but add hastype case)
         [(HasType expr t)
          (HasType (recur expr) t)]
-        [(FunRef f) (FunRef f)]
+        [(FunRef f) (FunRef (search-symtab symtab f))]
         [(Apply f args)
          (Apply (recur f)
                 (map recur args))]
@@ -577,7 +577,18 @@
 (define (uniquify p)
   (match p
     [(ProgramDefs info defs)
-     (ProgramDefs info (map (uniquify-def '()) defs))]))
+     (define env
+       (foldr
+        (lambda (d envv)
+          (extend-symtab envv (fun-def-name d)))
+        '()
+        defs))
+     (ProgramDefs
+      info
+      (map
+       (uniquify-def
+        env)
+       defs))]))
 
 
 ; TODO fix and test this
@@ -903,10 +914,7 @@
      ; (define-values (expr-expl expr-vars) (explicate-tail expr))
      ; (values (HasType expr-expl t) expr-vars)
      ]
-    [(Var x) (values (Return (Var x)) '())]
-    [(Int n) (values (Return (Int n)) '())]
-    [(Bool b) (values (Return (Bool b)) '())]
-    [(Void) (values (Return (Void)) '())]
+    [e #:when (atomic? e) (values (Return e) '())]
     [(Allocate n-items types)
      (values (Return (Allocate n-items types)) '())]
     [(GlobalValue name)
@@ -963,15 +971,26 @@
                 `(,(HasType (Var lhs) t) . ()))])]
     [whatever (displayln 'frick)]))
 
+(define (explicate-def def)
+  (match def
+    [(Def f args rt info body)
+     (set! cfg-global (unweighted-graph/directed '()))
+     (define-values (block locals) (explicate-tail body))
+     (define blk-name (gensym f))
+     (add-vertex! cfg-global `(,f . ,block))
+     (Def f
+       args
+       rt
+       `((locals . ,locals))
+       (CFG (get-vertices cfg-global)))]))
+
 ;; explicate-control : R1 -> C0
 (define (explicate-control p)
   (match p
-    [(Program info e)
-     (set! cfg-global (unweighted-graph/directed '()))
-     (define-values (start-block start-locals)
-       (explicate-tail e))
-     (add-vertex! cfg-global `(start . ,start-block))
-     (Program (list (cons 'locals start-locals))
+    [(ProgramDefs info defs)
+     (define exp-defs
+       (map explicate-def defs))
+     (ProgramDefs info
                   (CFG (get-vertices cfg-global)))]))
 
 
@@ -2022,7 +2041,6 @@
    uniquify
    expose-allocation
    remove-complex-opera*
-   #;
    explicate-control
    #;
    uncover-locals
