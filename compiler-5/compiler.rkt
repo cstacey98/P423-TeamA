@@ -567,7 +567,7 @@
          (map (lambda (x) (cons x (gensym x))) xs))
        (define new-args
          (map (lambda (x t) `[,(cdr x) : ,t]) new-env ts))
-       (Def f
+       (Def (cdr (assv f env))
          new-args
          rt
          info
@@ -996,7 +996,6 @@
     [(Def f args rt info body)
      (set! cfg-global (unweighted-graph/directed '()))
      (define-values (block locals) (explicate-tail body))
-     (define blk-name (gensym f))
      (add-vertex! cfg-global `(,f . ,block))
      (Def f
        args
@@ -1011,7 +1010,9 @@
      (define exp-defs
        (map explicate-def defs))
      (ProgramDefs info
-                  (CFG (get-vertices cfg-global)))]))
+                  exp-defs
+                  #;(CFG (get-vertices cfg-global))
+                  )]))
 
 
 (define (remove-ht-expr expr)
