@@ -448,7 +448,9 @@
      (define new-param-ts
        (let-values ([(front back) (first-n 5 param-ts)])
          (append front
-                 (list (cons 'Vector back)))))
+                 (if (null? back)
+                     back
+                     (list (cons 'Vector back))))))
      (HasType
       (FunRef f)
       (append new-param-ts (list '-> output-t)))]
@@ -473,6 +475,7 @@
        [(zero? (length back))
         (Apply new-f front)]
        [else
+        (displayln 'whoops)
         (define t-back (map get-type back))
         (define new-back (HasType (Prim 'vector back) (cons 'Vector t-back)))
         (Apply new-f (append front (list new-back)))])]
@@ -567,7 +570,7 @@
          (map (lambda (x) (cons x (gensym x))) xs))
        (define new-args
          (map (lambda (x t) `[,(cdr x) : ,t]) new-env ts))
-       (Def f
+       (Def (cdr (assv f env))
          new-args
          rt
          info
@@ -778,7 +781,18 @@
          (define-values (atomic-front complex-back)
            (split-where (compose not atomic?) args))
          (match complex-back
-           ['() expr]
+           ['()
+            (define f^ (rco-exp f))
+            (define new-fun-name
+              (gensym 'funref-))
+            (HasType
+             (Let new-fun-name f^
+                  (HasType
+                   (Apply
+                    (HasType (Var new-fun-name) (get-type f^))
+                    args)
+                   t))
+             t)]
            ; if there is nothing complex left, return what we have.
            ; else, bind the complex operand to a variable (atomic) and recur
            [`(,complex-a . ,complex-d)
@@ -786,11 +800,14 @@
             (define-values (new-name bindings) (rco-atom complex-a))
             (define var-name (get-var-name new-name))
             (define bound-to (cdr (assv var-name bindings)))
+
             (define body-updated
               (HasType
-               (Apply f^ (append atomic-front
-                                 (list new-name)
-                                 complex-d))
+               (Apply
+                f^
+                (append atomic-front
+                        (list new-name)
+                        complex-d))
                t))
             (Let var-name
                  (rco-exp bound-to)
@@ -973,6 +990,8 @@
         (values
          (Seq (Assign (Var lhs) (Call (get-expr fn) (map get-expr args)))
               c0)
+         '()
+         #;
          `(,(HasType (Var lhs) t) . ()))]
        [(If cnd cnsq alt)
         (define label-1 (gensym 'block))
@@ -988,6 +1007,8 @@
        [whatever
         ; Added (Var lhs) to locals since it is a new local.
         (values (Seq (Assign (Var lhs) (remove-ht-expr expr)) c0)
+                '()
+                #;
                 `(,(HasType (Var lhs) t) . ()))])]
     [whatever (displayln 'frick)]))
 
@@ -996,7 +1017,6 @@
     [(Def f args rt info body)
      (set! cfg-global (unweighted-graph/directed '()))
      (define-values (block locals) (explicate-tail body))
-     (define blk-name (gensym f))
      (add-vertex! cfg-global `(,f . ,block))
      (Def f
        args
@@ -1011,7 +1031,9 @@
      (define exp-defs
        (map explicate-def defs))
      (ProgramDefs info
-                  (CFG (get-vertices cfg-global)))]))
+                  exp-defs
+                  #;(CFG (get-vertices cfg-global))
+                  )]))
 
 
 (define (remove-ht-expr expr)
@@ -1023,17 +1045,22 @@
     [else expr]))
 
 
+(define (uncover-locals-def def)
+  (match def
+    [(Def f args rt `((locals . ,locals)) body)
+     (define proper-locals
+       (map
+        (lambda (ht)
+          (cons (get-var-name (get-expr ht)) (get-type ht)))
+        locals))
+     (Def f args rt `((locals . ,proper-locals)) body)]))
+
 (define (uncover-locals p)
   (match p
-    [(Program (list `(locals . ,has-types)) e)
-     (Program
-      (list
-       `(locals
-         .
-         ,(map (lambda (ht)
-                 (cons (get-var-name (get-expr ht)) (get-type ht)))
-               has-types)))
-      e)]))
+    [(ProgramDefs info defs)
+     (ProgramDefs
+      info
+      (map uncover-locals-def defs))]))
 
 
 ; Checks if two vars are equal.
@@ -1068,9 +1095,6 @@
      (define pm-d
        (arithmetic-shift (vec-types-to-pointer-mask types-d) 1))
      (if (is-vector? type-a)
-         #;
-         (and (list? type-a)
-              (eq? (car type-a) 'Vector))
          (bitwise-ior 1 pm-d)
          pm-d)]))
 
@@ -1081,16 +1105,17 @@
      (list (Instr 'movq (list (Reg 'r15) (Reg 'rdi)))
            (Instr 'movq (list (Imm n-bytes) (Reg 'rsi)))
            (Callq 'collect))]
-    [(Assign var exp)
-     (match exp
+    [(Assign var expr)
+     (match expr
        [(Var x) (list (Instr 'movq (list (Var x) var)))]
        [(Int n) (list (Instr 'movq (list (Imm n) var)))]
-       [(Void) (list (Instr 'movq (list (si-atm exp) var)))]
-       [(Bool b) (list (Instr 'movq (list (si-atm exp) var)))]
-       [(GlobalValue name) (list (Instr 'movq (list (si-atm exp) var)))]
+       [(Void) (list (Instr 'movq (list (si-atm expr) var)))]
+       [(Bool b) (list (Instr 'movq (list (si-atm expr) var)))]
+       ;[(Funref f) (list ())]
+       [(GlobalValue name) (list (Instr 'movq (list (si-atm expr) var)))]
        ; can't really assign collect to anything, as per syntax in book
        [(Collect n-bytes)
-        (si-stmt exp)]
+        (si-stmt expr)]
        [(Allocate len types)
         (define var-prime var)
         (define pointer-mask
@@ -1216,20 +1241,33 @@
            ; (Instr 'set (list cc (ByteReg 'al)))
            (JmpIf cc label-1)
            (Jmp label-2))]
-    [(Return exp)
-     (append (si-stmt (Assign (Reg 'rax) exp))
+    ;[(TailCall funref args)]
+    [(Return expr)
+     (append (si-stmt (Assign (Reg 'rax) expr))
              (list (Jmp 'conclusion)))]
     [(Seq stmt tail-d)
      (append (si-stmt stmt)
              (si-tail tail-d))]))
 
 
+(define (si-def def)
+  (match def
+    [(Def f args rt (and info `((locals . ,locals)))
+       (CFG `((,labels . ,blocks))))
+     (Def f args rt info
+       (CFG
+        (for/list ([label labels]
+                   [block blocks])
+          `(,label . ,(si-tail block)))))]))
+
 ;; select-instructions : C0 -> pseudo-x86
 (define (select-instructions p)
   (match p
-    [(Program info (CFG e))
-     (Program
+    [(ProgramDefs info defs)
+     (ProgramDefs
       info
+      (map si-def defs)
+      #;
       (CFG (map
                (lambda (label-tail)
                  (let* ([label (car label-tail)]
@@ -2062,7 +2100,6 @@
    expose-allocation
    remove-complex-opera*
    explicate-control
-   #;
    uncover-locals
    #;
    select-instructions
