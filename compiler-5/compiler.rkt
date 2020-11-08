@@ -880,6 +880,17 @@
                  (Goto label-1)
                  (Goto label-2))
          '())]
+       [(Apply fn args)
+        (define tmp-var (gensym 'apply-tmp-))
+        (values
+         (Seq
+          (Assign (Var tmp-var)
+                  (Call (get-expr fn) (map get-expr args)))
+          (IfStmt (Prim 'eq? (list (Var tmp-var) (Bool #t)))
+                  (Goto label-1)
+                  (Goto label-2)))
+         `(,(HasType (Var tmp-var) 'Boolean) . ()))]
+       ; ^^^ the type of boolean may change with dynamic types TODO
        [(Prim 'not (list e))
         (explicate-pred e (Goto label-2) (Goto label-1))]
        [(Prim op (list e1 e2))
@@ -915,6 +926,10 @@
      ; (values (HasType expr-expl t) expr-vars)
      ]
     [e #:when (atomic? e) (values (Return e) '())]
+    [(Apply fn args)
+     (values
+      (TailCall (get-expr fn) (map get-expr args))
+      '())]
     [(Allocate n-items types)
      (values (Return (Allocate n-items types)) '())]
     [(GlobalValue name)
@@ -954,6 +969,11 @@
          assign-tail
          (cons (HasType (Var x) (get-type e))
                (append body-vars assign-vars)))]
+       [(Apply fn args)
+        (values
+         (Seq (Assign (Var lhs) (Call (get-expr fn) (map get-expr args)))
+              c0)
+         `(,(HasType (Var lhs) t) . ()))]
        [(If cnd cnsq alt)
         (define label-1 (gensym 'block))
         (add-vertex! cfg-global `(,label-1 . ,c0))
