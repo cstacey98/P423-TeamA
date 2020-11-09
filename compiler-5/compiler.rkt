@@ -2030,16 +2030,20 @@
 (define newline "\n")
 
 
-(define (print-conclusion bytes-needed root-bytes-needed)
-  (string-append (os-label 'conclusion) ":" newline
-                 indent (print-instr
-                         (Instr 'subq (list (Imm root-bytes-needed)
-                                            (Reg 'r15))))
-                        newline
-                 indent (format "addq   $~a, %rsp" bytes-needed) newline
-                 ; indent "popq   %rbp" newline
-                 (print-callee-saved-regs #f)
-                 indent "retq"))
+(define (print-conclusion bytes-needed root-bytes-needed def-label)
+  (let* ([blk-label (format "~a-conclusion" def-label)]
+         [blk-label (string->symbol blk-label)]
+         [blk-label (os-label blk-label)])
+    (string-append
+     blk-label ":" newline
+     indent (print-instr
+             (Instr 'subq (list (Imm root-bytes-needed)
+                                (Reg 'r15))))
+     newline
+     indent (format "addq   $~a, %rsp" bytes-needed) newline
+     ; indent "popq   %rbp" newline
+     (print-callee-saved-regs #f)
+     indent "retq")))
 
 ; save? is a boolean; if true, pushq, if false, popq in reverse order
 (define (print-callee-saved-regs save?)
@@ -2058,29 +2062,34 @@
        ""
        (reverse callee-saved))))
 
-(define (print-main bytes-needed root-bytes-needed)
-  (string-append #;indent ".globl " (os-label 'main) newline
-                 (os-label 'main) ":" newline
-                 ; odd number of callee-saved and subq one register --> boom
-                 ; it's 16-aligned
-                 (print-callee-saved-regs #t)
-                 ; indent "pushq  %rbp" newline
-                 indent "movq   %rsp, %rbp" newline
-                 indent (format "subq   $~a, %rsp" bytes-needed) newline
-                 indent (print-instr
-                         (Instr 'movq (list (Imm 16384) (Reg 'rdi)))) newline
-                 indent (print-instr
-                         (Instr 'movq (list (Imm 16) (Reg 'rsi)))) newline
-                 indent (print-instr (Callq 'initialize)) newline
-                 indent (print-instr
-                         (Instr 'movq (list (Global 'rootstack_begin)
-                                            (Reg 'r15)))) newline
-                 indent "movq $0, (%r15)" newline
-                 indent (print-instr
-                         (Instr 'addq
-                                (list (Imm root-bytes-needed) (Reg 'r15))))
-                        newline
-                 indent "jmp " (os-label 'start)))
+(define (print-main bytes-needed root-bytes-needed def-label)
+  (let* ([blk-label (format "~a-main" def-label)]
+         [blk-label (string->symbol blk-label)]
+         [blk-label (os-label blk-label)])
+    (string-append
+     #;indent ".globl " blk-label newline
+     #;indent ".align 16" newline
+     blk-label ":" newline
+     ; odd number of callee-saved and subq one register --> boom
+     ; it's 16-aligned
+     (print-callee-saved-regs #t)
+     ; indent "pushq  %rbp" newline
+     indent "movq   %rsp, %rbp" newline
+     indent (format "subq   $~a, %rsp" bytes-needed) newline
+     indent (print-instr
+             (Instr 'movq (list (Imm 16384) (Reg 'rdi)))) newline
+     indent (print-instr
+             (Instr 'movq (list (Imm 16) (Reg 'rsi)))) newline
+     indent (print-instr (Callq 'initialize)) newline
+     indent (print-instr
+             (Instr 'movq (list (Global 'rootstack_begin)
+                                (Reg 'r15)))) newline
+     indent "movq $0, (%r15)" newline
+     indent (print-instr
+             (Instr 'addq
+                    (list (Imm root-bytes-needed) (Reg 'r15))))
+     newline
+     indent "jmp " (os-label 'start))))
 
 (define (print-arg arg)
   (match arg
@@ -2103,10 +2112,13 @@
     [(JmpIf cc label) (format "j~a ~a" cc (os-label label))]
     [(Callq label) (format "callq ~a" (os-label label))]))
 
-(define (print-blk label block)
-  (let ([instr+ (match block [(Block _ instructions) instructions])])
+(define (print-blk label block def-label)
+  (let* ([instr+ (match block [(Block _ instructions) instructions])]
+         [blk-label (format "~a-~a" def-label label)]
+         [blk-label (string->symbol blk-label)]
+         [blk-label (os-label blk-label)])
     (string-append
-     (os-label label) ":" newline
+     blk-label ":" newline
      (foldr (lambda (instr so-far)
               (string-append indent (print-instr instr) newline
                              so-far))
@@ -2121,9 +2133,43 @@
          bytes-needed)]
     [whatever bytes-needed]))
 
+(define (print-def def)
+  (match def
+    [(Def f '() rt
+       `((stack-space . ,bytes-needed)
+         (root-stack-space . ,root-bytes-needed))
+       (CFG blocks))
+     (define bn (actual-bytes-needed bytes-needed))
+     (define rbn (actual-bytes-needed root-bytes-needed))
+     (string-append
+      (foldr
+       (lambda (lbl-blk x86)
+         (string-append
+          (print-blk (car lbl-blk) (cdr lbl-blk) f)
+          newline
+          x86))
+       ""
+       blocks)
+      newline
+      #;(print-start start-block)
+      newline
+      (print-main bn rbn)
+      newline
+      (print-conclusion bn rbn))]))
+
 ;; print-x86 : x86 -> string
 (define (print-x86 p)
   (match p
+    [(ProgramDefs info defs)
+     (foldr
+      (lambda (def str)
+        (string-append
+         (print-def def)
+         newline
+         str))
+      ""
+      defs)]
+    #;
     [(Program `((stack-space . ,bytes-needed)
                 (root-stack-space . ,root-bytes-needed))
               (CFG blocks))
@@ -2161,7 +2207,6 @@
    uncover-live
    build-interference
    allocate-registers
-   #;
    patch-instructions
    #;
    print-x86
