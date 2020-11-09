@@ -1907,19 +1907,19 @@
      (define spills
        `(,call-stack-vars-needed . ,root-stack-vars-needed))
      
-     (ProgramDefs
-      (list `(num-spills . ,spills))
-      (CFG
-       (map
-        (lambda (lbl-blk)
-          (define lbl (car lbl-blk))
-          (define blk (cdr lbl-blk))
-          (define new-blk
-            (match blk
-              [(Block bl-info instr+)
-               (Block '() instr+)]))
-          `(,lbl . ,new-blk))
-        cfg-nodes)))]))
+     (Def f '() rt
+       (list `(num-spills . ,spills))
+       (CFG
+        (map
+         (lambda (lbl-blk)
+           (define lbl (car lbl-blk))
+           (define blk (cdr lbl-blk))
+           (define new-blk
+             (match blk
+               [(Block bl-info instr+)
+                (Block '() instr+)]))
+           `(,lbl . ,new-blk))
+         cfg-nodes)))]))
 
 ; TODO: we're giving positive stack locations, which we should not.
 ; this has to do with some vertices being uncolored. maybe we should
@@ -1931,6 +1931,7 @@
   (match p
     [(ProgramDefs info defs)
      (ProgramDefs info (map allocate-regs-def defs))]
+    #;
     [(Program (list `(conflicts . ,intf-graph)
                     `(locals . ,local-vars))
               (CFG nodes))
@@ -1964,6 +1965,12 @@
     ['() '()]
     [`(,instr-a . ,instr-d)
      (match instr-a
+       [(IndirectCallq calling arity)
+        ...]
+       [(TailJmp jmp-to arity)
+        ...]
+       [(Instr 'leaq (list lbl into))
+        ...]
        [(Instr op (list arg))
         (cons instr-a
               (pi-helper instr-d))]
@@ -1975,7 +1982,7 @@
                     (pi-helper instr-d))
             (cons instr-a
                   (pi-helper instr-d)))]
-       [whatever-else ;(Jmp label)
+       [whatever-else
         (cons instr-a
               (pi-helper instr-d))]
        #;
@@ -1987,28 +1994,31 @@
         (cons instr-a
               (pi-helper instr-d))])]))
 
+(define (pi-def def)
+  (match def
+    [(Def f '() rt
+       `(num-spills . (,call-spills . ,root-spills))
+       (CFG nodes))
+     (Def f '() rt
+       `((stack-space . ,(* 8 call-spills))
+         (root-stack-space . ,(* 8 root-spills)))
+       (CFG
+        (map
+         (lambda (node)
+           (let* ([label (car node)]
+                  [blonk (cdr node)]
+                  [block-instr+
+                   (match blonk
+                     [(Block b-info b-instr+) b-instr+])]
+                  [instr+ (pi-helper block-instr+)])
+             `(,label . ,(Block '() instr+))))
+         nodes)))]))
+
 ;; patch-instructions : psuedo-x86 -> x86
 (define (patch-instructions p)
   (match p
-    [(Program (list `(num-spills . (,call-stack . ,root-stack)))
-              (CFG nodes))
-     (Program (list (cons 'stack-space
-                          ; want a non-negative size
-                          (* 8 call-stack))
-                    (cons 'root-stack-space
-                          ; want a non-negative size
-                          (* 8 root-stack)))
-              (CFG
-               (map
-                (lambda (node)
-                  (let* ([label (car node)]
-                         [blonk (cdr node)]
-                         [block-instr+
-                          (match blonk
-                            [(Block b-info b-instr+) b-instr+])]
-                         [instr+ (pi-helper block-instr+)])
-                    `(,label . ,(Block '() instr+))))
-                nodes)))]))
+    [(ProgramDefs info defs)
+     (ProgramDefs info (map pi-def defs))]))
 
 
 (define (os-label label)
