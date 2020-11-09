@@ -1455,29 +1455,53 @@
     [(cons (JmpIf cc label) instr-d)
      ; interference is not changed by jmpif, right?
      (interference-graph (cdr bl-info) instr-d base-g types)]
+    [(cons (TailJmp jmp-to arity) instr-d)
+     base-g]
+    [(cons (IndirectCallq calling arity) instr-d)
+     (define graph-d
+       (interference-graph (cdr bl-info) instr-d base-g types))
+     (for/list ([reg caller-saved])
+       (for/list ([var (car bl-info)])
+         (add-edge! graph-d (Reg reg) var)))
+     ; assume that the function call WILL use collect
+     (for/list ([reg callee-saved])
+       (for/list ([var (car bl-info)])
+         (let ([type (cdr (assv (get-var-name var) types))])
+           (if (is-vector? type)
+               (add-edge! graph-d var (Reg reg))
+               (void)))))
+     graph-d]
     [(cons (Callq label) instr-d)
-     (begin
-       (define graph-d
-         (interference-graph (cdr bl-info) instr-d base-g types))
-       (for/list ([reg caller-saved])
-         (for/list ([var (car bl-info)])
-           ; add-edge! is imperative/has side-effects/mutates graph-d, so we
-           ; abuse the syntax of match clauses here
-           (add-edge! graph-d (Reg reg) var)))
-       (if (eq? label 'collect)
-           (begin
-             (for/list ([reg callee-saved])
-               (for/list ([var (car bl-info)])
-                 (let ([type (cdr (assv (get-var-name var) types))])
-                   (if (is-vector? type)
-                       (add-edge! graph-d var (Reg reg))
-                       (void)))))
-             graph-d)
-           graph-d))]
+     (define graph-d
+       (interference-graph (cdr bl-info) instr-d base-g types))
+     (for/list ([reg caller-saved])
+       (for/list ([var (car bl-info)])
+         ; add-edge! is imperative/has side-effects/mutates graph-d, so we
+         ; abuse the syntax of match clauses here
+         (add-edge! graph-d (Reg reg) var)))
+     (if (eq? label 'collect)
+         (for/list ([reg callee-saved])
+           (for/list ([var (car bl-info)])
+             (let ([type (cdr (assv (get-var-name var) types))])
+               (if (is-vector? type)
+                   (add-edge! graph-d var (Reg reg))
+                   (void)))))
+         (void))
+     graph-d]
     ; we're assuming that instr-a is an (Instr . .)
     [(cons instr-a instr-d)
      (let ([graph-d (interference-graph (cdr bl-info) instr-d base-g types)])
        (match instr-a
+         [(Instr 'leaq (list arg1 arg2))
+          (add-all-var-args (list arg1 arg2) graph-d)
+          (if (Var? arg2)
+              (for/list ([var (car bl-info)])
+                (if (or (vars-eq? arg2 var)
+                        (vars-eq? arg1 var))
+                    'no-interference-leaq
+                    (add-edge! graph-d arg2 var)))
+              'arg2-is-rax-leaq)
+          graph-d]
          ; assumption is that var is a variable (you can't negq an immediate...
          ; right?)
          [(Instr 'negq (list arg))
@@ -1519,15 +1543,6 @@
           graph-d]
          [(Instr 'cmpq (list arg1 arg2))
           'cmpq-writes-to-nothing
-          #;(add-all-var-args (list arg1 arg2) graph-d)
-          #;
-          (if (Var? arg2)
-              (for/list ([var (car bl-info)])
-                (if (or (vars-eq? arg2 var)
-                        (vars-eq? arg1 var))
-                    'no-interference-cmpq
-                    (add-edge! graph-d arg2 var)))
-              'arg2-is-rax-cmpq)
           graph-d]
          [(Instr 'set (list cc arg))
           (add-all-var-args (list cc arg) graph-d)
@@ -1550,17 +1565,6 @@
           graph-d]))]))
 
 ; original map-lambda
-#;(let*
-      ([label (car label-tail)]
-       [instr+ (match (cdr label-tail)
-                 [(Block bl-info instr+) instr+])]
-       [bl-info (match (cdr label-tail)
-                  [(Block bl-info instr+) bl-info])])
-    ; taking cdr of bl-info so that we only use the
-    ; liveness-after sets; the first before-liveness set
-    ; is (guaranteed to be?) empty
-    (let ([g (interference-graph (cdr bl-info) instr+)])
-      g))
 (define (vector-interference bl-info types g)
   (for/list ([lv-set bl-info])
     (for/list ([var lv-set])
@@ -1570,10 +1574,10 @@
               (add-edge! g (Var var) (Reg reg)))
             (void))))))
 
-(define (build-interference p)
-  (match p
-    [(Program (list `(locals . ,types)) (CFG e))
-     (define info (list `(locals . ,types)))
+(define (build-intf-def def)
+  (match def
+    [(Def f '() rt (and info `((locals . ,locals)))
+       (CFG (and e `((,labels . ,blocks) ...))))
      (define intf-graph
        (foldr
         (lambda (label-tail acc-graph)
@@ -1586,7 +1590,8 @@
             (define bl-info
               (match (cdr label-tail)
                 [(Block bl-info instr+) bl-info]))
-            (define new-g (interference-graph (cdr bl-info) instr+ acc-graph types))
+            (define new-g
+              (interference-graph (cdr bl-info) instr+ acc-graph locals))
             (map
              (lambda (var)
                (add-vertex! new-g var))
@@ -1594,35 +1599,13 @@
             new-g))
         (uwu '())
         e))
-     #;(define graphsss
-       (map
-         (lambda (label-tail)
-           (begin
-             (define label
-               (car label-tail))
-             (define instr+
-               (match (cdr label-tail)
-                 [(Block bl-info instr+) instr+]))
-             (define bl-info
-               (match (cdr label-tail)
-                 [(Block bl-info instr+) bl-info]))
-             ; taking cdr of bl-info so that we only use the
-             ; liveness-after sets; the first before-liveness set
-             ; is (guaranteed to be?) empty
-             (define g (interference-graph (cdr bl-info) instr+ base-g types))
-             (set! base-g g)
-             (map
-              (lambda (var)
-                (add-vertex! g var))
-              (car bl-info))
-             #;(displayln (get-vertices g))
-             g))
-         e))
-     (Program
-      (cons (cons 'conflicts intf-graph) info)
-      #;
-      (cons (cons 'conflicts (map get-edges graphsss)) info)
-      (CFG e))]))
+     (Def f '() rt (cons `(conflicts . ,intf-graph) info)
+       (CFG e))]))
+
+(define (build-interference p)
+  (match p
+    [(ProgramDefs info defs)
+     (ProgramDefs info (map build-intf-def defs))]))
 
 (define uncolored -1)
 (define (uncolored? color) (eq? color uncolored))
@@ -1903,6 +1886,40 @@
     ))
 
 
+(define (allocate-regs-def def)
+  (match def
+    [(Def f '() rt
+       (list `(conflicts . ,intf-graph)
+             `(locals . ,local-vars))
+       (CFG nodes))
+
+     (set! color-to-call-stack '())
+     (set! call-stack-vars-needed 0)
+
+     (set! color-to-root-stack '())
+     (set! root-stack-vars-needed 0)
+
+     (define color-map (color-mappings intf-graph local-vars))
+     (define cfg-nodes
+       (for/list ([node nodes])
+         (assign-regs-or-stack node color-map local-vars)))
+     ; don't need the intf-graph anymore
+     (define spills
+       `(,call-stack-vars-needed . ,root-stack-vars-needed))
+     
+     (ProgramDefs
+      (list `(num-spills . ,spills))
+      (CFG
+       (map
+        (lambda (lbl-blk)
+          (define lbl (car lbl-blk))
+          (define blk (cdr lbl-blk))
+          (define new-blk
+            (match blk
+              [(Block bl-info instr+)
+               (Block '() instr+)]))
+          `(,lbl . ,new-blk))
+        cfg-nodes)))]))
 
 ; TODO: we're giving positive stack locations, which we should not.
 ; this has to do with some vertices being uncolored. maybe we should
@@ -1912,10 +1929,11 @@
 ; see: color-mappings
 (define (allocate-registers p)
   (match p
+    [(ProgramDefs info defs)
+     (ProgramDefs info (map allocate-regs-def defs))]
     [(Program (list `(conflicts . ,intf-graph)
                     `(locals . ,local-vars))
               (CFG nodes))
-     #;(displayln (get-edges (car intf-graphs)))
      (let* ([color-map (color-mappings intf-graph local-vars)]
             [cfg-nodes (for/list ([node nodes])
                          (assign-regs-or-stack node color-map local-vars))])
@@ -2132,7 +2150,6 @@
    select-instructions
    uncover-live
    build-interference
-   #;
    allocate-registers
    #;
    patch-instructions
