@@ -1344,11 +1344,11 @@
            (define x (get-name d))
            (define v ((interp-x86-exp env) s))
            ((interp-x86-instr (cons (cons x v) env)) ss)]
-          [(cons (IndirectCallq f) ss)
+          [(cons (IndirectCallq f arity) ss)
            (debug "indirect callq" ast)
            (define f-val ((interp-x86-exp env) f))
            (call-function f-val ss env)]
-          [(cons (TailJmp f) ss)
+          [(cons (TailJmp f arity) ss)
            (debug "tail jmp" ast)
            (define f-val ((interp-x86-exp env) f))
            (call-function f-val '() env)]

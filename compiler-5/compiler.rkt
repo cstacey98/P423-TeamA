@@ -785,14 +785,12 @@
             (define f^ (rco-exp f))
             (define new-fun-name
               (gensym 'funref-))
-            (HasType
-             (Let new-fun-name f^
-                  (HasType
-                   (Apply
-                    (HasType (Var new-fun-name) (get-type f^))
-                    args)
-                   t))
-             t)]
+            (Let new-fun-name f^
+                 (HasType
+                  (Apply
+                   (HasType (Var new-fun-name) (get-type f^))
+                   args)
+                  t))]
            ; if there is nothing complex left, return what we have.
            ; else, bind the complex operand to a variable (atomic) and recur
            [`(,complex-a . ,complex-d)
@@ -1017,7 +1015,8 @@
     [(Def f args rt info body)
      (set! cfg-global (unweighted-graph/directed '()))
      (define-values (block locals) (explicate-tail body))
-     (add-vertex! cfg-global `(,f . ,block))
+     (define f-start (string->symbol (format "start-~a" f)))
+     (add-vertex! cfg-global `(,f-start . ,block))
      (Def f
        args
        rt
@@ -1111,7 +1110,18 @@
        [(Int n) (list (Instr 'movq (list (Imm n) var)))]
        [(Void) (list (Instr 'movq (list (si-atm expr) var)))]
        [(Bool b) (list (Instr 'movq (list (si-atm expr) var)))]
-       ;[(Funref f) (list ())]
+       [(FunRef f) (list (Instr 'leaq (list (FunRef f) var)))]
+       [(Call f args)
+        ; TODO if all hope is lost look here
+        ; (define fun-name (match f [(Var x) x] [(FunRef f_) f_]))
+        (define-values (used-regs _) (first-n (length args) param-regs))
+        (append
+         (for/list
+             ([arg-exp args]
+              [reg used-regs])
+           (Instr 'movq (list (si-atm arg-exp) (Reg reg))))
+         (list (IndirectCallq f (length args))
+               (Instr 'movq (list (Reg 'rax) var))))]
        [(GlobalValue name) (list (Instr 'movq (list (si-atm expr) var)))]
        ; can't really assign collect to anything, as per syntax in book
        [(Collect n-bytes)
@@ -1241,7 +1251,14 @@
            ; (Instr 'set (list cc (ByteReg 'al)))
            (JmpIf cc label-1)
            (Jmp label-2))]
-    ;[(TailCall funref args)]
+    [(TailCall f args)
+     (define-values (used-regs _) (first-n (length args) param-regs))
+     (append
+      (for/list
+          ([arg-exp args]
+           [reg used-regs])
+        (Instr 'movq (list (si-atm arg-exp) (Reg reg))))
+      (list (TailJmp f (length args))))]
     [(Return expr)
      (append (si-stmt (Assign (Reg 'rax) expr))
              (list (Jmp 'conclusion)))]
@@ -1249,32 +1266,36 @@
      (append (si-stmt stmt)
              (si-tail tail-d))]))
 
+(define (si-start start-block xs)
+  (begin
+    (define si-rest (si-tail start-block))
+    (define-values (used-regs _)
+      (first-n (length xs) param-regs))
+    (append (for/list
+                ([x xs]
+                 [reg used-regs])
+              (Instr 'movq (list (Reg reg) (Var x))))
+            si-rest)))
 
 (define (si-def def)
   (match def
-    [(Def f args rt (and info `((locals . ,locals)))
-       (CFG `((,labels . ,blocks))))
-     (Def f args rt info
+    [(Def f (and args `([,xs : ,ts] ...)) rt
+       (and info `((locals . ,locals)))
+       (CFG `((,labels . ,blocks) ...)))
+     (Def f '() rt info ; info may change
        (CFG
         (for/list ([label labels]
                    [block blocks])
-          `(,label . ,(si-tail block)))))]))
+          (let ([fn (if (eq? label (string->symbol (format "start-~a" f)))
+                        (lambda (b) (si-start b xs))
+                        si-tail)])
+            `(,label . ,(Block '() (fn block)))))))]))
 
 ;; select-instructions : C0 -> pseudo-x86
 (define (select-instructions p)
   (match p
     [(ProgramDefs info defs)
-     (ProgramDefs
-      info
-      (map si-def defs)
-      #;
-      (CFG (map
-               (lambda (label-tail)
-                 (let* ([label (car label-tail)]
-                        [tail (cdr label-tail)]
-                        [instr+ (si-tail tail)])
-                   `(,label . ,(Block '() instr+))))
-               e)))]))
+     (ProgramDefs info (map si-def defs))]))
 
 ; removed 'rax
 (define caller-saved (list 'rdx 'rcx 'rsi 'rdi 'r8 'r9 'r10 'r11))
@@ -1297,6 +1318,9 @@
 ; (values (write args) (read args))
 (define (get-write/read instr)
   (match instr
+    [(Instr 'leaq (list arg1 arg2))
+     (values (filter Var? (list arg2))
+             (filter Var? (list arg1)))]
     [(Instr 'addq (list arg1 arg2))
      (values (filter Var? (list arg2))
              (filter Var? (list arg1 arg2)))]
@@ -1313,26 +1337,25 @@
      (values '()
              (filter Var? (list arg1 arg2)))]
     [(Instr 'set (list cc arg))
-     ; we're assuming that the %al bytereg is not usable for liveness
      (values '() '())]
     [(Instr 'movzbq (list arg1 arg2))
      (values (filter Var? (list arg2))
-             ; we're assuming that the %al bytereg is not usable for liveness
-             '())]))
+             '())]
+    [(IndirectCallq calling arity)
+     (values '()
+             (filter Var? (list calling)))]
+    [(TailJmp jmp-to arity)
+     (values '()
+             (filter Var? (list jmp-to)))]
+    [(Jmp label) (values '() '())]
+    [(JmpIf cc label) (values '() '())]
+    [(Callq label) (values '() '())]))
 
-; instr+ is a list
 ; 'fairly simple' - kevin cao's last words
 ; return a (list of (lists of variables that are live at that point))
 (define (liveness instr+ lv-after)
   (match instr+
-    [(cons (Jmp label) '()) (list lv-after)]
-    [(cons (JmpIf cc label) instr-d)
-     (let ([l-d (liveness instr-d lv-after)])
-       (cons lv-after l-d))]
-    [(cons (Callq label) instr-d)
-     (let ([l-d (liveness instr-d lv-after)])
-       (cons (car l-d) l-d))]
-    ; we're assuming that instr-a is an (Instr . .)
+    ['() '(())]
     [(cons instr-a instr-d)
      (let-values
          ([(write-args read-args) (get-write/read instr-a)])
@@ -1359,6 +1382,7 @@
     (begin
       (for/list ([v-data lst])
         (begin
+          (add-vertex! new-g (car v-data))
           (let* ([block (cdr v-data)]
                  [blonk (match block [(Block bl-info instr+) instr+])]
                  [v (car v-data)]
@@ -1367,46 +1391,50 @@
               (add-directed-edge! new-g v u)))))
       new-g)))
 
-(define (uncover-live p)
-  (match p
-    [(Program info (CFG e))
+(define (uncover-live-def def)
+  (match def
+    [(Def f '() rt info (CFG e))
      (define cfg-with-edges
        (isomorph e))
      (define cfg-we-tp (transpose cfg-with-edges))
      (define reverse-top-order
        (tsort cfg-we-tp))
-     (Program
-      info
-      (CFG
-       (foldl
-        (lambda (label cfg)
-          (begin
-            (define block (cdr (assv label e)))
-            (define-values (instr+ bl-info)
-              (match block
-                [(Block bl-info instr+) (values instr+ bl-info)]))
-            (define neighbors (get-neighbors cfg-with-edges label))
-            (define live-after
-              (foldr
-               (lambda (nbr lv-after)
-                 (set-union
-                  lv-after
-                  ; the lv-before of its neighbor
-                  (begin
-                    (match (cdr (assv nbr cfg))
-                      [(Block bl-info instr+)
-                       (car bl-info)]))))
-               '()
-               (filter (lambda (vtx) (not (eq? vtx 'conclusion)))
-                       neighbors)))
-            (define liveness-blk (liveness instr+ live-after))
-            (define blonk (Block liveness-blk instr+))
-            (cons `(,label . ,blonk) cfg)))
-        '()
-        ; remove conclusion from liveness analysis since we have not
-        ; created it yet
-        (filter (lambda (vtx) (not (eq? vtx 'conclusion)))
-                reverse-top-order))))]))
+     (Def f '() rt info
+       (CFG
+        (foldl
+         (lambda (label cfg)
+           (begin
+             (define block (cdr (assv label e)))
+             (define-values (instr+ bl-info)
+               (match block
+                 [(Block bl-info instr+) (values instr+ bl-info)]))
+             (define neighbors (get-neighbors cfg-with-edges label))
+             (define live-after
+               (foldr
+                (lambda (nbr lv-after)
+                  (set-union
+                   lv-after
+                   ; the lv-before of its neighbor
+                   (begin
+                     (match (cdr (assv nbr cfg))
+                       [(Block bl-info instr+)
+                        (car bl-info)]))))
+                '()
+                (filter (lambda (vtx) (not (eq? vtx 'conclusion)))
+                        neighbors)))
+             (define liveness-blk (liveness instr+ live-after))
+             (define blonk (Block liveness-blk instr+))
+             (cons `(,label . ,blonk) cfg)))
+         '()
+         ; remove conclusion from liveness analysis since we have not
+         ; created it yet
+         (filter (lambda (vtx) (not (eq? vtx 'conclusion)))
+                 reverse-top-order))))]))
+
+(define (uncover-live p)
+  (match p
+    [(ProgramDefs info defs)
+     (ProgramDefs info (map uncover-live-def defs))]))
 
 (define uwu unweighted-graph/undirected)
 
@@ -2101,11 +2129,8 @@
    remove-complex-opera*
    explicate-control
    uncover-locals
-   #;
    select-instructions
-   #;
    uncover-live
-   #;
    build-interference
    #;
    allocate-registers
