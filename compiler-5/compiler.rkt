@@ -162,6 +162,12 @@
          (error "body type ~a not equal to return type ~a" (get-type body^) rt))
        (Def f doot rt info body^)])))
 
+(define (types-eq? t1 t2)
+  (or (eq? t1 t2)
+      (and (is-vector? t1)
+           (is-vector? t2)
+           (andmap types-eq? (cdr t1) (cdr t2)))))
+
 (define (type-check-exp env)
   (lambda (e)
     (let ([recur (type-check-exp env)])
@@ -188,7 +194,7 @@
            (error "condition given to if should be bool, given " cnd))
          (define Tc (get-type cnsq-tc))
          (define Ta (get-type alt-tc))
-         (unless (eq? Tc Ta)
+         (unless (types-eq? Tc Ta)
            (error (string-append "consequent and alternative in if should "
                                  "have same type, given ")
                   (list Tc Ta)))
@@ -376,25 +382,42 @@
 (define (reveal-fun-in-body e)
   (match e
     [(HasType doot t)
-     (HasType (reveal-fun-in-body doot) t)]
-    [(Apply
-      (HasType (Var f) ft)
-      args)
-     (Apply
-      (HasType (FunRef f) ft)
-      (map reveal-fun-in-body args))]
-    [y #:when (atomic? y) y]
-    [(Prim op args)
-     (Prim op (map reveal-fun-in-body args))]
-    [(If cnd cnsq alt)
-     (If (reveal-fun-in-body cnd)
-         (reveal-fun-in-body cnsq)
-         (reveal-fun-in-body alt))]
-    [(Let x rhs body)
-     (Let
-      x
-      (reveal-fun-in-body rhs)
-      (reveal-fun-in-body body))]))
+     (define doot-rev
+       (match doot
+         [(Apply
+           (HasType (Var f) ft)
+           args)
+          (Apply
+           (HasType (FunRef f) ft)
+           (map reveal-fun-in-body args))]
+         ; TODO closures :(
+         [(Apply
+           ex ; (HasType ex ft)
+           args)
+          (define ex-rev
+            (reveal-fun-in-body ex))
+          (define clos
+            (gensym 'clos))
+          (Let clos ex-rev
+               (HasType
+                (Apply
+                 (HasType (FunRef clos) (get-type ex))
+                 (map reveal-fun-in-body args))
+                t))]
+         [y #:when (atomic? y) y]
+         [(Prim op args)
+          (Prim op (map reveal-fun-in-body args))]
+         [(If cnd cnsq alt)
+          (If (reveal-fun-in-body cnd)
+              (reveal-fun-in-body cnsq)
+              (reveal-fun-in-body alt))]
+         [(Let x rhs body)
+          (Let
+           x
+           (reveal-fun-in-body rhs)
+           (reveal-fun-in-body body))]))
+     (HasType doot-rev t)]
+    ))
 
 (define (reveal-functions p)
   (match p
@@ -1048,12 +1071,15 @@
 
 (define (uncover-locals-def def)
   (match def
-    [(Def f args rt `((locals . ,locals)) body)
+    [(Def f (and args `([,xs : ,ts] ...)) rt `((locals . ,locals)) body)
      (define proper-locals
        (map
         (lambda (ht)
           (cons (get-var-name (get-expr ht)) (get-type ht)))
         locals))
+     (set! proper-locals
+           (append proper-locals
+                   (map cons xs ts)))
      (Def f args rt `((locals . ,proper-locals)) body)]))
 
 (define (uncover-locals p)

@@ -1391,7 +1391,10 @@ Changelog:
   (define input-prog
     (call-with-input-file path
       (lambda (f)
-        `(program () ,@(for/list ([e (in-port read f)]) e)))))
+        (define frick
+          `(,@(for/list ([e (in-port read f)]) e)))
+        `(program () ,(reverse (cdr (reverse frick)))
+                  ,(last frick)))))
   (define parsed-prog (parse-program input-prog))
   (debug "utilities/read-program" parsed-prog)
   parsed-prog)
