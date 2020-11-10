@@ -1308,6 +1308,7 @@
   (not (not (memv r caller-saved))))
 
 (define callee-saved (list 'rsp 'rbp 'rbx 'r12 'r13 'r14 'r15))
+(define callee-saved-to-save (list 'rsp 'rbp 'rbx 'r12 'r13 'r14))
 ; membership predicate
 (define (callee-saved? r)
   (not (not (memv r callee-saved))))
@@ -2050,14 +2051,14 @@
          (string-append indent (format "pushq  %~a" next-reg) newline
                         string-so-far))
        ""
-       callee-saved)
+       callee-saved-to-save)
       ; if restore, ie if not save
       (foldr
        (lambda (next-reg string-so-far)
          (string-append indent (format "popq   %~a" next-reg) newline
                         string-so-far))
        ""
-       (reverse callee-saved))))
+       (reverse callee-saved-to-save))))
 
 (define (print-main bytes-needed root-bytes-needed def-label is-main-main?)
   (let* ([blk-label (if is-main-main? 'main def-label)]
@@ -2105,7 +2106,7 @@
      (format "j~a ~a~a" cc (os-label def-label) label)]
     [(TailJmp jmp-to arity)
      (string-append
-      (print-callee-saved-regs #f) newline indent
+      (print-callee-saved-regs #f) indent
       (format "jmp *%~a" (Reg-name jmp-to)))]
     [(IndirectCallq calling arity)
      (format "callq *~a" (print-arg calling))]
@@ -2117,7 +2118,7 @@
            (Instr 'movq (list (Imm 16384) (Reg 'rdi)))
            'dummylabel) newline
    indent (print-instr
-           (Instr 'movq (list (Imm 16) (Reg 'rsi)))
+           (Instr 'movq (list (Imm 16384) (Reg 'rsi)))
            'dummylabel) newline
    indent (print-instr (Callq 'initialize) 'dummylabel) newline
    indent (print-instr
