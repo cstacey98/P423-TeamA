@@ -1015,7 +1015,9 @@
     [(Def f args rt info body)
      (set! cfg-global (unweighted-graph/directed '()))
      (define-values (block locals) (explicate-tail body))
-     (define f-start (string->symbol (format "start-~a" f)))
+     (define f-start 'start
+       #;(string->symbol (format "start~a" f))
+       )
      (add-vertex! cfg-global `(,f-start . ,block))
      (Def f
        args
@@ -1286,7 +1288,9 @@
        (CFG
         (for/list ([label labels]
                    [block blocks])
-          (let ([fn (if (eq? label (string->symbol (format "start-~a" f)))
+          (let ([fn (if (eq? label 'start
+                             #;(string->symbol (format "start~a" f))
+                             )
                         (lambda (b) (si-start b xs))
                         si-tail)])
             `(,label . ,(Block '() (fn block)))))))]))
@@ -1840,32 +1844,34 @@
   (match instr+
     ['() '()]
     [`(,instr-a . ,instr-d)
-     (cons
-      (match instr-a
-        [(Instr op args)
-         (Instr
-          op
-          (map
-           (lambda (arg)
-             (if (Var? arg)
-                 (color-to-location
-                  ; assv uses eqv instead of our vars-eq? :|
-                  ; the cdr is the color
-                  (let ([x (assf (lambda (var) (vars-eq? var arg)) color-map)])
-                    ; HOW IS THIS POSSIBLE
-                    (if (eqv? x #f)
-                        (raise (format "var ~a not found" x))
-                        (cdr x)))
-                  type-mappings
-                  arg)
-                 arg))
-           args))]
-        [whatever ; (Jmp label)
-         instr-a]
-        #;[(JmpIf cc label) instr-a]
-        #;[(Callq label) instr-a]
-        )
-      (assign-regs-helper instr-d color-map type-mappings))]))
+     (define arg-to-color
+       (lambda (arg)
+         (if (Var? arg)
+             (color-to-location
+              ; assv uses eqv instead of our vars-eq? :|
+              ; the cdr is the color
+              (let ([x (assf (lambda (var) (vars-eq? var arg))
+                             color-map)])
+                ; HOW IS THIS POSSIBLE
+                (if (eqv? x #f)
+                    (raise (format "var ~a not found" x))
+                    (cdr x)))
+              type-mappings
+              arg)
+             arg)))
+     (define new-instr-a
+       (match instr-a
+         [(Instr op args)
+          (Instr op (map arg-to-color args))]
+         [(TailJmp jmp-to arity)
+          (TailJmp (arg-to-color jmp-to) arity)]
+         [(IndirectCallq calling arity)
+          (IndirectCallq (arg-to-color calling) arity)]
+         [whatever
+          instr-a]))
+     (define new-instr-d
+       (assign-regs-helper instr-d color-map type-mappings))
+     (cons new-instr-a new-instr-d)]))
 
 ; returns a new label-block where vars are replaced with regs or stack-locations
 (define (assign-regs-or-stack node color-map type-mappings)
@@ -1930,18 +1936,7 @@
 (define (allocate-registers p)
   (match p
     [(ProgramDefs info defs)
-     (ProgramDefs info (map allocate-regs-def defs))]
-    #;
-    [(Program (list `(conflicts . ,intf-graph)
-                    `(locals . ,local-vars))
-              (CFG nodes))
-     (let* ([color-map (color-mappings intf-graph local-vars)]
-            [cfg-nodes (for/list ([node nodes])
-                         (assign-regs-or-stack node color-map local-vars))])
-       ; don't need the intf-graph anymore
-       (Program (list `(num-spills . (,call-stack-vars-needed
-                                      . ,root-stack-vars-needed)))
-                (CFG cfg-nodes)))]))
+     (ProgramDefs info (map allocate-regs-def defs))]))
 
 (define book-example
   #;'(let ([v 1])
@@ -1965,12 +1960,21 @@
     ['() '()]
     [`(,instr-a . ,instr-d)
      (match instr-a
-       [(IndirectCallq calling arity)
-        ...]
        [(TailJmp jmp-to arity)
-        ...]
+        (if (and (Reg? jmp-to)
+                 (eq? 'rax (Reg-name jmp-to)))
+            (cons instr-a
+                  (pi-helper instr-d))
+            (append (list (Instr 'movq (list jmp-to (Reg 'rax)))
+                          (TailJmp (Reg 'rax) arity))
+                    (pi-helper instr-d)))]
        [(Instr 'leaq (list lbl into))
-        ...]
+        (if (mem-ref? into)
+            (append (list (Instr 'leaq (list lbl (Reg 'rax)))
+                          (Instr 'movq (list (Reg 'rax) into)))
+                    (pi-helper instr-d))
+            (cons instr-a
+                  (pi-helper instr-d)))]
        [(Instr op (list arg))
         (cons instr-a
               (pi-helper instr-d))]
@@ -1984,20 +1988,12 @@
                   (pi-helper instr-d)))]
        [whatever-else
         (cons instr-a
-              (pi-helper instr-d))]
-       #;
-       [(JmpIf cc label)
-        (cons instr-a
-              (pi-helper instr-d))]
-      #;
-       [(Callq label)
-        (cons instr-a
               (pi-helper instr-d))])]))
 
 (define (pi-def def)
   (match def
     [(Def f '() rt
-       `(num-spills . (,call-spills . ,root-spills))
+       `((num-spills . (,call-spills . ,root-spills)))
        (CFG nodes))
      (Def f '() rt
        `((stack-space . ,(* 8 call-spills))
@@ -2031,14 +2027,15 @@
 
 
 (define (print-conclusion bytes-needed root-bytes-needed def-label)
-  (let* ([blk-label (format "~a-conclusion" def-label)]
+  (let* ([blk-label (format "~aconclusion" def-label)]
          [blk-label (string->symbol blk-label)]
          [blk-label (os-label blk-label)])
     (string-append
      blk-label ":" newline
      indent (print-instr
              (Instr 'subq (list (Imm root-bytes-needed)
-                                (Reg 'r15))))
+                                (Reg 'r15)))
+             def-label)
      newline
      indent (format "addq   $~a, %rsp" bytes-needed) newline
      ; indent "popq   %rbp" newline
@@ -2062,9 +2059,8 @@
        ""
        (reverse callee-saved))))
 
-(define (print-main bytes-needed root-bytes-needed def-label)
-  (let* ([blk-label (format "~a-main" def-label)]
-         [blk-label (string->symbol blk-label)]
+(define (print-main bytes-needed root-bytes-needed def-label is-main-main?)
+  (let* ([blk-label (if is-main-main? 'main def-label)]
          [blk-label (os-label blk-label)])
     (string-append
      #;indent ".globl " blk-label newline
@@ -2076,31 +2072,26 @@
      ; indent "pushq  %rbp" newline
      indent "movq   %rsp, %rbp" newline
      indent (format "subq   $~a, %rsp" bytes-needed) newline
-     indent (print-instr
-             (Instr 'movq (list (Imm 16384) (Reg 'rdi)))) newline
-     indent (print-instr
-             (Instr 'movq (list (Imm 16) (Reg 'rsi)))) newline
-     indent (print-instr (Callq 'initialize)) newline
-     indent (print-instr
-             (Instr 'movq (list (Global 'rootstack_begin)
-                                (Reg 'r15)))) newline
+     (if is-main-main? (string-append main-main newline) "")
      indent "movq $0, (%r15)" newline
      indent (print-instr
              (Instr 'addq
-                    (list (Imm root-bytes-needed) (Reg 'r15))))
-     newline
-     indent "jmp " (os-label 'start))))
+                    (list (Imm root-bytes-needed) (Reg 'r15)))
+             def-label) newline
+     indent (print-instr (Jmp 'start) def-label))))
 
 (define (print-arg arg)
   (match arg
     ; Not sure if we should prefix these names with _?
+    [(FunRef f) (format "~a(%rip)" (os-label f))]
     [(Global name) (format "~a(%rip)" (os-label name))]
     [(Imm n) (format "$~a" n)]
     [(Reg reg) (format "%~a" reg)]
     [(ByteReg bytereg) (format "%~a" bytereg)]
-    [(Deref reg bytes) (format "~a(%~a)" bytes reg)]))
+    [(Deref reg bytes-needed)
+     (format "~a(%~a)" bytes-needed reg)]))
 
-(define (print-instr instr)
+(define (print-instr instr def-label)
   (match instr
     [(Instr 'set (list cc arg))
      (format "set~a   ~a" cc (print-arg arg))]
@@ -2108,19 +2099,41 @@
      (format "~a   ~a, ~a" op (print-arg arg1) (print-arg arg2))]
     [(Instr op (list arg))
      (format "~a   ~a" op (print-arg arg))]
-    [(Jmp label) (format "jmp ~a" (os-label label))]
-    [(JmpIf cc label) (format "j~a ~a" cc (os-label label))]
+    [(Jmp label)
+     (format "jmp ~a~a" (os-label def-label) label)]
+    [(JmpIf cc label)
+     (format "j~a ~a~a" cc (os-label def-label) label)]
+    [(TailJmp jmp-to arity)
+     (string-append
+      (print-callee-saved-regs #f) newline indent
+      (format "jmp *%~a" (Reg-name jmp-to)))]
+    [(IndirectCallq calling arity)
+     (format "callq *~a" (print-arg calling))]
     [(Callq label) (format "callq ~a" (os-label label))]))
+
+(define main-main
+  (string-append
+   indent (print-instr
+           (Instr 'movq (list (Imm 16384) (Reg 'rdi)))
+           'dummylabel) newline
+   indent (print-instr
+           (Instr 'movq (list (Imm 16) (Reg 'rsi)))
+           'dummylabel) newline
+   indent (print-instr (Callq 'initialize) 'dummylabel) newline
+   indent (print-instr
+           (Instr 'movq (list (Global 'rootstack_begin)
+                              (Reg 'r15)))
+           'dummylabel)))
 
 (define (print-blk label block def-label)
   (let* ([instr+ (match block [(Block _ instructions) instructions])]
-         [blk-label (format "~a-~a" def-label label)]
+         [blk-label (format "~a~a" def-label label)]
          [blk-label (string->symbol blk-label)]
          [blk-label (os-label blk-label)])
     (string-append
      blk-label ":" newline
      (foldr (lambda (instr so-far)
-              (string-append indent (print-instr instr) newline
+              (string-append indent (print-instr instr def-label) newline
                              so-far))
             ""
             instr+))))
@@ -2141,6 +2154,9 @@
        (CFG blocks))
      (define bn (actual-bytes-needed bytes-needed))
      (define rbn (actual-bytes-needed root-bytes-needed))
+     (define is-main-main?
+       (eqv? 'main
+             (string->symbol (substring (symbol->string f) 0 4))))
      (string-append
       (foldr
        (lambda (lbl-blk x86)
@@ -2153,9 +2169,9 @@
       newline
       #;(print-start start-block)
       newline
-      (print-main bn rbn)
+      (print-main bn rbn f is-main-main?)
       newline
-      (print-conclusion bn rbn))]))
+      (print-conclusion bn rbn f))]))
 
 ;; print-x86 : x86 -> string
 (define (print-x86 p)
@@ -2168,28 +2184,7 @@
          newline
          str))
       ""
-      defs)]
-    #;
-    [(Program `((stack-space . ,bytes-needed)
-                (root-stack-space . ,root-bytes-needed))
-              (CFG blocks))
-     (displayln 'finishing-a-test...)
-     (string-append
-      (foldr
-       (lambda (lbl-blk x86)
-         (string-append (print-blk (car lbl-blk) (cdr lbl-blk))
-                        newline
-                        x86))
-       ""
-       blocks)
-      newline
-      #;(print-start start-block)
-      newline
-      (print-main (actual-bytes-needed bytes-needed)
-                  (actual-bytes-needed root-bytes-needed))
-      newline
-      (print-conclusion (actual-bytes-needed bytes-needed)
-                        (actual-bytes-needed root-bytes-needed)))]))
+      defs)]))
 
 ; all the passes needed to be used in (t .)
 (define test-passes
@@ -2208,18 +2203,17 @@
    build-interference
    allocate-registers
    patch-instructions
-   #;
    print-x86
    ))
 
 ; t = test, just so I can type it quickly lol
 ; p should be a quoted R1 program list
-(define (t p defs)
+(define (t p_ defs)
   (testttt (parse-program
             `(program
               ()
               ,defs
-              ,p))
+              ,p_))
            test-passes))
 
 ; helper, just does natural recursion
@@ -2236,8 +2230,8 @@
     [`(,pass-a . ,passes-d)
      (compile (pass-a program) passes-d)]))
 
-(define (p prog)
-  (displayln (t prog)))
+(define (p prog defs)
+  (displayln (t prog defs)))
 
 (define vec-vec-test
   '(vector-ref (vector-ref (vector (vector 42)) 0) 0))
