@@ -1399,7 +1399,7 @@
 ; return a (list of (lists of variables that are live at that point))
 (define (liveness instr+ lv-after)
   (match instr+
-    ['() '(())]
+    ['() '(,lv-after)]
     [(cons instr-a instr-d)
      (define-values (write-args read-args) (get-write/read instr-a))
      (define liveness-d (liveness instr-d lv-after))
@@ -1462,6 +1462,8 @@
                        [(Block bl-info instr+)
                         (car bl-info)]))))
                 '()
+                #;
+                neighbors
                 (filter (lambda (vtx) (not (eq? vtx 'conclusion)))
                         neighbors)))
              (define liveness-blk (liveness instr+ live-after))
@@ -1504,7 +1506,8 @@
        (interference-graph (cdr bl-info) instr-d base-g types))
      (for/list ([reg caller-saved])
        (for/list ([var (car bl-info)])
-         (add-edge! graph-d (Reg reg) var)))
+         (and (Var? var)
+              (add-edge! graph-d (Reg reg) var))))
      ; assume that the function call WILL use collect
      (for/list ([reg callee-saved])
        (for/list ([var (car bl-info)])
@@ -1519,8 +1522,6 @@
        (interference-graph (cdr bl-info) instr-d base-g types))
      (for/list ([reg caller-saved])
        (for/list ([var (car bl-info)])
-         ; add-edge! is imperative/has side-effects/mutates graph-d, so we
-         ; abuse the syntax of match clauses here
          (add-edge! graph-d (Reg reg) var)))
      (if (eq? label 'collect)
          (for/list ([reg callee-saved])
@@ -1532,7 +1533,6 @@
                         (void))))))
          (void))
      graph-d]
-    ; we're assuming that instr-a is an (Instr . .)
     [(cons instr-a instr-d)
      (let ([graph-d (interference-graph (cdr bl-info) instr-d base-g types)])
        (match instr-a
@@ -1546,8 +1546,6 @@
                     (add-edge! graph-d arg2 var)))
               'arg2-is-rax-leaq)
           graph-d]
-         ; assumption is that var is a variable (you can't negq an immediate...
-         ; right?)
          [(Instr 'negq (list arg))
           (add-all-var-args (list arg) graph-d)
           (if (interferable? arg)
