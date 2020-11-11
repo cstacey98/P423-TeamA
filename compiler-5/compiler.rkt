@@ -378,6 +378,10 @@
       (append shrunk-defs
               (list (Def 'main '() 'Integer '() shrunk-body))))]))
 
+(define (is-function? t)
+  (match t
+    [`(,ts ... -> rt) #t]
+    [whatever #f]))
 
 (define (reveal-fun-in-body e)
   (match e
@@ -392,18 +396,23 @@
            (map reveal-fun-in-body args))]
          ; TODO closures :(
          [(Apply
-           ex ; (HasType ex ft)
+           ex #;(HasType ex ft)
            args)
           (define ex-rev
             (reveal-fun-in-body ex))
           (define clos
-            (gensym 'clos))
+            (gensym 'clossss))
+          (displayln ex-rev)
           (Let clos ex-rev
                (HasType
                 (Apply
                  (HasType (FunRef clos) (get-type ex))
                  (map reveal-fun-in-body args))
                 t))]
+         [(Var x)
+          (if (is-function? t)
+              (FunRef x)
+              doot)]
          [y #:when (atomic? y) y]
          [(Prim op args)
           (Prim op (map reveal-fun-in-body args))]
@@ -498,7 +507,7 @@
        [(zero? (length back))
         (Apply new-f front)]
        [else
-        (displayln 'whoops)
+        #;(displayln 'whoops)
         (define t-back (map get-type back))
         (define new-back (HasType (Prim 'vector back) (cons 'Vector t-back)))
         (Apply new-f (append front (list new-back)))])]
@@ -1346,38 +1355,42 @@
 ; negq: rw
 ; callq: u what
 
+(define (interferable? arg)
+  (or (Var? arg)
+      (Reg? arg)))
+
 ; (values (write args) (read args))
 (define (get-write/read instr)
   (match instr
     [(Instr 'leaq (list arg1 arg2))
-     (values (filter Var? (list arg2))
-             (filter Var? (list arg1)))]
+     (values (filter interferable? (list arg2))
+             (filter interferable? (list arg1)))]
     [(Instr 'addq (list arg1 arg2))
-     (values (filter Var? (list arg2))
-             (filter Var? (list arg1 arg2)))]
+     (values (filter interferable? (list arg2))
+             (filter interferable? (list arg1 arg2)))]
     [(Instr 'movq (list arg1 arg2))
-     (values (filter Var? (list arg2))
-             (filter Var? (list arg1)))]
+     (values (filter interferable? (list arg2))
+             (filter interferable? (list arg1)))]
     [(Instr 'negq (list arg))
-     (values (filter Var? (list arg))
-             (filter Var? (list arg)))]
+     (values (filter interferable? (list arg))
+             (filter interferable? (list arg)))]
     [(Instr 'xorq (list arg1 arg2))
-     (values (filter Var? (list arg2))
-             (filter Var? (list arg1 arg2)))]
+     (values (filter interferable? (list arg2))
+             (filter interferable? (list arg1 arg2)))]
     [(Instr 'cmpq (list arg1 arg2))
      (values '()
-             (filter Var? (list arg1 arg2)))]
+             (filter interferable? (list arg1 arg2)))]
     [(Instr 'set (list cc arg))
      (values '() '())]
     [(Instr 'movzbq (list arg1 arg2))
-     (values (filter Var? (list arg2))
+     (values (filter interferable? (list arg2))
              '())]
     [(IndirectCallq calling arity)
      (values '()
-             (filter Var? (list calling)))]
+             (filter interferable? (list calling)))]
     [(TailJmp jmp-to arity)
      (values '()
-             (filter Var? (list jmp-to)))]
+             (filter interferable? (list jmp-to)))]
     [(Jmp label) (values '() '())]
     [(JmpIf cc label) (values '() '())]
     [(Callq label) (values '() '())]))
@@ -1388,15 +1401,13 @@
   (match instr+
     ['() '(())]
     [(cons instr-a instr-d)
-     (let-values
-         ([(write-args read-args) (get-write/read instr-a)])
-       (let* ([liveness-d (liveness instr-d lv-after)]
-              [liveness-a (set-union
-                           (set-subtract (car liveness-d)
-                                         write-args)
-                           read-args)])
-         (cons liveness-a
-               liveness-d)))]))
+     (define-values (write-args read-args) (get-write/read instr-a))
+     (define liveness-d (liveness instr-d lv-after))
+     (define liveness-a
+       (set-union (set-subtract (car liveness-d) write-args)
+                  read-args))
+     (cons liveness-a
+           liveness-d)]))
 
 (define (get-neighbors* block)
   (match block
@@ -1497,10 +1508,11 @@
      ; assume that the function call WILL use collect
      (for/list ([reg callee-saved])
        (for/list ([var (car bl-info)])
-         (let ([type (cdr (assv (get-var-name var) types))])
-           (if (is-vector? type)
-               (add-edge! graph-d var (Reg reg))
-               (void)))))
+         (and (Var? var)
+              (let ([type (cdr (assv (get-var-name var) types))])
+                (if (is-vector? type)
+                    (add-edge! graph-d var (Reg reg))
+                    (void))))))
      graph-d]
     [(cons (Callq label) instr-d)
      (define graph-d
@@ -1513,10 +1525,11 @@
      (if (eq? label 'collect)
          (for/list ([reg callee-saved])
            (for/list ([var (car bl-info)])
-             (let ([type (cdr (assv (get-var-name var) types))])
-               (if (is-vector? type)
-                   (add-edge! graph-d var (Reg reg))
-                   (void)))))
+             (and (Var? var)
+                  (let ([type (cdr (assv (get-var-name var) types))])
+                    (if (is-vector? type)
+                        (add-edge! graph-d var (Reg reg))
+                        (void))))))
          (void))
      graph-d]
     ; we're assuming that instr-a is an (Instr . .)
@@ -1525,7 +1538,7 @@
        (match instr-a
          [(Instr 'leaq (list arg1 arg2))
           (add-all-var-args (list arg1 arg2) graph-d)
-          (if (Var? arg2)
+          (if (interferable? arg2)
               (for/list ([var (car bl-info)])
                 (if (or (vars-eq? arg2 var)
                         (vars-eq? arg1 var))
@@ -1537,7 +1550,7 @@
          ; right?)
          [(Instr 'negq (list arg))
           (add-all-var-args (list arg) graph-d)
-          (if (Var? arg)
+          (if (interferable? arg)
               (for/list ([var (car bl-info)])
                 (if (not (vars-eq? arg var))
                     (add-edge! graph-d arg var)
@@ -1546,7 +1559,7 @@
           graph-d]
          [(Instr 'addq (list arg1 arg2))
           (add-all-var-args (list arg1 arg2) graph-d)
-          (if (Var? arg2)
+          (if (interferable? arg2)
               (for/list ([var (car bl-info)])
                 (if (not (vars-eq? arg2 var))
                     (add-edge! graph-d arg2 var)
@@ -1555,7 +1568,7 @@
           graph-d]
          [(Instr 'movq (list arg1 arg2))
           (add-all-var-args (list arg1 arg2) graph-d)
-          (if (Var? arg2)
+          (if (interferable? arg2)
               (for/list ([var (car bl-info)])
                 (if (or (vars-eq? arg2 var)
                         (vars-eq? arg1 var))
@@ -1565,7 +1578,7 @@
           graph-d]
          [(Instr 'xorq (list arg1 arg2))
           (add-all-var-args (list arg1 arg2) graph-d)
-          (if (Var? arg2)
+          (if (interferable? arg2)
               (for/list ([var (car bl-info)])
                 (if (not (vars-eq? arg2 var))
                     (add-edge! graph-d arg2 var)
@@ -1577,7 +1590,7 @@
           graph-d]
          [(Instr 'set (list cc arg))
           (add-all-var-args (list cc arg) graph-d)
-          (if (Var? arg)
+          (if (interferable? arg)
               (for/list ([var (car bl-info)])
                 (if (vars-eq? arg var)
                     'no-interference-set
@@ -1586,7 +1599,7 @@
           graph-d]
          [(Instr 'movzbq (list arg1 arg2))
           (add-all-var-args (list arg1 arg2) graph-d)
-          (if (Var? arg2)
+          (if (interferable? arg2)
               (for/list ([var (car bl-info)])
                 (if (or (vars-eq? arg2 var)
                         (vars-eq? arg1 var))
@@ -1612,22 +1625,21 @@
      (define intf-graph
        (foldr
         (lambda (label-tail acc-graph)
-          (begin
-            (define label
-              (car label-tail))
-            (define instr+
-              (match (cdr label-tail)
-                [(Block bl-info instr+) instr+]))
-            (define bl-info
-              (match (cdr label-tail)
-                [(Block bl-info instr+) bl-info]))
-            (define new-g
-              (interference-graph (cdr bl-info) instr+ acc-graph locals))
-            (map
-             (lambda (var)
-               (add-vertex! new-g var))
-             (car bl-info))
-            new-g))
+          (define label
+            (car label-tail))
+          (define instr+
+            (match (cdr label-tail)
+              [(Block bl-info instr+) instr+]))
+          (define bl-info
+            (match (cdr label-tail)
+              [(Block bl-info instr+) bl-info]))
+          (define new-g
+            (interference-graph (cdr bl-info) instr+ acc-graph locals))
+          (map
+           (lambda (var)
+             (add-vertex! new-g var))
+           (car bl-info))
+          new-g)
         (uwu '())
         e))
      (Def f '() rt (cons `(conflicts . ,intf-graph) info)
@@ -1646,32 +1658,26 @@
 ; graph -> (listof (pairof var (pairof color saturation)))
 (define (initial-sat-avail g)
   (map (lambda (v)
-         (let* ([v-edges
-                 (filter
-                  (lambda (edge) (vars-eq? (car edge) v))
-                  (get-edges g))]
-                [v-neighbors (map cadr v-edges)]
-                [v-regs (filter
-                         (lambda
-                             (v)
-                           (and (Reg? v)
-                                (match v
-                                  [(Reg reg-name)
-                                   (assv reg-name usable-regs-to-color)])))
-                         v-neighbors)]
-                [v-saturations
-                 (map
-                  (lambda (reg)
-                    (let* ([reg-name
-                           (match reg
-                             [(Reg reg-name) reg-name])]
-                          [collll (assv reg-name usable-regs-to-color)])
-                      ; good god
-                      (cdr collll)))
-                  v-regs)])
-           ; we want to make sure that each v cannot go in any registers to
-           ; which they already have an edge, no matter what
-           `(,v . (,uncolored . ,v-saturations))))
+         (define v-edges
+           (filter
+            (lambda (edge) (vars-eq? (car edge) v))
+            (get-edges g)))
+         (define v-neighbors (map cadr v-edges))
+         (define v-regs
+           (filter
+            (lambda (v)
+              (and (Reg? v)
+                   (assv (Reg-name v) usable-regs-to-color)))
+            v-neighbors))
+         (define v-saturations
+           (map
+            (lambda (reg)
+              [define collll (assv (Reg-name reg) usable-regs-to-color)]
+              (cdr collll))
+            v-regs))
+         ; we want to make sure that each v cannot go in any registers to
+         ; which they already have an edge, no matter what
+         `(,v . (,uncolored . ,v-saturations)))
        (get-vertices g)))
 
 ; saturations is the shape of the output of initial-sat-avail.

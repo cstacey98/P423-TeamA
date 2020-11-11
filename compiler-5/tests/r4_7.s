@@ -1,13 +1,13 @@
-_id355127start:
+_id70287start:
        movq   %rdi, %rdx
        movq   %rdx, %rax
-       jmp _id355127conclusion
+       jmp _id70287conclusion
 
 
 
-.globl _id355127
+.globl _id70287
 .align 16
-_id355127:
+_id70287:
        pushq  %rsp
        pushq  %rbp
        pushq  %rbx
@@ -18,8 +18,8 @@ _id355127:
        subq   $0, %rsp
        movq $0, (%r15)
        addq   $0, %r15
-       jmp _id355127start
-_id355127conclusion:
+       jmp _id70287start
+_id70287conclusion:
        subq   $0, %r15
        addq   $0, %rsp
        popq   %r14
@@ -29,17 +29,17 @@ _id355127conclusion:
        popq   %rbp
        popq   %rsp
        retq
-_inc355126start:
+_inc70286start:
        movq   %rdi, %rdx
        movq   %rdx, %rax
        addq   $1, %rax
-       jmp _inc355126conclusion
+       jmp _inc70286conclusion
 
 
 
-.globl _inc355126
+.globl _inc70286
 .align 16
-_inc355126:
+_inc70286:
        pushq  %rsp
        pushq  %rbp
        pushq  %rbx
@@ -50,8 +50,8 @@ _inc355126:
        subq   $0, %rsp
        movq $0, (%r15)
        addq   $0, %r15
-       jmp _inc355126start
-_inc355126conclusion:
+       jmp _inc70286start
+_inc70286conclusion:
        subq   $0, %r15
        addq   $0, %rsp
        popq   %r14
@@ -61,12 +61,12 @@ _inc355126conclusion:
        popq   %rbp
        popq   %rsp
        retq
-_main355125start:
-       leaq   _id355127(%rip), %rdx
+_main70285start:
+       leaq   _id70287(%rip), %rdx
        movq   %rcx, %rdi
        callq *%rdx
        movq   %rax, %rdx
-       leaq   _clos355130(%rip), %rdx
+       leaq   _clossss70290(%rip), %rdx
        movq   $41, %rdi
        movq   %rdx, %rax
               popq   %r14
@@ -96,8 +96,8 @@ _main:
        movq   _rootstack_begin(%rip), %r15
        movq $0, (%r15)
        addq   $0, %r15
-       jmp _main355125start
-_main355125conclusion:
+       jmp _main70285start
+_main70285conclusion:
        subq   $0, %r15
        addq   $0, %rsp
        popq   %r14

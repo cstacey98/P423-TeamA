@@ -1,15 +1,15 @@
-_add355155start:
+_add70315start:
        movq   %rdi, %rdx
        movq   %rsi, %rcx
        movq   %rdx, %rax
        addq   %rcx, %rax
-       jmp _add355155conclusion
+       jmp _add70315conclusion
 
 
 
-.globl _add355155
+.globl _add70315
 .align 16
-_add355155:
+_add70315:
        pushq  %rsp
        pushq  %rbp
        pushq  %rbx
@@ -20,8 +20,8 @@ _add355155:
        subq   $0, %rsp
        movq $0, (%r15)
        addq   $0, %r15
-       jmp _add355155start
-_add355155conclusion:
+       jmp _add70315start
+_add70315conclusion:
        subq   $0, %r15
        addq   $0, %rsp
        popq   %r14
@@ -31,8 +31,8 @@ _add355155conclusion:
        popq   %rbp
        popq   %rsp
        retq
-_main355154start:
-       leaq   _add355155(%rip), %rdx
+_main70314start:
+       leaq   _add70315(%rip), %rdx
        movq   $20, %rdi
        movq   $22, %rsi
        movq   %rdx, %rax
@@ -63,8 +63,8 @@ _main:
        movq   _rootstack_begin(%rip), %r15
        movq $0, (%r15)
        addq   $0, %r15
-       jmp _main355154start
-_main355154conclusion:
+       jmp _main70314start
+_main70314conclusion:
        subq   $0, %r15
        addq   $0, %rsp
        popq   %r14

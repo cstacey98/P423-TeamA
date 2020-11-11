@@ -1,32 +1,32 @@
-_sum355092start:
+_sum70252start:
        movq   %rdi, %rbx
        movq   $1, %rax
        cmpq   %rax, %rbx
-       je _sum355092block355100
-       jmp _sum355092block355101
+       je _sum70252block70260
+       jmp _sum70252block70261
 
-_sum355092block355100:
+_sum70252block70260:
        movq   $1, %rax
-       jmp _sum355092conclusion
+       jmp _sum70252conclusion
 
-_sum355092block355101:
+_sum70252block70261:
        movq   $1, %rdx
        negq   %rdx
        movq   %rbx, %rcx
        addq   %rdx, %rcx
-       leaq   _sum355092(%rip), %rdx
+       leaq   _sum70252(%rip), %rdx
        movq   %rcx, %rdi
        callq *%rdx
        movq   %rax, %rdx
        movq   %rbx, %rax
        addq   %rdx, %rax
-       jmp _sum355092conclusion
+       jmp _sum70252conclusion
 
 
 
-.globl _sum355092
+.globl _sum70252
 .align 16
-_sum355092:
+_sum70252:
        pushq  %rsp
        pushq  %rbp
        pushq  %rbx
@@ -37,8 +37,8 @@ _sum355092:
        subq   $0, %rsp
        movq $0, (%r15)
        addq   $0, %r15
-       jmp _sum355092start
-_sum355092conclusion:
+       jmp _sum70252start
+_sum70252conclusion:
        subq   $0, %r15
        addq   $0, %rsp
        popq   %r14
@@ -48,29 +48,29 @@ _sum355092conclusion:
        popq   %rbp
        popq   %rsp
        retq
-_main355091start:
-       leaq   _sum355092(%rip), %rdx
+_main70251start:
+       leaq   _sum70252(%rip), %rdx
        movq   $3, %rdi
        callq *%rdx
        movq   %rax, %rdx
        movq   $6, %rax
        cmpq   %rax, %rdx
-       je _main355091block355104
-       jmp _main355091block355105
+       je _main70251block70264
+       jmp _main70251block70265
 
-_main355091block355104:
-       jmp _main355091block355102
+_main70251block70264:
+       jmp _main70251block70262
 
-_main355091block355102:
+_main70251block70265:
+       jmp _main70251block70263
+
+_main70251block70262:
        movq   $42, %rax
-       jmp _main355091conclusion
+       jmp _main70251conclusion
 
-_main355091block355105:
-       jmp _main355091block355103
-
-_main355091block355103:
+_main70251block70263:
        movq   $777, %rax
-       jmp _main355091conclusion
+       jmp _main70251conclusion
 
 
 
@@ -91,8 +91,8 @@ _main:
        movq   _rootstack_begin(%rip), %r15
        movq $0, (%r15)
        addq   $0, %r15
-       jmp _main355091start
-_main355091conclusion:
+       jmp _main70251start
+_main70251conclusion:
        subq   $0, %r15
        addq   $0, %rsp
        popq   %r14

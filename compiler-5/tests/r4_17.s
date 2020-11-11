@@ -1,4 +1,4 @@
-_main354293start:
+_main69453start:
        movq   $0, %rdx
        movq   $1, %rcx
        movq   $2, %rcx
@@ -50,36 +50,36 @@ _main354293start:
        movq   $48, %rcx
        movq   $49, %rcx
        movq   _free_ptr(%rip), %rdx
-       movq   %rdx, %rdx
-       addq   $408, %rdx
-       movq   _fromspace_end(%rip), %rcx
-       cmpq   %rcx, %rdx
-       jl _main354293block354405
-       jmp _main354293block354406
+       movq   %rdx, %rcx
+       addq   $408, %rcx
+       movq   _fromspace_end(%rip), %rdx
+       cmpq   %rdx, %rcx
+       jl _main69453block69565
+       jmp _main69453block69566
 
-_main354293block354405:
-       jmp _main354293block354403
+_main69453block69566:
+       jmp _main69453block69564
 
-_main354293block354403:
-       jmp _main354293block354401
+_main69453block69564:
+       jmp _main69453block69562
 
-_main354293block354401:
-       movq   $0, %rdx
-       jmp _main354293block354400
-
-_main354293block354406:
-       jmp _main354293block354404
-
-_main354293block354404:
-       jmp _main354293block354402
-
-_main354293block354402:
+_main69453block69562:
        movq   %r15, %rdi
        movq   $408, %rsi
        callq _collect
-       jmp _main354293block354400
+       jmp _main69453block69560
 
-_main354293block354400:
+_main69453block69565:
+       jmp _main69453block69563
+
+_main69453block69563:
+       jmp _main69453block69561
+
+_main69453block69561:
+       movq   $0, %rdx
+       jmp _main69453block69560
+
+_main69453block69560:
        movq   _free_ptr(%rip), %rsi
        addq   $408, _free_ptr(%rip)
        movq   %rsi, %r11
@@ -237,7 +237,7 @@ _main354293block354400:
        movq   %rsi, %rdx
        movq   %rdx, %r11
        movq   344(%r11), %rax
-       jmp _main354293conclusion
+       jmp _main69453conclusion
 
 
 
@@ -258,8 +258,8 @@ _main:
        movq   _rootstack_begin(%rip), %r15
        movq $0, (%r15)
        addq   $0, %r15
-       jmp _main354293start
-_main354293conclusion:
+       jmp _main69453start
+_main69453conclusion:
        subq   $0, %r15
        addq   $0, %rsp
        popq   %r14

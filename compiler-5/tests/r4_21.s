@@ -1,22 +1,26 @@
-_tail-sum354731start:
+_tail-sum69891start:
        movq   %rdi, %rcx
-       movq   %rsi, %rdi
+       movq   %rsi, %rdx
        movq   $0, %rax
        cmpq   %rax, %rcx
-       je _tail-sum354731block354740
-       jmp _tail-sum354731block354741
+       je _tail-sum69891block69900
+       jmp _tail-sum69891block69901
 
-_tail-sum354731block354741:
-       movq   $1, %rdx
-       negq   %rdx
+_tail-sum69891block69900:
+       movq   %rdx, %rax
+       jmp _tail-sum69891conclusion
+
+_tail-sum69891block69901:
+       movq   $1, %rdi
+       negq   %rdi
        movq   %rcx, %rsi
-       addq   %rdx, %rsi
-       movq   %rcx, %rdx
-       addq   %rdi, %rdx
-       leaq   _tail-sum354731(%rip), %rcx
+       addq   %rdi, %rsi
+       movq   %rcx, %rcx
+       addq   %rdx, %rcx
+       leaq   _tail-sum69891(%rip), %rdx
        movq   %rsi, %rdi
-       movq   %rdx, %rsi
-       movq   %rcx, %rax
+       movq   %rcx, %rsi
+       movq   %rdx, %rax
               popq   %r14
        popq   %r13
        popq   %r12
@@ -25,15 +29,11 @@ _tail-sum354731block354741:
        popq   %rsp
        jmp *%rax
 
-_tail-sum354731block354740:
-       movq   %rdi, %rax
-       jmp _tail-sum354731conclusion
 
 
-
-.globl _tail-sum354731
+.globl _tail-sum69891
 .align 16
-_tail-sum354731:
+_tail-sum69891:
        pushq  %rsp
        pushq  %rbp
        pushq  %rbx
@@ -44,8 +44,8 @@ _tail-sum354731:
        subq   $0, %rsp
        movq $0, (%r15)
        addq   $0, %r15
-       jmp _tail-sum354731start
-_tail-sum354731conclusion:
+       jmp _tail-sum69891start
+_tail-sum69891conclusion:
        subq   $0, %r15
        addq   $0, %rsp
        popq   %r14
@@ -55,15 +55,15 @@ _tail-sum354731conclusion:
        popq   %rbp
        popq   %rsp
        retq
-_main354730start:
-       leaq   _tail-sum354731(%rip), %rdx
+_main69890start:
+       leaq   _tail-sum69891(%rip), %rdx
        movq   $5, %rdi
        movq   $0, %rsi
        callq *%rdx
        movq   %rax, %rdx
        movq   %rdx, %rax
        addq   $27, %rax
-       jmp _main354730conclusion
+       jmp _main69890conclusion
 
 
 
@@ -84,8 +84,8 @@ _main:
        movq   _rootstack_begin(%rip), %r15
        movq $0, (%r15)
        addq   $0, %r15
-       jmp _main354730start
-_main354730conclusion:
+       jmp _main69890start
+_main69890conclusion:
        subq   $0, %r15
        addq   $0, %rsp
        popq   %r14
