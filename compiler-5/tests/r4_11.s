@@ -1,52 +1,52 @@
-_f67888start:
-       movq   %rdi, %rdx
-       movq   %rsi, %rcx
+_f51start:
+       movq   %rdi, %rcx
+       movq   %rsi, %rdx
        movq   $100, %rax
-       cmpq   %rax, %rdx
-       je _f67888block67917
-       jmp _f67888block67918
+       cmpq   %rax, %rcx
+       je _f51block80
+       jmp _f51block81
 
-_f67888block67918:
-       movq   %rdx, %rsi
+_f51block81:
+       movq   %rcx, %rsi
        addq   $1, %rsi
-       movq   %rcx, %r11
+       movq   %rdx, %r11
        movq   8(%r11), %rcx
        movq   _free_ptr(%rip), %rdx
-       movq   %rdx, %rcx
-       addq   $16, %rcx
-       movq   _fromspace_end(%rip), %rdx
-       cmpq   %rdx, %rcx
-       jl _f67888block67915
-       jmp _f67888block67916
+       movq   %rdx, %rdx
+       addq   $16, %rdx
+       movq   _fromspace_end(%rip), %rcx
+       cmpq   %rcx, %rdx
+       jl _f51block78
+       jmp _f51block79
 
-_f67888block67916:
-       jmp _f67888block67914
+_f51block79:
+       jmp _f51block77
 
-_f67888block67914:
-       jmp _f67888block67912
+_f51block77:
+       jmp _f51block75
 
-_f67888block67912:
+_f51block78:
+       jmp _f51block76
+
+_f51block76:
+       jmp _f51block74
+
+_f51block80:
+       movq   %rdx, %r11
+       movq   8(%r11), %rax
+       jmp _f51conclusion
+
+_f51block75:
        movq   %r15, %rdi
        movq   $16, %rsi
        callq _collect
-       jmp _f67888block67910
+       jmp _f51block73
 
-_f67888block67917:
-       movq   %rcx, %r11
-       movq   8(%r11), %rax
-       jmp _f67888conclusion
-
-_f67888block67915:
-       jmp _f67888block67913
-
-_f67888block67913:
-       jmp _f67888block67911
-
-_f67888block67911:
+_f51block74:
        movq   $0, %rdx
-       jmp _f67888block67910
+       jmp _f51block73
 
-_f67888block67910:
+_f51block73:
        movq   _free_ptr(%rip), %rdx
        addq   $16, _free_ptr(%rip)
        movq   %rdx, %r11
@@ -55,11 +55,11 @@ _f67888block67910:
        movq   %rcx, 8(%r11)
        movq   $0, %rcx
        movq   %rdx, %rcx
-       leaq   _f67888(%rip), %rdx
+       leaq   _f51(%rip), %rdx
        movq   %rsi, %rdi
        movq   %rcx, %rsi
        movq   %rdx, %rax
-              popq   %r14
+       popq   %r14
        popq   %r13
        popq   %r12
        popq   %rbx
@@ -69,10 +69,10 @@ _f67888block67910:
 
 
 
-.globl _f67888
+.globl _f51
 .align 16
-_f67888:
-       pushq  %rsp
+_f51:
+pushq  %rsp
        pushq  %rbp
        pushq  %rbx
        pushq  %r12
@@ -82,8 +82,8 @@ _f67888:
        subq   $0, %rsp
        movq $0, (%r15)
        addq   $0, %r15
-       jmp _f67888start
-_f67888conclusion:
+       jmp _f51start
+_f51conclusion:
        subq   $0, %r15
        addq   $0, %rsp
        popq   %r14
@@ -93,39 +93,39 @@ _f67888conclusion:
        popq   %rbp
        popq   %rsp
        retq
-_main67887start:
+_main50start:
        movq   $42, %rdx
        movq   _free_ptr(%rip), %rdx
        movq   %rdx, %rcx
        addq   $16, %rcx
        movq   _fromspace_end(%rip), %rdx
        cmpq   %rdx, %rcx
-       jl _main67887block67924
-       jmp _main67887block67925
+       jl _main50block87
+       jmp _main50block88
 
-_main67887block67924:
-       jmp _main67887block67922
+_main50block87:
+       jmp _main50block85
 
-_main67887block67922:
-       jmp _main67887block67920
+_main50block85:
+       jmp _main50block83
 
-_main67887block67920:
+_main50block83:
        movq   $0, %rdx
-       jmp _main67887block67919
+       jmp _main50block82
 
-_main67887block67925:
-       jmp _main67887block67923
+_main50block88:
+       jmp _main50block86
 
-_main67887block67923:
-       jmp _main67887block67921
+_main50block86:
+       jmp _main50block84
 
-_main67887block67921:
+_main50block84:
        movq   %r15, %rdi
        movq   $16, %rsi
        callq _collect
-       jmp _main67887block67919
+       jmp _main50block82
 
-_main67887block67919:
+_main50block82:
        movq   _free_ptr(%rip), %rcx
        addq   $16, _free_ptr(%rip)
        movq   %rcx, %r11
@@ -134,11 +134,11 @@ _main67887block67919:
        movq   %rdx, 8(%r11)
        movq   $0, %rdx
        movq   %rcx, %rcx
-       leaq   _f67888(%rip), %rdx
+       leaq   _f51(%rip), %rdx
        movq   $0, %rdi
        movq   %rcx, %rsi
        movq   %rdx, %rax
-              popq   %r14
+       popq   %r14
        popq   %r13
        popq   %r12
        popq   %rbx
@@ -151,7 +151,7 @@ _main67887block67919:
 .globl _main
 .align 16
 _main:
-       pushq  %rsp
+pushq  %rsp
        pushq  %rbp
        pushq  %rbx
        pushq  %r12
@@ -165,8 +165,8 @@ _main:
        movq   _rootstack_begin(%rip), %r15
        movq $0, (%r15)
        addq   $0, %r15
-       jmp _main67887start
-_main67887conclusion:
+       jmp _main50start
+_main50conclusion:
        subq   $0, %r15
        addq   $0, %rsp
        popq   %r14

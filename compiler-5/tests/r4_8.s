@@ -1,36 +1,36 @@
-_even70295start:
+_even2457start:
        movq   %rdi, %rcx
        movq   $0, %rax
        cmpq   %rax, %rcx
-       je _even70295block70305
-       jmp _even70295block70306
+       je _even2457block2467
+       jmp _even2457block2468
 
-_even70295block70305:
+_even2457block2468:
+       movq   $1, %rdx
+       negq   %rdx
+       movq   %rcx, %rcx
+       addq   %rdx, %rcx
+       leaq   _odd2456(%rip), %rdx
+       movq   %rcx, %rdi
+       movq   %rdx, %rax
+       popq   %r14
+       popq   %r13
+       popq   %r12
+       popq   %rbx
+       popq   %rbp
+       popq   %rsp
+       jmp *%rax
+
+_even2457block2467:
        movq   $1, %rax
-       jmp _even70295conclusion
-
-_even70295block70306:
-       movq   $1, %rdx
-       negq   %rdx
-       movq   %rcx, %rcx
-       addq   %rdx, %rcx
-       leaq   _odd70294(%rip), %rdx
-       movq   %rcx, %rdi
-       movq   %rdx, %rax
-              popq   %r14
-       popq   %r13
-       popq   %r12
-       popq   %rbx
-       popq   %rbp
-       popq   %rsp
-       jmp *%rax
+       jmp _even2457conclusion
 
 
 
-.globl _even70295
+.globl _even2457
 .align 16
-_even70295:
-       pushq  %rsp
+_even2457:
+pushq  %rsp
        pushq  %rbp
        pushq  %rbx
        pushq  %r12
@@ -40,8 +40,8 @@ _even70295:
        subq   $0, %rsp
        movq $0, (%r15)
        addq   $0, %r15
-       jmp _even70295start
-_even70295conclusion:
+       jmp _even2457start
+_even2457conclusion:
        subq   $0, %r15
        addq   $0, %rsp
        popq   %r14
@@ -51,22 +51,26 @@ _even70295conclusion:
        popq   %rbp
        popq   %rsp
        retq
-_odd70294start:
+_odd2456start:
        movq   %rdi, %rcx
        movq   $0, %rax
        cmpq   %rax, %rcx
-       je _odd70294block70307
-       jmp _odd70294block70308
+       je _odd2456block2469
+       jmp _odd2456block2470
 
-_odd70294block70308:
+_odd2456block2469:
+       movq   $0, %rax
+       jmp _odd2456conclusion
+
+_odd2456block2470:
        movq   $1, %rdx
        negq   %rdx
        movq   %rcx, %rcx
        addq   %rdx, %rcx
-       leaq   _even70295(%rip), %rdx
+       leaq   _even2457(%rip), %rdx
        movq   %rcx, %rdi
        movq   %rdx, %rax
-              popq   %r14
+       popq   %r14
        popq   %r13
        popq   %r12
        popq   %rbx
@@ -74,16 +78,12 @@ _odd70294block70308:
        popq   %rsp
        jmp *%rax
 
-_odd70294block70307:
-       movq   $0, %rax
-       jmp _odd70294conclusion
 
 
-
-.globl _odd70294
+.globl _odd2456
 .align 16
-_odd70294:
-       pushq  %rsp
+_odd2456:
+pushq  %rsp
        pushq  %rbp
        pushq  %rbx
        pushq  %r12
@@ -93,8 +93,8 @@ _odd70294:
        subq   $0, %rsp
        movq $0, (%r15)
        addq   $0, %r15
-       jmp _odd70294start
-_odd70294conclusion:
+       jmp _odd2456start
+_odd2456conclusion:
        subq   $0, %r15
        addq   $0, %rsp
        popq   %r14
@@ -104,36 +104,36 @@ _odd70294conclusion:
        popq   %rbp
        popq   %rsp
        retq
-_main70293start:
-       leaq   _even70295(%rip), %rdx
+_main2455start:
+       leaq   _even2457(%rip), %rdx
        movq   $2, %rdi
        callq *%rdx
        movq   %rax, %rdx
        movq   $1, %rax
        cmpq   %rax, %rdx
-       je _main70293block70311
-       jmp _main70293block70312
+       je _main2455block2473
+       jmp _main2455block2474
 
-_main70293block70311:
-       jmp _main70293block70309
+_main2455block2474:
+       jmp _main2455block2472
 
-_main70293block70312:
-       jmp _main70293block70310
+_main2455block2473:
+       jmp _main2455block2471
 
-_main70293block70309:
+_main2455block2471:
        movq   $42, %rax
-       jmp _main70293conclusion
+       jmp _main2455conclusion
 
-_main70293block70310:
+_main2455block2472:
        movq   $0, %rax
-       jmp _main70293conclusion
+       jmp _main2455conclusion
 
 
 
 .globl _main
 .align 16
 _main:
-       pushq  %rsp
+pushq  %rsp
        pushq  %rbp
        pushq  %rbx
        pushq  %r12
@@ -147,8 +147,8 @@ _main:
        movq   _rootstack_begin(%rip), %r15
        movq $0, (%r15)
        addq   $0, %r15
-       jmp _main70293start
-_main70293conclusion:
+       jmp _main2455start
+_main2455conclusion:
        subq   $0, %r15
        addq   $0, %rsp
        popq   %r14

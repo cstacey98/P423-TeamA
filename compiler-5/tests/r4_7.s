@@ -1,14 +1,14 @@
-_id70287start:
+_id2449start:
        movq   %rdi, %rdx
        movq   %rdx, %rax
-       jmp _id70287conclusion
+       jmp _id2449conclusion
 
 
 
-.globl _id70287
+.globl _id2449
 .align 16
-_id70287:
-       pushq  %rsp
+_id2449:
+pushq  %rsp
        pushq  %rbp
        pushq  %rbx
        pushq  %r12
@@ -18,8 +18,8 @@ _id70287:
        subq   $0, %rsp
        movq $0, (%r15)
        addq   $0, %r15
-       jmp _id70287start
-_id70287conclusion:
+       jmp _id2449start
+_id2449conclusion:
        subq   $0, %r15
        addq   $0, %rsp
        popq   %r14
@@ -29,18 +29,18 @@ _id70287conclusion:
        popq   %rbp
        popq   %rsp
        retq
-_inc70286start:
+_inc2448start:
        movq   %rdi, %rdx
        movq   %rdx, %rax
        addq   $1, %rax
-       jmp _inc70286conclusion
+       jmp _inc2448conclusion
 
 
 
-.globl _inc70286
+.globl _inc2448
 .align 16
-_inc70286:
-       pushq  %rsp
+_inc2448:
+pushq  %rsp
        pushq  %rbp
        pushq  %rbx
        pushq  %r12
@@ -50,8 +50,8 @@ _inc70286:
        subq   $0, %rsp
        movq $0, (%r15)
        addq   $0, %r15
-       jmp _inc70286start
-_inc70286conclusion:
+       jmp _inc2448start
+_inc2448conclusion:
        subq   $0, %r15
        addq   $0, %rsp
        popq   %r14
@@ -61,15 +61,15 @@ _inc70286conclusion:
        popq   %rbp
        popq   %rsp
        retq
-_main70285start:
-       leaq   _id70287(%rip), %rdx
+_main2447start:
+       leaq   _inc2448(%rip), %rcx
+       leaq   _id2449(%rip), %rdx
        movq   %rcx, %rdi
        callq *%rdx
        movq   %rax, %rdx
-       leaq   _clossss70290(%rip), %rdx
        movq   $41, %rdi
        movq   %rdx, %rax
-              popq   %r14
+       popq   %r14
        popq   %r13
        popq   %r12
        popq   %rbx
@@ -82,7 +82,7 @@ _main70285start:
 .globl _main
 .align 16
 _main:
-       pushq  %rsp
+pushq  %rsp
        pushq  %rbp
        pushq  %rbx
        pushq  %r12
@@ -96,8 +96,8 @@ _main:
        movq   _rootstack_begin(%rip), %r15
        movq $0, (%r15)
        addq   $0, %r15
-       jmp _main70285start
-_main70285conclusion:
+       jmp _main2447start
+_main2447conclusion:
        subq   $0, %r15
        addq   $0, %rsp
        popq   %r14

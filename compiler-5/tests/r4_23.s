@@ -1,51 +1,51 @@
-_f69939start:
-       movq   %rdi, %r12
+_f2102start:
+       movq   %rdi, %rbx
        movq   $0, %rax
-       cmpq   %rax, %r12
-       je _f69939block69962
-       jmp _f69939block69963
+       cmpq   %rax, %rbx
+       je _f2102block2125
+       jmp _f2102block2126
 
-_f69939block69963:
+_f2102block2126:
        movq   $1, %rax
-       cmpq   %rax, %r12
-       je _f69939block69960
-       jmp _f69939block69961
+       cmpq   %rax, %rbx
+       je _f2102block2123
+       jmp _f2102block2124
 
-_f69939block69962:
-       movq   $0, %rax
-       jmp _f69939conclusion
-
-_f69939block69960:
-       movq   $1, %rax
-       jmp _f69939conclusion
-
-_f69939block69961:
+_f2102block2124:
        movq   $1, %rdx
        negq   %rdx
-       movq   %r12, %rcx
+       movq   %rbx, %rcx
        addq   %rdx, %rcx
-       leaq   _f69939(%rip), %rdx
+       leaq   _f2102(%rip), %rdx
        movq   %rcx, %rdi
        callq *%rdx
-       movq   %rax, %rbx
+       movq   %rax, %r12
        movq   $2, %rdx
        negq   %rdx
-       movq   %r12, %rcx
+       movq   %rbx, %rcx
        addq   %rdx, %rcx
-       leaq   _f69939(%rip), %rdx
+       leaq   _f2102(%rip), %rdx
        movq   %rcx, %rdi
        callq *%rdx
        movq   %rax, %rdx
-       movq   %rbx, %rax
+       movq   %r12, %rax
        addq   %rdx, %rax
-       jmp _f69939conclusion
+       jmp _f2102conclusion
+
+_f2102block2125:
+       movq   $0, %rax
+       jmp _f2102conclusion
+
+_f2102block2123:
+       movq   $1, %rax
+       jmp _f2102conclusion
 
 
 
-.globl _f69939
+.globl _f2102
 .align 16
-_f69939:
-       pushq  %rsp
+_f2102:
+pushq  %rsp
        pushq  %rbp
        pushq  %rbx
        pushq  %r12
@@ -55,8 +55,8 @@ _f69939:
        subq   $0, %rsp
        movq $0, (%r15)
        addq   $0, %r15
-       jmp _f69939start
-_f69939conclusion:
+       jmp _f2102start
+_f2102conclusion:
        subq   $0, %r15
        addq   $0, %rsp
        popq   %r14
@@ -66,38 +66,42 @@ _f69939conclusion:
        popq   %rbp
        popq   %rsp
        retq
-_g69938start:
+_g2101start:
        movq   %rdi, %rcx
        movq   %rsi, %rsi
        movq   %rdx, %rsi
        movq   $0, %rax
        cmpq   %rax, %rcx
-       je _g69938block69966
-       jmp _g69938block69967
+       je _g2101block2129
+       jmp _g2101block2130
 
-_g69938block69967:
+_g2101block2130:
        movq   $1, %rax
        cmpq   %rax, %rcx
-       je _g69938block69964
-       jmp _g69938block69965
+       je _g2101block2127
+       jmp _g2101block2128
 
-_g69938block69964:
+_g2101block2127:
        movq   %rsi, %rax
-       jmp _g69938conclusion
+       jmp _g2101conclusion
 
-_g69938block69965:
+_g2101block2129:
+       movq   %rsi, %rax
+       jmp _g2101conclusion
+
+_g2101block2128:
        movq   $1, %rdx
        negq   %rdx
        movq   %rcx, %rdi
        addq   %rdx, %rdi
        movq   %rsi, %rdx
        addq   %rsi, %rdx
-       leaq   _g69938(%rip), %rcx
+       leaq   _g2101(%rip), %rcx
        movq   %rdi, %rdi
        movq   %rsi, %rsi
        movq   %rdx, %rdx
        movq   %rcx, %rax
-              popq   %r14
+       popq   %r14
        popq   %r13
        popq   %r12
        popq   %rbx
@@ -105,16 +109,12 @@ _g69938block69965:
        popq   %rsp
        jmp *%rax
 
-_g69938block69966:
-       movq   %rsi, %rax
-       jmp _g69938conclusion
 
 
-
-.globl _g69938
+.globl _g2101
 .align 16
-_g69938:
-       pushq  %rsp
+_g2101:
+pushq  %rsp
        pushq  %rbp
        pushq  %rbx
        pushq  %r12
@@ -124,8 +124,8 @@ _g69938:
        subq   $0, %rsp
        movq $0, (%r15)
        addq   $0, %r15
-       jmp _g69938start
-_g69938conclusion:
+       jmp _g2101start
+_g2101conclusion:
        subq   $0, %r15
        addq   $0, %rsp
        popq   %r14
@@ -135,12 +135,12 @@ _g69938conclusion:
        popq   %rbp
        popq   %rsp
        retq
-_main69937start:
-       leaq   _f69939(%rip), %rdx
+_main2100start:
+       leaq   _f2102(%rip), %rdx
        movq   $8, %rdi
        callq *%rdx
        movq   %rax, %rbx
-       leaq   _g69938(%rip), %rcx
+       leaq   _g2101(%rip), %rcx
        movq   $8, %rdi
        movq   $0, %rsi
        movq   $1, %rdx
@@ -148,14 +148,14 @@ _main69937start:
        movq   %rax, %rdx
        movq   %rbx, %rax
        addq   %rdx, %rax
-       jmp _main69937conclusion
+       jmp _main2100conclusion
 
 
 
 .globl _main
 .align 16
 _main:
-       pushq  %rsp
+pushq  %rsp
        pushq  %rbp
        pushq  %rbx
        pushq  %r12
@@ -169,8 +169,8 @@ _main:
        movq   _rootstack_begin(%rip), %r15
        movq $0, (%r15)
        addq   $0, %r15
-       jmp _main69937start
-_main69937conclusion:
+       jmp _main2100start
+_main2100conclusion:
        subq   $0, %r15
        addq   $0, %rsp
        popq   %r14

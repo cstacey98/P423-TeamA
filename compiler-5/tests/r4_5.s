@@ -1,19 +1,23 @@
-_tailrecur70267start:
+_tailrecur2429start:
        movq   %rdi, %rcx
        movq   $0, %rax
        cmpq   %rax, %rcx
-       je _tailrecur70267block70274
-       jmp _tailrecur70267block70275
+       je _tailrecur2429block2436
+       jmp _tailrecur2429block2437
 
-_tailrecur70267block70275:
+_tailrecur2429block2436:
+       movq   $0, %rax
+       jmp _tailrecur2429conclusion
+
+_tailrecur2429block2437:
        movq   $1, %rdx
        negq   %rdx
        movq   %rcx, %rcx
        addq   %rdx, %rcx
-       leaq   _tailrecur70267(%rip), %rdx
+       leaq   _tailrecur2429(%rip), %rdx
        movq   %rcx, %rdi
        movq   %rdx, %rax
-              popq   %r14
+       popq   %r14
        popq   %r13
        popq   %r12
        popq   %rbx
@@ -21,16 +25,12 @@ _tailrecur70267block70275:
        popq   %rsp
        jmp *%rax
 
-_tailrecur70267block70274:
-       movq   $0, %rax
-       jmp _tailrecur70267conclusion
 
 
-
-.globl _tailrecur70267
+.globl _tailrecur2429
 .align 16
-_tailrecur70267:
-       pushq  %rsp
+_tailrecur2429:
+pushq  %rsp
        pushq  %rbp
        pushq  %rbx
        pushq  %r12
@@ -40,8 +40,8 @@ _tailrecur70267:
        subq   $0, %rsp
        movq $0, (%r15)
        addq   $0, %r15
-       jmp _tailrecur70267start
-_tailrecur70267conclusion:
+       jmp _tailrecur2429start
+_tailrecur2429conclusion:
        subq   $0, %r15
        addq   $0, %rsp
        popq   %r14
@@ -51,36 +51,36 @@ _tailrecur70267conclusion:
        popq   %rbp
        popq   %rsp
        retq
-_main70266start:
-       leaq   _tailrecur70267(%rip), %rdx
+_main2428start:
+       leaq   _tailrecur2429(%rip), %rdx
        movq   $99, %rdi
        callq *%rdx
        movq   %rax, %rdx
        movq   $0, %rax
        cmpq   %rdx, %rax
-       je _main70266block70278
-       jmp _main70266block70279
+       je _main2428block2440
+       jmp _main2428block2441
 
-_main70266block70279:
-       jmp _main70266block70277
+_main2428block2440:
+       jmp _main2428block2438
 
-_main70266block70277:
+_main2428block2441:
+       jmp _main2428block2439
+
+_main2428block2439:
        movq   $777, %rax
-       jmp _main70266conclusion
+       jmp _main2428conclusion
 
-_main70266block70278:
-       jmp _main70266block70276
-
-_main70266block70276:
+_main2428block2438:
        movq   $42, %rax
-       jmp _main70266conclusion
+       jmp _main2428conclusion
 
 
 
 .globl _main
 .align 16
 _main:
-       pushq  %rsp
+pushq  %rsp
        pushq  %rbp
        pushq  %rbx
        pushq  %r12
@@ -94,8 +94,8 @@ _main:
        movq   _rootstack_begin(%rip), %r15
        movq $0, (%r15)
        addq   $0, %r15
-       jmp _main70266start
-_main70266conclusion:
+       jmp _main2428start
+_main2428conclusion:
        subq   $0, %r15
        addq   $0, %rsp
        popq   %r14

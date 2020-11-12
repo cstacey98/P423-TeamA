@@ -1,4 +1,4 @@
-_main69453start:
+_main1616start:
        movq   $0, %rdx
        movq   $1, %rcx
        movq   $2, %rcx
@@ -50,36 +50,36 @@ _main69453start:
        movq   $48, %rcx
        movq   $49, %rcx
        movq   _free_ptr(%rip), %rdx
-       movq   %rdx, %rcx
-       addq   $408, %rcx
-       movq   _fromspace_end(%rip), %rdx
-       cmpq   %rdx, %rcx
-       jl _main69453block69565
-       jmp _main69453block69566
+       movq   %rdx, %rdx
+       addq   $408, %rdx
+       movq   _fromspace_end(%rip), %rcx
+       cmpq   %rcx, %rdx
+       jl _main1616block1728
+       jmp _main1616block1729
 
-_main69453block69566:
-       jmp _main69453block69564
+_main1616block1729:
+       jmp _main1616block1727
 
-_main69453block69564:
-       jmp _main69453block69562
+_main1616block1727:
+       jmp _main1616block1725
 
-_main69453block69562:
+_main1616block1728:
+       jmp _main1616block1726
+
+_main1616block1726:
+       jmp _main1616block1724
+
+_main1616block1724:
+       movq   $0, %rdx
+       jmp _main1616block1723
+
+_main1616block1725:
        movq   %r15, %rdi
        movq   $408, %rsi
        callq _collect
-       jmp _main69453block69560
+       jmp _main1616block1723
 
-_main69453block69565:
-       jmp _main69453block69563
-
-_main69453block69563:
-       jmp _main69453block69561
-
-_main69453block69561:
-       movq   $0, %rdx
-       jmp _main69453block69560
-
-_main69453block69560:
+_main1616block1723:
        movq   _free_ptr(%rip), %rsi
        addq   $408, _free_ptr(%rip)
        movq   %rsi, %r11
@@ -237,14 +237,14 @@ _main69453block69560:
        movq   %rsi, %rdx
        movq   %rdx, %r11
        movq   344(%r11), %rax
-       jmp _main69453conclusion
+       jmp _main1616conclusion
 
 
 
 .globl _main
 .align 16
 _main:
-       pushq  %rsp
+pushq  %rsp
        pushq  %rbp
        pushq  %rbx
        pushq  %r12
@@ -258,8 +258,8 @@ _main:
        movq   _rootstack_begin(%rip), %r15
        movq $0, (%r15)
        addq   $0, %r15
-       jmp _main69453start
-_main69453conclusion:
+       jmp _main1616start
+_main1616conclusion:
        subq   $0, %r15
        addq   $0, %rsp
        popq   %r14

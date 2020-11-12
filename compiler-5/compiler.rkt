@@ -29,6 +29,15 @@
  print-x86
  )
 
+(define gs-seen 0)
+(define (gensym sym)
+  (begin
+    (define new-sym
+      (symbol-append sym (string->symbol (format "~a" gs-seen))))
+    (set! gs-seen (add1 gs-seen))
+    new-sym))
+
+; for the archaeologists later
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; HW1 Passes
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -378,66 +387,58 @@
       (append shrunk-defs
               (list (Def 'main '() 'Integer '() shrunk-body))))]))
 
+#;
 (define (is-function? t)
   (match t
     [`(,ts ... -> rt) #t]
     [whatever #f]))
 
-(define (reveal-fun-in-body e)
+(define (reveal-fun-in-body e def-names)
   (match e
     [(HasType doot t)
-     (define doot-rev
-       (match doot
-         [(Apply
-           (HasType (Var f) ft)
-           args)
-          (Apply
-           (HasType (FunRef f) ft)
-           (map reveal-fun-in-body args))]
-         ; TODO closures :(
-         [(Apply
-           ex #;(HasType ex ft)
-           args)
-          (define ex-rev
-            (reveal-fun-in-body ex))
-          (define clos
-            (gensym 'clossss))
-          (displayln ex-rev)
-          (Let clos ex-rev
-               (HasType
-                (Apply
-                 (HasType (FunRef clos) (get-type ex))
-                 (map reveal-fun-in-body args))
-                t))]
-         [(Var x)
-          (if (is-function? t)
-              (FunRef x)
-              doot)]
-         [y #:when (atomic? y) y]
-         [(Prim op args)
-          (Prim op (map reveal-fun-in-body args))]
-         [(If cnd cnsq alt)
-          (If (reveal-fun-in-body cnd)
-              (reveal-fun-in-body cnsq)
-              (reveal-fun-in-body alt))]
-         [(Let x rhs body)
-          (Let
-           x
-           (reveal-fun-in-body rhs)
-           (reveal-fun-in-body body))]))
+     (define doot-rev (reveal-fun-in-body doot def-names))
      (HasType doot-rev t)]
+    [(Apply ex args)
+     (define ex-rev
+       (reveal-fun-in-body ex def-names))
+     (Apply
+      ex-rev
+      (map (lambda (a)
+             (reveal-fun-in-body a def-names))
+           args))]
+    [(Var x)
+     (if (memv x def-names)
+         (FunRef x)
+         (Var x))]
+    [y #:when (atomic? y) y]
+    [(Prim op args)
+     (Prim op (map (lambda (a) (reveal-fun-in-body a def-names))
+                   args))]
+    [(If cnd cnsq alt)
+     (If (reveal-fun-in-body cnd def-names)
+         (reveal-fun-in-body cnsq def-names)
+         (reveal-fun-in-body alt def-names))]
+    [(Let x rhs body)
+     (define rhs-rev (reveal-fun-in-body rhs def-names))
+     (define body-rev (reveal-fun-in-body body def-names))
+     (Let x rhs-rev body-rev)]
     ))
+
+(define (reveal-funs-def def def-names)
+  (match def
+    [(Def name typed-args rt f-info body)
+     (Def name typed-args rt f-info
+       (reveal-fun-in-body body def-names))]))
 
 (define (reveal-functions p)
   (match p
     [(ProgramDefs info defs)
+     (define def-names
+       (map Def-name defs))
      (ProgramDefs
       info
       (map
-       (lambda (d)
-         (match d
-           [(Def name typed-args rt f-info body)
-            (Def name typed-args rt f-info (reveal-fun-in-body body))]))
+       (lambda (d) (reveal-funs-def d def-names))
        defs))]))
 
 
@@ -452,49 +453,69 @@
         (define-values (rec-front rec-back) (first-n (sub1 n) d))
         (values (cons a rec-front) rec-back)])]))
 
-(define (limit-args args)
-  (begin
-    (define-values (var-params vec-params) (first-n 5 args))
-    (define vec-types
-      (match vec-params
-        [(list `[,xs : ,ts] ...) ts]))
-    (define vec-params-name (gensym 'vec-args-))
-    (append var-params
-            `([,vec-params-name : ,(cons 'Vector vec-types)]))))
+(define (limit-one-arg arg)
+  (match arg
+    [`[,x : ,t]
+     `[,x : ,(limit-type t)]]))
+
+(define (get-arg-type arg)
+  (match arg
+    [`[,x : ,t] t]))
+
+(define (limit-and-type-args args limit?)
+  (cond
+    [limit?
+     (define-values (var-params vec-params) (first-n 5 args))
+     (set! var-params (map limit-one-arg var-params))
+
+     (define vec-types
+       (map (compose limit-type get-arg-type) vec-params))
+     (define vec-params-name (gensym 'vec-args-))
+     (append var-params
+             `([,vec-params-name : ,(cons 'Vector vec-types)]))]
+    [else (map limit-one-arg args)]))
 
 (define (get-input-types funref-type)
-  (begin
-    (define-values (inputs _)
-      (first-n (- (length funref-type) 2) funref-type))
-    inputs))
+       (begin
+         (define-values (inputs _)
+           (first-n (- (length funref-type) 2) funref-type))
+         inputs))
 
 (define (get-output-type funref-type)
   (last funref-type))
 
-(define (limit-exp body args-assoc new-args)
-  (match body
-    [(HasType (FunRef f) ft)
-     (define param-ts (get-input-types ft))
-     (define output-t (get-output-type ft))
+(define (limit-type t)
+  (match t
+    [`(,inputs-ts ... -> ,rt)
+     (define-values (first-5 last-ones)
+       (first-n 5 inputs-ts))
+     (define new-first-5
+       (map limit-type first-5))
+     (define last-lim (map limit-type last-ones))
+     (define rt-lim (limit-type rt))
+     (if (> (length last-ones) 1)
+         `(,@new-first-5 (Vector ,last-lim) -> ,rt-lim)
+         `(,@new-first-5 ,@last-lim -> ,rt-lim))]
+    [other-types t]))
 
-     (define new-param-ts
-       (let-values ([(front back) (first-n 5 param-ts)])
-         (append front
-                 (if (null? back)
-                     back
-                     (list (cons 'Vector back))))))
-     (HasType
-      (FunRef f)
-      (append new-param-ts (list '-> output-t)))]
+; assume new-args' types have been limited (as per limit-type)
+(define (limit-exp expr args-assoc new-args)
+  (match expr
     [(HasType e t)
-     (HasType (limit-exp e args-assoc new-args) t)]
+     (HasType (limit-exp e args-assoc new-args) (limit-type t))]
+    [(FunRef f) (FunRef f)]
     [(Var x)
      (define index (assv x args-assoc))
-     (if (and index (>= (cdr index) 5))
-         (Prim 'vector-ref (list (HasType (Var (car (list-ind 5 new-args)))
-                                          (caddr (list-ind 5 new-args)))
-                                 (HasType (Int (- (cdr index) 5)) 'Integer)))
-         body)]
+     ; if referencing 6th or higher, and there are 7 or more inputs
+     (if (and index (>= (cdr index) 5)
+              (> (length args-assoc)
+                 6))
+         (Prim 'vector-ref
+               (list (HasType (Var (car (list-ind 5 new-args)))
+                              ; since new-args looks like [x : t]
+                              (caddr (list-ind 5 new-args)))
+                     (HasType (Int (- (cdr index) 5)) 'Integer)))
+         (Var x))]
     [e #:when (atomic? e) e]
     [(Apply f params)
      (define params-l
@@ -504,13 +525,15 @@
      (define-values (front back) (first-n 5 params-l))
      (define new-f (limit-exp f args-assoc new-args))
      (cond
-       [(zero? (length back))
-        (Apply new-f front)]
+       [(<= (length back) 1)
+        (Apply new-f (append front back))]
        [else
-        #;(displayln 'whoops)
-        (define t-back (map get-type back))
-        (define new-back (HasType (Prim 'vector back) (cons 'Vector t-back)))
-        (Apply new-f (append front (list new-back)))])]
+        (define t-back (map (compose limit-type get-type) back))
+        (define new-back
+          (HasType (Prim 'vector back)
+                   (cons 'Vector t-back)))
+        (Apply new-f
+               (append front (list new-back)))])]
     [(Prim op args)
      (Prim op (map (lambda (a) (limit-exp a args-assoc new-args)) args))]
     [(If cnd cnsq alt)
@@ -526,9 +549,12 @@
 (define (limit-funs-def def)
   (match def
     [(Def f (and args (list `[,xs : ,ts] ...)) rt info body)
-     (define new-args (if (>= (length args) 6)
-                          (limit-args args)
-                          args))
+     (define new-args
+       (limit-and-type-args args (> (length args) 6))
+       #;
+       (if (> (length args) 6)
+           (limit-args args)
+           args))
      (define args-seen -1)
      (define args-assoc
        (map
@@ -539,7 +565,7 @@
              `(,x . ,args-seen)]))
         args))
      (define new-body (limit-exp body args-assoc new-args))
-     (Def f new-args rt info new-body)]))
+     (Def f new-args (limit-type rt) info new-body)]))
 
 (define (limit-functions p)
   (match p
@@ -635,7 +661,7 @@
      (define v-name (gensym 'vec-init-))
      (define len (length components))
      (define vars
-       (map (lambda (n) (gensym (format "x-~a-" n)))
+       (map (lambda (n) (gensym (string->symbol (format "x-~a-" n))))
             (build-list len identity)))
      (define assignments
        (assign-all vars 0 (Var v-name) types))
@@ -806,9 +832,9 @@
     [(HasType expr t)
      (HasType
       (match expr
-        [thanks-weixi
-         #:when (atomic? thanks-weixi)
-         thanks-weixi]
+        [atm
+         #:when (atomic? atm)
+         atm]
         [(Apply f args)
          (define-values (atomic-front complex-back)
            (split-where (compose not atomic?) args))
@@ -2186,8 +2212,9 @@
      (define bn (actual-bytes-needed bytes-needed))
      (define rbn (actual-bytes-needed root-bytes-needed))
      (define is-main-main?
-       (eqv? 'main
-             (string->symbol (substring (symbol->string f) 0 4))))
+       (and (>= (string-length (symbol->string f)) 4)
+            (eqv? 'main
+                  (string->symbol (substring (symbol->string f) 0 4)))))
      (string-append
       (foldr
        (lambda (lbl-blk x86)
@@ -2224,16 +2251,27 @@
    shrink
    reveal-functions
    limit-functions
+   #;
    uniquify
+   #;
    expose-allocation
+   #;
    remove-complex-opera*
+   #;
    explicate-control
+   #;
    uncover-locals
+   #;
    select-instructions
+   #;
    uncover-live
+   #;
    build-interference
+   #;
    allocate-registers
+   #;
    patch-instructions
+   #;
    print-x86
    ))
 
