@@ -33,7 +33,7 @@ _minus409conclusion:
        popq   %rbp
        popq   %rsp
        retq
-_map-vector408start:
+_mapvector408start:
        movq   %rdi, %rdx
        movq   %rsi, %rcx
        movq   %rcx, %r11
@@ -48,32 +48,32 @@ _map-vector408start:
        addq   $16, %rdx
        movq   _fromspace_end(%rip), %rcx
        cmpq   %rcx, %rdx
-       jl _map-vector408block440
-       jmp _map-vector408block441
+       jl _mapvector408block440
+       jmp _mapvector408block441
 
-_map-vector408block441:
-       jmp _map-vector408block439
+_mapvector408block441:
+       jmp _mapvector408block439
 
-_map-vector408block439:
-       jmp _map-vector408block437
+_mapvector408block439:
+       jmp _mapvector408block437
 
-_map-vector408block440:
-       jmp _map-vector408block438
+_mapvector408block440:
+       jmp _mapvector408block438
 
-_map-vector408block438:
-       jmp _map-vector408block436
+_mapvector408block438:
+       jmp _mapvector408block436
 
-_map-vector408block437:
+_mapvector408block437:
        movq   %r15, %rdi
        movq   $16, %rsi
        callq _collect
-       jmp _map-vector408block435
+       jmp _mapvector408block435
 
-_map-vector408block436:
+_mapvector408block436:
        movq   $0, %rdx
-       jmp _map-vector408block435
+       jmp _mapvector408block435
 
-_map-vector408block435:
+_mapvector408block435:
        movq   _free_ptr(%rip), %rcx
        addq   $16, _free_ptr(%rip)
        movq   %rcx, %r11
@@ -82,13 +82,13 @@ _map-vector408block435:
        movq   %rdx, 8(%r11)
        movq   $0, %rdx
        movq   %rcx, %rax
-       jmp _map-vector408conclusion
+       jmp _mapvector408conclusion
 
 
 
-.globl _map-vector408
+.globl _mapvector408
 .align 16
-_map-vector408:
+_mapvector408:
 pushq  %rsp
        pushq  %rbp
        pushq  %rbx
@@ -99,8 +99,8 @@ pushq  %rsp
        subq   $0, %rsp
        movq $0, (%r15)
        addq   $0, %r15
-       jmp _map-vector408start
-_map-vector408conclusion:
+       jmp _mapvector408start
+_mapvector408conclusion:
        subq   $0, %r15
        addq   $0, %rsp
        popq   %r14
@@ -152,7 +152,7 @@ _main407block442:
        movq   %rcx, 8(%r11)
        movq   $0, %rcx
        movq   %rdx, %rcx
-       leaq   _map-vector408(%rip), %rdx
+       leaq   _mapvector408(%rip), %rdx
        movq   %rsi, %rdi
        movq   %rcx, %rsi
        callq *%rdx

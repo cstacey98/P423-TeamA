@@ -29,6 +29,14 @@
  print-x86
  )
 
+(define (replace-in-symbol sym find replace)
+  (begin
+    (define str (symbol->string sym))
+    (set! str (string-replace str find replace))
+    (string->symbol str)))
+(define (remove-dash sym)
+  (replace-in-symbol sym "-" ""))
+
 (define gs-seen 0)
 (define (gensym sym)
   (begin
@@ -1135,6 +1143,10 @@
         #:when (symbol? y)
         (eq? s1 y)]
        [whatever #f])]
+    [(Reg r)
+     (or (eq? r var2)
+         (and (Reg? var2)
+              (eq? r (Reg-name var2))))]
     [y
      #:when (symbol? y)
      (vars-eq? (Var y) var2)]
@@ -1696,13 +1708,13 @@
          (define v-saturations
            (map
             (lambda (reg)
-              [define collll (assv (Reg-name reg) usable-regs-to-color)]
+              (define collll (assv (Reg-name reg) usable-regs-to-color))
               (cdr collll))
             v-regs))
          ; we want to make sure that each v cannot go in any registers to
          ; which they already have an edge, no matter what
          `(,v . (,uncolored . ,v-saturations)))
-       (get-vertices g)))
+       (filter Var? (get-vertices g))))
 
 ; saturations is the shape of the output of initial-sat-avail.
 ; we must ensure that the one we pick is also uncolored
@@ -1766,14 +1778,16 @@
              (cons (car saturations)
                    (saturate-neighbor (cdr saturations) v color)))])))
 
-; add color ,color to saturation lists of all neighbors v of u
+; add color to saturation lists of all neighbors v of u
 (define (saturate-neighbors g saturations u color)
-  (let* ([edges (get-edges g)]
-         [u-neighbors (filter (lambda (edge) (vars-eq? u (car edge))) edges)])
-    (foldr (lambda (u-v sats)
-             (saturate-neighbor sats (cadr u-v) color))
-           saturations
-           u-neighbors)))
+  (begin
+    (define edges (get-edges g))
+    (define u-neighbors (filter (lambda (edge) (vars-eq? u (car edge))) edges))
+    (foldr
+     (lambda (u-v sats)
+       (saturate-neighbor sats (cadr u-v) color))
+     saturations
+     u-neighbors)))
 
 (define (pe e)
   (begin (displayln e)
@@ -1781,9 +1795,11 @@
 
 ; one iteration of the graph coloring alg
 (define (assign-new-color-and-saturate-neighbors g saturations u)
-  (let* ([new-sats (assign-new-color saturations u)]
-         [color (cadr (assf (lambda (var) (vars-eq? u var))
-                            new-sats))])
+  (begin
+    (define new-sats (assign-new-color saturations u))
+    (define color
+      (cadr (assf (lambda (var) (vars-eq? u var))
+                  new-sats)))
     (saturate-neighbors g new-sats u color)))
 
 (define ancasn assign-new-color-and-saturate-neighbors)
@@ -1795,29 +1811,30 @@
     [`(,vtx . ,vertices-d)
      (if (vars-eq? vtx u)
          vertices-d
-         (cons vtx
-               (remove-u vertices-d u)))]))
+         `(,vtx . ,(remove-u vertices-d u)))]))
+
+(define (remove-sat-set sat)
+  (match sat
+    [`(,var . (,color . ,sat-set))
+     `(,var . ,color)]))
 
 ; anything higher than 11 (we use 0,...,11 for registers) will be a stack loc
 ; interference-graph * list-of-program-vars -> (listof (pairof var color))
 (define (color-mappings g vars)
-  (let* ([saturations
-          (initial-sat-avail g)]
-         [W (get-vertices g)]
-         [totally-saturated
-          (foldr
-           (lambda (_v sats)
-             (let* ([u (select-most-saturated sats)]
-                    [u-label (car u)])
-               ; self-documenting code
-               (ancasn g sats u-label)))
-           saturations
-           (filter Var? W))])
+  (begin
+    (define saturations (initial-sat-avail g))
+    (define W (get-vertices g))
+    (define totally-saturated
+      (foldr
+       (lambda (_v sats)
+         (define u (select-most-saturated sats))
+         (define u-label (car u))
+         ; self-documenting code
+         (ancasn g sats u-label))
+       saturations
+       (filter Var? W)))
     ; get rid of extra info after coloring the graph
-    (map (lambda (sat)
-           (match sat [`(,var . (,color . ,sat-set))
-                       `(,var . ,color)]))
-         totally-saturated)))
+    (map remove-sat-set totally-saturated)))
 
 
 (define usable-regs
@@ -2076,8 +2093,8 @@
 
 (define (os-label label)
   (match (system-type 'os)
-    ['macosx (format "_~a" label)]
-    [other (format "~a" label)]))
+    ['macosx (format "_~a" (remove-dash label))]
+    [other (format "~a" (remove-dash label))]))
 
 (define indent "       ")
 (define newline "\n")
@@ -2209,6 +2226,7 @@
        `((stack-space . ,bytes-needed)
          (root-stack-space . ,root-bytes-needed))
        (CFG blocks))
+     (set! f (remove-dash f))
      (define bn (actual-bytes-needed bytes-needed))
      (define rbn (actual-bytes-needed root-bytes-needed))
      (define is-main-main?
