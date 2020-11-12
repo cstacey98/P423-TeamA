@@ -2070,22 +2070,22 @@
      newline
      indent (format "addq   $~a, %rsp" bytes-needed) newline
      ; indent "popq   %rbp" newline
-     (print-callee-saved-regs #f)
-     indent "retq")))
+     indent (print-callee-saved-regs #f)
+     "retq")))
 
 ; save? is a boolean; if true, pushq, if false, popq in reverse order
 (define (print-callee-saved-regs save?)
   (if save?
       (foldr
        (lambda (next-reg string-so-far)
-         (string-append indent (format "pushq  %~a" next-reg) newline
+         (string-append (format "pushq  %~a" next-reg) newline indent
                         string-so-far))
        ""
        callee-saved-to-save)
       ; if restore, ie if not save
       (foldr
        (lambda (next-reg string-so-far)
-         (string-append indent (format "popq   %~a" next-reg) newline
+         (string-append (format "popq   %~a" next-reg) newline indent
                         string-so-far))
        ""
        (reverse callee-saved-to-save))))
@@ -2101,7 +2101,7 @@
      ; it's 16-aligned
      (print-callee-saved-regs #t)
      ; indent "pushq  %rbp" newline
-     indent "movq   %rsp, %rbp" newline
+     "movq   %rsp, %rbp" newline
      indent (format "subq   $~a, %rsp" bytes-needed) newline
      (if is-main-main? (string-append main-main newline) "")
      indent "movq $0, (%r15)" newline
@@ -2136,7 +2136,7 @@
      (format "j~a ~a~a" cc (os-label def-label) label)]
     [(TailJmp jmp-to arity)
      (string-append
-      (print-callee-saved-regs #f) indent
+      (print-callee-saved-regs #f)
       (format "jmp *%~a" (Reg-name jmp-to)))]
     [(IndirectCallq calling arity)
      (format "callq *~a" (print-arg calling))]
