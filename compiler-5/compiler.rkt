@@ -2109,9 +2109,12 @@
      indent (print-instr
              (Instr 'subq (list (Imm root-bytes-needed)
                                 (Reg 'r15)))
-             def-label)
+             def-label -69 -420)
      newline
-     indent (format "addq   $~a, %rsp" bytes-needed) newline
+     indent (print-instr
+             (Instr 'addq (list (Imm bytes-needed)
+                                (Reg 'rsp)))
+             def-label -69 -420) newline
      ; indent "popq   %rbp" newline
      indent (print-callee-saved-regs #f)
      "retq")))
@@ -2151,8 +2154,9 @@
      indent (print-instr
              (Instr 'addq
                     (list (Imm root-bytes-needed) (Reg 'r15)))
-             def-label) newline
-     indent (print-instr (Jmp 'start) def-label))))
+             def-label bytes-needed root-bytes-needed) newline
+     indent (print-instr (Jmp 'start) def-label
+                         bytes-needed root-bytes-needed))))
 
 (define (print-arg arg)
   (match arg
@@ -2165,7 +2169,7 @@
     [(Deref reg bytes-needed)
      (format "~a(%~a)" bytes-needed reg)]))
 
-(define (print-instr instr def-label)
+(define (print-instr instr def-label bn rbn)
   (match instr
     [(Instr 'set (list cc arg))
      (format "set~a   ~a" cc (print-arg arg))]
@@ -2179,7 +2183,16 @@
      (format "j~a ~a" cc (os-label (symbol-append def-label label)))]
     [(TailJmp jmp-to arity)
      (string-append
-      (print-callee-saved-regs #f)
+      (print-instr
+              (Instr 'subq (list (Imm rbn)
+                                 (Reg 'r15)))
+              def-label -69 -420)
+      newline
+      indent (print-instr
+              (Instr 'addq (list (Imm bn)
+                                 (Reg 'rsp)))
+              def-label -69 -420) newline
+      indent (print-callee-saved-regs #f)
       (format "jmp *%~a" (Reg-name jmp-to)))]
     [(IndirectCallq calling arity)
      (format "callq *~a" (print-arg calling))]
@@ -2189,17 +2202,17 @@
   (string-append
    indent (print-instr
            (Instr 'movq (list (Imm 16384) (Reg 'rdi)))
-           'dummylabel) newline
+           'dummylabel -69 -420) newline
    indent (print-instr
            (Instr 'movq (list (Imm 16384) (Reg 'rsi)))
-           'dummylabel) newline
-   indent (print-instr (Callq 'initialize) 'dummylabel) newline
+           'dummylabel -69 -420) newline
+   indent (print-instr (Callq 'initialize) 'dummylabel -69 -420) newline
    indent (print-instr
            (Instr 'movq (list (Global 'rootstack_begin)
                               (Reg 'r15)))
-           'dummylabel)))
+           'dummylabel -69 -420)))
 
-(define (print-blk label block def-label)
+(define (print-blk label block def-label bn rbn)
   (let* ([instr+ (match block [(Block _ instructions) instructions])]
          [blk-label (format "~a~a" def-label label)]
          [blk-label (string->symbol blk-label)]
@@ -2207,7 +2220,8 @@
     (string-append
      blk-label ":" newline
      (foldr (lambda (instr so-far)
-              (string-append indent (print-instr instr def-label) newline
+              (string-append indent (print-instr instr def-label bn rbn)
+                             newline
                              so-far))
             ""
             instr+))))
@@ -2237,7 +2251,7 @@
       (foldr
        (lambda (lbl-blk x86)
          (string-append
-          (print-blk (car lbl-blk) (cdr lbl-blk) f)
+          (print-blk (car lbl-blk) (cdr lbl-blk) f bn rbn)
           newline
           x86))
        ""
