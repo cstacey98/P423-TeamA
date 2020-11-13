@@ -1,13 +1,13 @@
 _o1735start:
-       movq   %rdi, %rdx
-       movq   %rsi, %rcx
+       movq   %rdi, %rbx
+       movq   %rsi, -8(%r15)
        movq   $0, %rax
-       cmpq   %rax, %rdx
+       cmpq   %rax, %rbx
        je _o1735block1908
        jmp _o1735block1909
 
 _o1735block1909:
-       movq   $1, %rdx
+       movq   $1, %r12
        movq   _free_ptr(%rip), %rdx
        movq   %rdx, %rdx
        addq   $16, %rdx
@@ -39,15 +39,15 @@ _o1735block1902:
        jmp _o1735block1901
 
 _o1735block1901:
-       movq   _free_ptr(%rip), %rcx
+       movq   _free_ptr(%rip), %rdx
        addq   $16, _free_ptr(%rip)
-       movq   %rcx, %r11
+       movq   %rdx, %r11
        movq   $3, 0(%r11)
-       movq   %rcx, %r11
-       movq   %rdx, 8(%r11)
-       movq   $0, %rdx
-       movq   %rcx, %rdx
-       movq   $2, %rdx
+       movq   %rdx, %r11
+       movq   %r12, 8(%r11)
+       movq   $0, %rcx
+       movq   %rdx, -16(%r15)
+       movq   $2, %r12
        movq   _free_ptr(%rip), %rdx
        movq   %rdx, %rcx
        addq   $16, %rcx
@@ -79,20 +79,20 @@ _o1735block1896:
        jmp _o1735block1894
 
 _o1735block1894:
-       movq   _free_ptr(%rip), %rcx
-       addq   $16, _free_ptr(%rip)
-       movq   %rcx, %r11
-       movq   $3, 0(%r11)
-       movq   %rcx, %r11
-       movq   %rdx, 8(%r11)
-       movq   $0, %rdx
-       movq   %rcx, %rdx
-       movq   $1, %rcx
        movq   _free_ptr(%rip), %rdx
-       movq   %rdx, %rcx
-       addq   $16, %rcx
-       movq   _fromspace_end(%rip), %rdx
-       cmpq   %rdx, %rcx
+       addq   $16, _free_ptr(%rip)
+       movq   %rdx, %r11
+       movq   $3, 0(%r11)
+       movq   %rdx, %r11
+       movq   %r12, 8(%r11)
+       movq   $0, %rcx
+       movq   %rdx, -24(%r15)
+       movq   $1, %r12
+       movq   _free_ptr(%rip), %rdx
+       movq   %rdx, %rdx
+       addq   $16, %rdx
+       movq   _fromspace_end(%rip), %rcx
+       cmpq   %rcx, %rdx
        jl _o1735block1892
        jmp _o1735block1893
 
@@ -124,10 +124,10 @@ _o1735block1887:
        movq   %rdx, %r11
        movq   $3, 0(%r11)
        movq   %rdx, %r11
-       movq   %rcx, 8(%r11)
+       movq   %r12, 8(%r11)
        movq   $0, %rcx
-       movq   %rdx, %rdx
-       movq   $2, %rdx
+       movq   %rdx, -32(%r15)
+       movq   $2, %r12
        movq   _free_ptr(%rip), %rdx
        movq   %rdx, %rdx
        addq   $16, %rdx
@@ -159,15 +159,15 @@ _o1735block1881:
        jmp _o1735block1880
 
 _o1735block1880:
-       movq   _free_ptr(%rip), %rcx
+       movq   _free_ptr(%rip), %rdx
        addq   $16, _free_ptr(%rip)
-       movq   %rcx, %r11
+       movq   %rdx, %r11
        movq   $3, 0(%r11)
-       movq   %rcx, %r11
-       movq   %rdx, 8(%r11)
-       movq   $0, %rdx
-       movq   %rcx, %rdx
-       movq   $1, %rcx
+       movq   %rdx, %r11
+       movq   %r12, 8(%r11)
+       movq   $0, %rcx
+       movq   %rdx, -40(%r15)
+       movq   $1, %r12
        movq   _free_ptr(%rip), %rdx
        movq   %rdx, %rdx
        addq   $16, %rdx
@@ -204,9 +204,9 @@ _o1735block1873:
        movq   %rdx, %r11
        movq   $3, 0(%r11)
        movq   %rdx, %r11
-       movq   %rcx, 8(%r11)
+       movq   %r12, 8(%r11)
        movq   $0, %rcx
-       movq   %rdx, %rdx
+       movq   %rdx, -48(%r15)
        movq   _free_ptr(%rip), %rdx
        movq   %rdx, %rcx
        addq   $48, %rcx
@@ -229,7 +229,8 @@ _o1735block1867:
        jmp _o1735block1866
 
 _o1735block1908:
-       movq   %rcx, %rcx
+       movq   -8(%r15), %rax
+       movq   %rax, -8(%r15)
        movq   _free_ptr(%rip), %rdx
        movq   %rdx, %rcx
        addq   $16, %rcx
@@ -254,33 +255,38 @@ _o1735block1868:
        jmp _o1735block1866
 
 _o1735block1866:
-       movq   _free_ptr(%rip), %rdi
+       movq   _free_ptr(%rip), %rdx
        addq   $48, _free_ptr(%rip)
-       movq   %rdi, %r11
+       movq   %rdx, %r11
        movq   $3979, 0(%r11)
-       movq   %rdi, %r11
-       movq   %rdx, 8(%r11)
-       movq   $0, %rsi
-       movq   %rdi, %r11
-       movq   %rdx, 16(%r11)
-       movq   $0, %rsi
-       movq   %rdi, %r11
-       movq   %rdx, 24(%r11)
-       movq   $0, %rsi
-       movq   %rdi, %r11
-       movq   %rdx, 32(%r11)
-       movq   $0, %rsi
-       movq   %rdi, %r11
-       movq   %rdx, 40(%r11)
-       movq   $0, %rsi
-       movq   %rdi, %rsi
-       movq   $1, %rsi
-       negq   %rsi
-       movq   %rdx, %rdi
-       addq   %rsi, %rdi
+       movq   %rdx, %r11
+       movq   -16(%r15), %rax
+       movq   %rax, 8(%r11)
+       movq   $0, %rcx
+       movq   %rdx, %r11
+       movq   -24(%r15), %rax
+       movq   %rax, 16(%r11)
+       movq   $0, %rcx
+       movq   %rdx, %r11
+       movq   -32(%r15), %rax
+       movq   %rax, 24(%r11)
+       movq   $0, %rcx
+       movq   %rdx, %r11
+       movq   -40(%r15), %rax
+       movq   %rax, 32(%r11)
+       movq   $0, %rcx
+       movq   %rdx, %r11
+       movq   -48(%r15), %rax
+       movq   %rax, 40(%r11)
+       movq   $0, %rcx
+       movq   %rdx, %rdx
+       movq   $1, %rdx
+       negq   %rdx
+       movq   %rbx, %rcx
+       addq   %rdx, %rcx
        leaq   _o1735(%rip), %rdx
-       movq   %rdi, %rdi
-       movq   %rcx, %rsi
+       movq   %rcx, %rdi
+       movq   -8(%r15), %rsi
        movq   %rdx, %rax
        popq   %r14
        popq   %r13
@@ -312,7 +318,8 @@ _o1735block1859:
        movq   %rdx, %r11
        movq   $131, 0(%r11)
        movq   %rdx, %r11
-       movq   %rcx, 8(%r11)
+       movq   -8(%r15), %rax
+       movq   %rax, 8(%r11)
        movq   $0, %rcx
        movq   %rdx, %rax
        jmp _o1735conclusion
@@ -322,7 +329,7 @@ _o1735block1859:
 .globl _o1735
 .align 16
 _o1735:
-pushq  %rsp
+       pushq  %rsp
        pushq  %rbp
        pushq  %rbx
        pushq  %r12
@@ -330,11 +337,11 @@ pushq  %rsp
        pushq  %r14
        movq   %rsp, %rbp
        subq   $0, %rsp
-       movq $0, (%r15)
-       addq   $0, %r15
+       movq   $0, (%r15)
+       addq   $48, %r15
        jmp _o1735start
 _o1735conclusion:
-       subq   $0, %r15
+       subq   $48, %r15
        addq   $0, %rsp
        popq   %r14
        popq   %r13
@@ -345,7 +352,7 @@ _o1735conclusion:
        retq
 _t1734start:
        movq   %rdi, %rdx
-       movq   %rdx, %rdx
+       movq   %rdx, -8(%r15)
        movq   _free_ptr(%rip), %rdx
        movq   %rdx, %rdx
        addq   $16, %rdx
@@ -377,14 +384,15 @@ _t1734block1912:
        jmp _t1734block1910
 
 _t1734block1910:
-       movq   _free_ptr(%rip), %rcx
+       movq   _free_ptr(%rip), %rdx
        addq   $16, _free_ptr(%rip)
-       movq   %rcx, %r11
+       movq   %rdx, %r11
        movq   $131, 0(%r11)
-       movq   %rcx, %r11
-       movq   %rdx, 8(%r11)
-       movq   $0, %rdx
-       movq   %rcx, %rax
+       movq   %rdx, %r11
+       movq   -8(%r15), %rax
+       movq   %rax, 8(%r11)
+       movq   $0, %rcx
+       movq   %rdx, %rax
        jmp _t1734conclusion
 
 
@@ -392,7 +400,7 @@ _t1734block1910:
 .globl _t1734
 .align 16
 _t1734:
-pushq  %rsp
+       pushq  %rsp
        pushq  %rbp
        pushq  %rbx
        pushq  %r12
@@ -400,11 +408,11 @@ pushq  %rsp
        pushq  %r14
        movq   %rsp, %rbp
        subq   $0, %rsp
-       movq $0, (%r15)
-       addq   $0, %r15
+       movq   $0, (%r15)
+       addq   $16, %r15
        jmp _t1734start
 _t1734conclusion:
-       subq   $0, %r15
+       subq   $16, %r15
        addq   $0, %rsp
        popq   %r14
        popq   %r13
@@ -415,7 +423,7 @@ _t1734conclusion:
        retq
 _h1733start:
        movq   %rdi, %rdx
-       movq   %rdx, %rcx
+       movq   %rdx, -8(%r15)
        movq   _free_ptr(%rip), %rdx
        movq   %rdx, %rcx
        addq   $16, %rcx
@@ -452,7 +460,8 @@ _h1733block1917:
        movq   %rdx, %r11
        movq   $131, 0(%r11)
        movq   %rdx, %r11
-       movq   %rcx, 8(%r11)
+       movq   -8(%r15), %rax
+       movq   %rax, 8(%r11)
        movq   $0, %rcx
        movq   %rdx, %rax
        jmp _h1733conclusion
@@ -462,7 +471,7 @@ _h1733block1917:
 .globl _h1733
 .align 16
 _h1733:
-pushq  %rsp
+       pushq  %rsp
        pushq  %rbp
        pushq  %rbx
        pushq  %r12
@@ -470,11 +479,11 @@ pushq  %rsp
        pushq  %r14
        movq   %rsp, %rbp
        subq   $0, %rsp
-       movq $0, (%r15)
-       addq   $0, %r15
+       movq   $0, (%r15)
+       addq   $16, %r15
        jmp _h1733start
 _h1733conclusion:
-       subq   $0, %r15
+       subq   $16, %r15
        addq   $0, %rsp
        popq   %r14
        popq   %r13
@@ -485,12 +494,12 @@ _h1733conclusion:
        retq
 _f1732start:
        movq   %rdi, %rdx
-       movq   %rdx, %rdx
+       movq   %rdx, -8(%r15)
        movq   _free_ptr(%rip), %rdx
-       movq   %rdx, %rcx
-       addq   $16, %rcx
-       movq   _fromspace_end(%rip), %rdx
-       cmpq   %rdx, %rcx
+       movq   %rdx, %rdx
+       addq   $16, %rdx
+       movq   _fromspace_end(%rip), %rcx
+       cmpq   %rcx, %rdx
        jl _f1732block1929
        jmp _f1732block1930
 
@@ -517,14 +526,15 @@ _f1732block1926:
        jmp _f1732block1924
 
 _f1732block1924:
-       movq   _free_ptr(%rip), %rcx
+       movq   _free_ptr(%rip), %rdx
        addq   $16, _free_ptr(%rip)
-       movq   %rcx, %r11
+       movq   %rdx, %r11
        movq   $131, 0(%r11)
-       movq   %rcx, %r11
-       movq   %rdx, 8(%r11)
-       movq   $0, %rdx
-       movq   %rcx, %rax
+       movq   %rdx, %r11
+       movq   -8(%r15), %rax
+       movq   %rax, 8(%r11)
+       movq   $0, %rcx
+       movq   %rdx, %rax
        jmp _f1732conclusion
 
 
@@ -532,7 +542,7 @@ _f1732block1924:
 .globl _f1732
 .align 16
 _f1732:
-pushq  %rsp
+       pushq  %rsp
        pushq  %rbp
        pushq  %rbx
        pushq  %r12
@@ -540,11 +550,11 @@ pushq  %rsp
        pushq  %r14
        movq   %rsp, %rbp
        subq   $0, %rsp
-       movq $0, (%r15)
-       addq   $0, %r15
+       movq   $0, (%r15)
+       addq   $16, %r15
        jmp _f1732start
 _f1732conclusion:
-       subq   $0, %r15
+       subq   $16, %r15
        addq   $0, %rsp
        popq   %r14
        popq   %r13
@@ -555,12 +565,12 @@ _f1732conclusion:
        retq
 _e1731start:
        movq   %rdi, %rdx
-       movq   %rdx, %rdx
+       movq   %rdx, -8(%r15)
        movq   _free_ptr(%rip), %rdx
-       movq   %rdx, %rcx
-       addq   $16, %rcx
-       movq   _fromspace_end(%rip), %rdx
-       cmpq   %rdx, %rcx
+       movq   %rdx, %rdx
+       addq   $16, %rdx
+       movq   _fromspace_end(%rip), %rcx
+       cmpq   %rcx, %rdx
        jl _e1731block1936
        jmp _e1731block1937
 
@@ -587,14 +597,15 @@ _e1731block1933:
        jmp _e1731block1931
 
 _e1731block1931:
-       movq   _free_ptr(%rip), %rcx
+       movq   _free_ptr(%rip), %rdx
        addq   $16, _free_ptr(%rip)
-       movq   %rcx, %r11
+       movq   %rdx, %r11
        movq   $131, 0(%r11)
-       movq   %rcx, %r11
-       movq   %rdx, 8(%r11)
-       movq   $0, %rdx
-       movq   %rcx, %rax
+       movq   %rdx, %r11
+       movq   -8(%r15), %rax
+       movq   %rax, 8(%r11)
+       movq   $0, %rcx
+       movq   %rdx, %rax
        jmp _e1731conclusion
 
 
@@ -602,7 +613,7 @@ _e1731block1931:
 .globl _e1731
 .align 16
 _e1731:
-pushq  %rsp
+       pushq  %rsp
        pushq  %rbp
        pushq  %rbx
        pushq  %r12
@@ -610,11 +621,11 @@ pushq  %rsp
        pushq  %r14
        movq   %rsp, %rbp
        subq   $0, %rsp
-       movq $0, (%r15)
-       addq   $0, %r15
+       movq   $0, (%r15)
+       addq   $16, %r15
        jmp _e1731start
 _e1731conclusion:
-       subq   $0, %r15
+       subq   $16, %r15
        addq   $0, %rsp
        popq   %r14
        popq   %r13
@@ -624,7 +635,7 @@ _e1731conclusion:
        popq   %rsp
        retq
 _main1730start:
-       movq   $42, %rdx
+       movq   $42, %rbx
        movq   _free_ptr(%rip), %rdx
        movq   %rdx, %rdx
        addq   $16, %rdx
@@ -656,14 +667,14 @@ _main1730block1947:
        jmp _main1730block1945
 
 _main1730block1945:
-       movq   _free_ptr(%rip), %rcx
+       movq   _free_ptr(%rip), %rdx
        addq   $16, _free_ptr(%rip)
-       movq   %rcx, %r11
+       movq   %rdx, %r11
        movq   $3, 0(%r11)
-       movq   %rcx, %r11
-       movq   %rdx, 8(%r11)
-       movq   $0, %rdx
-       movq   %rcx, %rcx
+       movq   %rdx, %r11
+       movq   %rbx, 8(%r11)
+       movq   $0, %rcx
+       movq   %rdx, %rcx
        leaq   _o1735(%rip), %rdx
        movq   $1, %rdi
        movq   %rcx, %rsi
@@ -676,7 +687,7 @@ _main1730block1945:
        leaq   _h1733(%rip), %rdx
        movq   %rcx, %rdi
        callq *%rdx
-       movq   %rax, %rcx
+       movq   %rax, -8(%r15)
        movq   _free_ptr(%rip), %rdx
        movq   %rdx, %rdx
        addq   $16, %rdx
@@ -713,7 +724,8 @@ _main1730block1938:
        movq   %rdx, %r11
        movq   $131, 0(%r11)
        movq   %rdx, %r11
-       movq   %rcx, 8(%r11)
+       movq   -8(%r15), %rax
+       movq   %rax, 8(%r11)
        movq   $0, %rcx
        movq   %rdx, %rcx
        leaq   _e1731(%rip), %rdx
@@ -739,7 +751,7 @@ _main1730block1938:
 .globl _main
 .align 16
 _main:
-pushq  %rsp
+       pushq  %rsp
        pushq  %rbp
        pushq  %rbx
        pushq  %r12
@@ -751,11 +763,11 @@ pushq  %rsp
        movq   $16384, %rsi
        callq _initialize
        movq   _rootstack_begin(%rip), %r15
-       movq $0, (%r15)
-       addq   $0, %r15
+       movq   $0, (%r15)
+       addq   $16, %r15
        jmp _main1730start
 _main1730conclusion:
-       subq   $0, %r15
+       subq   $16, %r15
        addq   $0, %rsp
        popq   %r14
        popq   %r13

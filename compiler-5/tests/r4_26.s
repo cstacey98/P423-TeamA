@@ -1,6 +1,6 @@
 _g2178start:
-       movq   %rdi, %rcx
-       movq   $1, %rcx
+       movq   %rdi, %rbx
+       movq   $1, %r12
        movq   _free_ptr(%rip), %rdx
        movq   %rdx, %rdx
        addq   $16, %rdx
@@ -37,11 +37,11 @@ _g2178block2296:
        movq   %rdx, %r11
        movq   $3, 0(%r11)
        movq   %rdx, %r11
-       movq   %rcx, 8(%r11)
-       movq   $0, %rsi
+       movq   %r12, 8(%r11)
+       movq   $0, %rcx
        movq   %rdx, %rdx
        movq   $0, %rax
-       cmpq   %rax, %rcx
+       cmpq   %rax, %rbx
        je _g2178block2294
        jmp _g2178block2295
 
@@ -54,7 +54,7 @@ _g2178block2295:
        movq   8(%r11), %rdx
        movq   %rdx, %rdx
        negq   %rdx
-       movq   %rcx, %rcx
+       movq   %rbx, %rcx
        addq   %rdx, %rcx
        leaq   _g2178(%rip), %rdx
        movq   %rcx, %rdi
@@ -72,7 +72,7 @@ _g2178block2295:
 .globl _g2178
 .align 16
 _g2178:
-pushq  %rsp
+       pushq  %rsp
        pushq  %rbp
        pushq  %rbx
        pushq  %r12
@@ -80,7 +80,7 @@ pushq  %rsp
        pushq  %r14
        movq   %rsp, %rbp
        subq   $0, %rsp
-       movq $0, (%r15)
+       movq   $0, (%r15)
        addq   $0, %r15
        jmp _g2178start
 _g2178conclusion:
@@ -94,7 +94,7 @@ _g2178conclusion:
        popq   %rsp
        retq
 _main2177start:
-       movq   $1, %rdx
+       movq   $1, %rbx
        movq   _free_ptr(%rip), %rdx
        movq   %rdx, %rdx
        addq   $16, %rdx
@@ -126,15 +126,15 @@ _main2177block2368:
        jmp _main2177block2366
 
 _main2177block2366:
-       movq   _free_ptr(%rip), %rcx
+       movq   _free_ptr(%rip), %rdx
        addq   $16, _free_ptr(%rip)
-       movq   %rcx, %r11
+       movq   %rdx, %r11
        movq   $3, 0(%r11)
-       movq   %rcx, %r11
-       movq   %rdx, 8(%r11)
-       movq   $0, %rdx
-       movq   %rcx, -8(%r15)
-       movq   $1, %rdx
+       movq   %rdx, %r11
+       movq   %rbx, 8(%r11)
+       movq   $0, %rcx
+       movq   %rdx, -8(%r15)
+       movq   $1, %rbx
        movq   _free_ptr(%rip), %rdx
        movq   %rdx, %rcx
        addq   $16, %rcx
@@ -166,15 +166,15 @@ _main2177block2361:
        jmp _main2177block2359
 
 _main2177block2359:
-       movq   _free_ptr(%rip), %rcx
+       movq   _free_ptr(%rip), %rdx
        addq   $16, _free_ptr(%rip)
-       movq   %rcx, %r11
+       movq   %rdx, %r11
        movq   $3, 0(%r11)
-       movq   %rcx, %r11
-       movq   %rdx, 8(%r11)
-       movq   $0, %rdx
-       movq   %rcx, -8(%r15)
-       movq   $1, %rdx
+       movq   %rdx, %r11
+       movq   %rbx, 8(%r11)
+       movq   $0, %rcx
+       movq   %rdx, -16(%r15)
+       movq   $1, %rbx
        movq   _free_ptr(%rip), %rdx
        movq   %rdx, %rcx
        addq   $16, %rcx
@@ -206,15 +206,15 @@ _main2177block2354:
        jmp _main2177block2352
 
 _main2177block2352:
-       movq   _free_ptr(%rip), %rcx
+       movq   _free_ptr(%rip), %rdx
        addq   $16, _free_ptr(%rip)
-       movq   %rcx, %r11
+       movq   %rdx, %r11
        movq   $3, 0(%r11)
-       movq   %rcx, %r11
-       movq   %rdx, 8(%r11)
-       movq   $0, %rdx
-       movq   %rcx, -8(%r15)
-       movq   $1, %rcx
+       movq   %rdx, %r11
+       movq   %rbx, 8(%r11)
+       movq   $0, %rcx
+       movq   %rdx, -24(%r15)
+       movq   $1, %rbx
        movq   _free_ptr(%rip), %rdx
        movq   %rdx, %rdx
        addq   $16, %rdx
@@ -251,10 +251,10 @@ _main2177block2345:
        movq   %rdx, %r11
        movq   $3, 0(%r11)
        movq   %rdx, %r11
-       movq   %rcx, 8(%r11)
+       movq   %rbx, 8(%r11)
        movq   $0, %rcx
-       movq   %rdx, -8(%r15)
-       movq   $1, %rdx
+       movq   %rdx, -32(%r15)
+       movq   $1, %rbx
        movq   _free_ptr(%rip), %rdx
        movq   %rdx, %rdx
        addq   $16, %rdx
@@ -286,15 +286,15 @@ _main2177block2340:
        jmp _main2177block2338
 
 _main2177block2338:
-       movq   _free_ptr(%rip), %rcx
+       movq   _free_ptr(%rip), %rdx
        addq   $16, _free_ptr(%rip)
-       movq   %rcx, %r11
+       movq   %rdx, %r11
        movq   $3, 0(%r11)
-       movq   %rcx, %r11
-       movq   %rdx, 8(%r11)
-       movq   $0, %rdx
-       movq   %rcx, -8(%r15)
-       movq   $1, %rdx
+       movq   %rdx, %r11
+       movq   %rbx, 8(%r11)
+       movq   $0, %rcx
+       movq   %rdx, -40(%r15)
+       movq   $1, %rbx
        movq   _free_ptr(%rip), %rdx
        movq   %rdx, %rcx
        addq   $16, %rcx
@@ -326,15 +326,15 @@ _main2177block2332:
        jmp _main2177block2331
 
 _main2177block2331:
-       movq   _free_ptr(%rip), %rcx
+       movq   _free_ptr(%rip), %rdx
        addq   $16, _free_ptr(%rip)
-       movq   %rcx, %r11
+       movq   %rdx, %r11
        movq   $3, 0(%r11)
-       movq   %rcx, %r11
-       movq   %rdx, 8(%r11)
-       movq   $0, %rdx
-       movq   %rcx, -8(%r15)
-       movq   $1, %rdx
+       movq   %rdx, %r11
+       movq   %rbx, 8(%r11)
+       movq   $0, %rcx
+       movq   %rdx, -48(%r15)
+       movq   $1, %rbx
        movq   _free_ptr(%rip), %rdx
        movq   %rdx, %rdx
        addq   $16, %rdx
@@ -366,15 +366,15 @@ _main2177block2326:
        jmp _main2177block2324
 
 _main2177block2324:
-       movq   _free_ptr(%rip), %rcx
+       movq   _free_ptr(%rip), %rdx
        addq   $16, _free_ptr(%rip)
-       movq   %rcx, %r11
+       movq   %rdx, %r11
        movq   $3, 0(%r11)
-       movq   %rcx, %r11
-       movq   %rdx, 8(%r11)
-       movq   $0, %rdx
-       movq   %rcx, -8(%r15)
-       movq   $1, %rcx
+       movq   %rdx, %r11
+       movq   %rbx, 8(%r11)
+       movq   $0, %rcx
+       movq   %rdx, -56(%r15)
+       movq   $1, %rbx
        movq   _free_ptr(%rip), %rdx
        movq   %rdx, %rcx
        addq   $16, %rcx
@@ -411,15 +411,15 @@ _main2177block2317:
        movq   %rdx, %r11
        movq   $3, 0(%r11)
        movq   %rdx, %r11
-       movq   %rcx, 8(%r11)
+       movq   %rbx, 8(%r11)
        movq   $0, %rcx
-       movq   %rdx, -8(%r15)
-       movq   $1, %rdx
+       movq   %rdx, -64(%r15)
+       movq   $1, %rbx
        movq   _free_ptr(%rip), %rdx
-       movq   %rdx, %rcx
-       addq   $16, %rcx
-       movq   _fromspace_end(%rip), %rdx
-       cmpq   %rdx, %rcx
+       movq   %rdx, %rdx
+       addq   $16, %rdx
+       movq   _fromspace_end(%rip), %rcx
+       cmpq   %rcx, %rdx
        jl _main2177block2315
        jmp _main2177block2316
 
@@ -446,15 +446,15 @@ _main2177block2311:
        jmp _main2177block2310
 
 _main2177block2310:
-       movq   _free_ptr(%rip), %rcx
+       movq   _free_ptr(%rip), %rdx
        addq   $16, _free_ptr(%rip)
-       movq   %rcx, %r11
+       movq   %rdx, %r11
        movq   $3, 0(%r11)
-       movq   %rcx, %r11
-       movq   %rdx, 8(%r11)
-       movq   $0, %rdx
-       movq   %rcx, -8(%r15)
-       movq   $1, %rdx
+       movq   %rdx, %r11
+       movq   %rbx, 8(%r11)
+       movq   $0, %rcx
+       movq   %rdx, -72(%r15)
+       movq   $1, %rbx
        movq   _free_ptr(%rip), %rdx
        movq   %rdx, %rdx
        addq   $16, %rdx
@@ -486,14 +486,14 @@ _main2177block2305:
        jmp _main2177block2303
 
 _main2177block2303:
-       movq   _free_ptr(%rip), %rcx
+       movq   _free_ptr(%rip), %rdx
        addq   $16, _free_ptr(%rip)
-       movq   %rcx, %r11
+       movq   %rdx, %r11
        movq   $3, 0(%r11)
-       movq   %rcx, %r11
-       movq   %rdx, 8(%r11)
-       movq   $0, %rdx
-       movq   %rcx, -16(%r15)
+       movq   %rdx, %r11
+       movq   %rbx, 8(%r11)
+       movq   $0, %rcx
+       movq   %rdx, -80(%r15)
        leaq   _g2178(%rip), %rdx
        movq   $1000, %rdi
        callq *%rdx
@@ -502,23 +502,23 @@ _main2177block2303:
        addq   %rdx, %rcx
        movq   -8(%r15), %r11
        movq   8(%r11), %rdx
-       movq   -8(%r15), %r11
-       movq   8(%r11), %rsi
-       movq   -8(%r15), %r11
-       movq   8(%r11), %rdi
-       movq   -8(%r15), %r11
-       movq   8(%r11), %r8
-       movq   -8(%r15), %r11
-       movq   8(%r11), %r9
-       movq   -8(%r15), %r11
-       movq   8(%r11), %r10
-       movq   -8(%r15), %r11
-       movq   8(%r11), %rbx
-       movq   -8(%r15), %r11
-       movq   8(%r11), %r12
-       movq   -8(%r15), %r11
-       movq   8(%r11), %r13
        movq   -16(%r15), %r11
+       movq   8(%r11), %rsi
+       movq   -24(%r15), %r11
+       movq   8(%r11), %rdi
+       movq   -32(%r15), %r11
+       movq   8(%r11), %r8
+       movq   -40(%r15), %r11
+       movq   8(%r11), %r9
+       movq   -48(%r15), %r11
+       movq   8(%r11), %r10
+       movq   -56(%r15), %r11
+       movq   8(%r11), %rbx
+       movq   -64(%r15), %r11
+       movq   8(%r11), %r12
+       movq   -72(%r15), %r11
+       movq   8(%r11), %r13
+       movq   -80(%r15), %r11
        movq   8(%r11), %r14
        movq   %r13, %r13
        addq   %r14, %r13
@@ -547,7 +547,7 @@ _main2177block2303:
 .globl _main
 .align 16
 _main:
-pushq  %rsp
+       pushq  %rsp
        pushq  %rbp
        pushq  %rbx
        pushq  %r12
@@ -559,11 +559,11 @@ pushq  %rsp
        movq   $16384, %rsi
        callq _initialize
        movq   _rootstack_begin(%rip), %r15
-       movq $0, (%r15)
-       addq   $16, %r15
+       movq   $0, (%r15)
+       addq   $80, %r15
        jmp _main2177start
 _main2177conclusion:
-       subq   $16, %r15
+       subq   $80, %r15
        addq   $0, %rsp
        popq   %r14
        popq   %r13

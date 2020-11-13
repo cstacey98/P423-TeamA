@@ -8,7 +8,7 @@ _id91start:
 .globl _id91
 .align 16
 _id91:
-pushq  %rsp
+       pushq  %rsp
        pushq  %rbp
        pushq  %rbx
        pushq  %r12
@@ -16,7 +16,7 @@ pushq  %rsp
        pushq  %r14
        movq   %rsp, %rbp
        subq   $0, %rsp
-       movq $0, (%r15)
+       movq   $0, (%r15)
        addq   $0, %r15
        jmp _id91start
 _id91conclusion:
@@ -38,17 +38,18 @@ _f90start:
        jmp _f90block136
 
 _f90block136:
-       movq   %rcx, %rsi
-       addq   $1, %rsi
+       movq   %rcx, %rbx
+       addq   $1, %rbx
        movq   %rdx, %r11
-       movq   8(%r11), %rsi
+       movq   8(%r11), %r12
        movq   %rdx, %r11
-       movq   16(%r11), %rsi
+       movq   16(%r11), %rax
+       movq   %rax, -8(%r15)
        movq   _free_ptr(%rip), %rdx
-       movq   %rdx, %rcx
-       addq   $24, %rcx
-       movq   _fromspace_end(%rip), %rdx
-       cmpq   %rdx, %rcx
+       movq   %rdx, %rdx
+       addq   $24, %rdx
+       movq   _fromspace_end(%rip), %rcx
+       cmpq   %rcx, %rdx
        jl _f90block133
        jmp _f90block134
 
@@ -92,19 +93,20 @@ _f90block130:
        jmp _f90block128
 
 _f90block128:
-       movq   _free_ptr(%rip), %rcx
+       movq   _free_ptr(%rip), %rdx
        addq   $24, _free_ptr(%rip)
-       movq   %rcx, %r11
+       movq   %rdx, %r11
        movq   $261, 0(%r11)
-       movq   %rcx, %r11
-       movq   %rsi, 8(%r11)
-       movq   $0, %rdx
-       movq   %rcx, %r11
-       movq   %rsi, 16(%r11)
-       movq   $0, %rdx
-       movq   %rcx, %rcx
+       movq   %rdx, %r11
+       movq   %r12, 8(%r11)
+       movq   $0, %rcx
+       movq   %rdx, %r11
+       movq   -8(%r15), %rax
+       movq   %rax, 16(%r11)
+       movq   $0, %rcx
+       movq   %rdx, %rcx
        leaq   _f90(%rip), %rdx
-       movq   %rsi, %rdi
+       movq   %rbx, %rdi
        movq   %rcx, %rsi
        movq   %rdx, %rax
        popq   %r14
@@ -120,7 +122,7 @@ _f90block128:
 .globl _f90
 .align 16
 _f90:
-pushq  %rsp
+       pushq  %rsp
        pushq  %rbp
        pushq  %rbx
        pushq  %r12
@@ -128,11 +130,11 @@ pushq  %rsp
        pushq  %r14
        movq   %rsp, %rbp
        subq   $0, %rsp
-       movq $0, (%r15)
-       addq   $0, %r15
+       movq   $0, (%r15)
+       addq   $16, %r15
        jmp _f90start
 _f90conclusion:
-       subq   $0, %r15
+       subq   $16, %r15
        addq   $0, %rsp
        popq   %r14
        popq   %r13
@@ -142,8 +144,8 @@ _f90conclusion:
        popq   %rsp
        retq
 _main89start:
-       leaq   _id91(%rip), %rdx
-       movq   $42, %rcx
+       leaq   _id91(%rip), %rbx
+       movq   $42, %r12
        movq   _free_ptr(%rip), %rdx
        movq   %rdx, %rdx
        addq   $16, %rdx
@@ -180,9 +182,9 @@ _main89block144:
        movq   %rdx, %r11
        movq   $3, 0(%r11)
        movq   %rdx, %r11
-       movq   %rcx, 8(%r11)
+       movq   %r12, 8(%r11)
        movq   $0, %rcx
-       movq   %rdx, %rsi
+       movq   %rdx, -8(%r15)
        movq   _free_ptr(%rip), %rdx
        movq   %rdx, %rdx
        addq   $24, %rdx
@@ -214,17 +216,18 @@ _main89block138:
        jmp _main89block137
 
 _main89block137:
-       movq   _free_ptr(%rip), %rcx
+       movq   _free_ptr(%rip), %rdx
        addq   $24, _free_ptr(%rip)
-       movq   %rcx, %r11
+       movq   %rdx, %r11
        movq   $261, 0(%r11)
-       movq   %rcx, %r11
-       movq   %rdx, 8(%r11)
-       movq   $0, %rdx
-       movq   %rcx, %r11
-       movq   %rsi, 16(%r11)
-       movq   $0, %rdx
-       movq   %rcx, %rcx
+       movq   %rdx, %r11
+       movq   %rbx, 8(%r11)
+       movq   $0, %rcx
+       movq   %rdx, %r11
+       movq   -8(%r15), %rax
+       movq   %rax, 16(%r11)
+       movq   $0, %rcx
+       movq   %rdx, %rcx
        leaq   _f90(%rip), %rdx
        movq   $0, %rdi
        movq   %rcx, %rsi
@@ -242,7 +245,7 @@ _main89block137:
 .globl _main
 .align 16
 _main:
-pushq  %rsp
+       pushq  %rsp
        pushq  %rbp
        pushq  %rbx
        pushq  %r12
@@ -254,11 +257,11 @@ pushq  %rsp
        movq   $16384, %rsi
        callq _initialize
        movq   _rootstack_begin(%rip), %r15
-       movq $0, (%r15)
-       addq   $0, %r15
+       movq   $0, (%r15)
+       addq   $16, %r15
        jmp _main89start
 _main89conclusion:
-       subq   $0, %r15
+       subq   $16, %r15
        addq   $0, %rsp
        popq   %r14
        popq   %r13

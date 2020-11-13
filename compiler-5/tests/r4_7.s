@@ -8,7 +8,7 @@ _id2449start:
 .globl _id2449
 .align 16
 _id2449:
-pushq  %rsp
+       pushq  %rsp
        pushq  %rbp
        pushq  %rbx
        pushq  %r12
@@ -16,7 +16,7 @@ pushq  %rsp
        pushq  %r14
        movq   %rsp, %rbp
        subq   $0, %rsp
-       movq $0, (%r15)
+       movq   $0, (%r15)
        addq   $0, %r15
        jmp _id2449start
 _id2449conclusion:
@@ -40,7 +40,7 @@ _inc2448start:
 .globl _inc2448
 .align 16
 _inc2448:
-pushq  %rsp
+       pushq  %rsp
        pushq  %rbp
        pushq  %rbx
        pushq  %r12
@@ -48,7 +48,7 @@ pushq  %rsp
        pushq  %r14
        movq   %rsp, %rbp
        subq   $0, %rsp
-       movq $0, (%r15)
+       movq   $0, (%r15)
        addq   $0, %r15
        jmp _inc2448start
 _inc2448conclusion:
@@ -82,7 +82,7 @@ _main2447start:
 .globl _main
 .align 16
 _main:
-pushq  %rsp
+       pushq  %rsp
        pushq  %rbp
        pushq  %rbx
        pushq  %r12
@@ -94,7 +94,7 @@ pushq  %rsp
        movq   $16384, %rsi
        callq _initialize
        movq   _rootstack_begin(%rip), %r15
-       movq $0, (%r15)
+       movq   $0, (%r15)
        addq   $0, %r15
        jmp _main2447start
 _main2447conclusion:

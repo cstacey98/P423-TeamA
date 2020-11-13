@@ -1,37 +1,39 @@
 _foo1992start:
        movq   %rdi, %rdi
-       movq   %rsi, %rsi
-       movq   %rdx, %rdx
-       movq   %rcx, %rcx
-       movq   %r8, %r8
-       movq   %r9, %rcx
+       movq   %rsi, -8(%rbp)
+       movq   %rdx, %r13
+       movq   %rcx, -16(%rbp)
+       movq   %r8, %r14
+       movq   %r9, %rdx
        movq   $0, %rax
        cmpq   %rdi, %rax
        je _foo1992block2044
        jmp _foo1992block2045
 
 _foo1992block2044:
-       movq   %rcx, %r11
+       movq   %rdx, %r11
        movq   32(%r11), %rax
        jmp _foo1992conclusion
 
 _foo1992block2045:
-       movq   $1, %rsi
-       negq   %rsi
-       movq   %rdi, %rdx
-       addq   %rsi, %rdx
-       movq   %rcx, %r11
-       movq   8(%r11), %rdx
-       movq   %rcx, %r11
-       movq   16(%r11), %rdx
-       movq   %rcx, %r11
-       movq   24(%r11), %rdx
-       movq   %rcx, %r11
-       movq   32(%r11), %rdx
        movq   $1, %rcx
        negq   %rcx
-       movq   %rdx, %rdx
-       addq   %rcx, %rdx
+       movq   %rdi, %r12
+       addq   %rcx, %r12
+       movq   %rdx, %r11
+       movq   8(%r11), %rbx
+       movq   %rdx, %r11
+       movq   16(%r11), %rax
+       movq   %rax, -24(%rbp)
+       movq   %rdx, %r11
+       movq   24(%r11), %rax
+       movq   %rax, -32(%rbp)
+       movq   %rdx, %r11
+       movq   32(%r11), %rcx
+       movq   $1, %rdx
+       negq   %rdx
+       movq   %rcx, -40(%rbp)
+       addq   %rdx, -40(%rbp)
        movq   _free_ptr(%rip), %rdx
        movq   %rdx, %rdx
        addq   $40, %rdx
@@ -63,29 +65,32 @@ _foo1992block2038:
        jmp _foo1992block2037
 
 _foo1992block2037:
-       movq   _free_ptr(%rip), %r9
+       movq   _free_ptr(%rip), %rdx
        addq   $40, _free_ptr(%rip)
-       movq   %r9, %r11
+       movq   %rdx, %r11
        movq   $9, 0(%r11)
-       movq   %r9, %r11
-       movq   %rdx, 8(%r11)
-       movq   $0, %rdi
-       movq   %r9, %r11
-       movq   %rdx, 16(%r11)
-       movq   $0, %rdi
-       movq   %r9, %r11
-       movq   %rdx, 24(%r11)
-       movq   $0, %rdi
-       movq   %r9, %r11
-       movq   %rdx, 32(%r11)
-       movq   $0, %rdi
-       movq   %r9, %r9
+       movq   %rdx, %r11
+       movq   %rbx, 8(%r11)
+       movq   $0, %rcx
+       movq   %rdx, %r11
+       movq   -24(%rbp), %rax
+       movq   %rax, 16(%r11)
+       movq   $0, %rcx
+       movq   %rdx, %r11
+       movq   -32(%rbp), %rax
+       movq   %rax, 24(%r11)
+       movq   $0, %rcx
+       movq   %rdx, %r11
+       movq   -40(%rbp), %rax
+       movq   %rax, 32(%r11)
+       movq   $0, %rcx
+       movq   %rdx, %r9
        leaq   _foo1992(%rip), %r10
-       movq   %rdx, %rdi
-       movq   %rsi, %rsi
-       movq   %rdx, %rdx
-       movq   %rcx, %rcx
-       movq   %r8, %r8
+       movq   %r12, %rdi
+       movq   -8(%rbp), %rsi
+       movq   %r13, %rdx
+       movq   -16(%rbp), %rcx
+       movq   %r14, %r8
        movq   %r9, %r9
        movq   %r10, %rax
        popq   %r14
@@ -101,20 +106,20 @@ _foo1992block2037:
 .globl _foo1992
 .align 16
 _foo1992:
-pushq  %rsp
+       pushq  %rsp
        pushq  %rbp
        pushq  %rbx
        pushq  %r12
        pushq  %r13
        pushq  %r14
        movq   %rsp, %rbp
-       subq   $0, %rsp
-       movq $0, (%r15)
+       subq   $48, %rsp
+       movq   $0, (%r15)
        addq   $0, %r15
        jmp _foo1992start
 _foo1992conclusion:
        subq   $0, %r15
-       addq   $0, %rsp
+       addq   $48, %rsp
        popq   %r14
        popq   %r13
        popq   %r12
@@ -123,10 +128,10 @@ _foo1992conclusion:
        popq   %rsp
        retq
 _main1991start:
-       movq   $6, %rdx
-       movq   $7, %rdx
-       movq   $8, %rdx
-       movq   $142, %rdx
+       movq   $6, %r14
+       movq   $7, %r13
+       movq   $8, %r12
+       movq   $142, %rbx
        movq   _free_ptr(%rip), %rdx
        movq   %rdx, %rcx
        addq   $40, %rcx
@@ -158,23 +163,23 @@ _main1991block2048:
        jmp _main1991block2046
 
 _main1991block2046:
-       movq   _free_ptr(%rip), %rcx
+       movq   _free_ptr(%rip), %rdx
        addq   $40, _free_ptr(%rip)
-       movq   %rcx, %r11
+       movq   %rdx, %r11
        movq   $9, 0(%r11)
-       movq   %rcx, %r11
-       movq   %rdx, 8(%r11)
-       movq   $0, %rsi
-       movq   %rcx, %r11
-       movq   %rdx, 16(%r11)
-       movq   $0, %rsi
-       movq   %rcx, %r11
-       movq   %rdx, 24(%r11)
-       movq   $0, %rsi
-       movq   %rcx, %r11
-       movq   %rdx, 32(%r11)
-       movq   $0, %rdx
-       movq   %rcx, %r9
+       movq   %rdx, %r11
+       movq   %r14, 8(%r11)
+       movq   $0, %rcx
+       movq   %rdx, %r11
+       movq   %r13, 16(%r11)
+       movq   $0, %rcx
+       movq   %rdx, %r11
+       movq   %r12, 24(%r11)
+       movq   $0, %rcx
+       movq   %rdx, %r11
+       movq   %rbx, 32(%r11)
+       movq   $0, %rcx
+       movq   %rdx, %r9
        leaq   _foo1992(%rip), %r10
        movq   $100, %rdi
        movq   $2, %rsi
@@ -196,7 +201,7 @@ _main1991block2046:
 .globl _main
 .align 16
 _main:
-pushq  %rsp
+       pushq  %rsp
        pushq  %rbp
        pushq  %rbx
        pushq  %r12
@@ -208,7 +213,7 @@ pushq  %rsp
        movq   $16384, %rsi
        callq _initialize
        movq   _rootstack_begin(%rip), %r15
-       movq $0, (%r15)
+       movq   $0, (%r15)
        addq   $0, %r15
        jmp _main1991start
 _main1991conclusion:

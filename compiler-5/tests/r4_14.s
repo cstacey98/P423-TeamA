@@ -12,7 +12,7 @@ _minus213start:
 .globl _minus213
 .align 16
 _minus213:
-pushq  %rsp
+       pushq  %rsp
        pushq  %rbp
        pushq  %rbx
        pushq  %r12
@@ -20,7 +20,7 @@ pushq  %rsp
        pushq  %r14
        movq   %rsp, %rbp
        subq   $0, %rsp
-       movq $0, (%r15)
+       movq   $0, (%r15)
        addq   $0, %r15
        jmp _minus213start
 _minus213conclusion:
@@ -62,7 +62,7 @@ _zero212block338:
        jmp _zero212block336
 
 _zero212block351:
-       movq   %rdx, %rcx
+       movq   %rdx, %rbx
        movq   _free_ptr(%rip), %rdx
        movq   %rdx, %rcx
        addq   $16, %rcx
@@ -117,7 +117,7 @@ _zero212block343:
        movq   %rdx, %r11
        movq   $3, 0(%r11)
        movq   %rdx, %r11
-       movq   %rcx, 8(%r11)
+       movq   %rbx, 8(%r11)
        movq   $0, %rcx
        movq   %rdx, %rdx
        movq   %rdx, %r11
@@ -143,7 +143,7 @@ _zero212block343:
 .globl _zero212
 .align 16
 _zero212:
-pushq  %rsp
+       pushq  %rsp
        pushq  %rbp
        pushq  %rbx
        pushq  %r12
@@ -151,7 +151,7 @@ pushq  %rsp
        pushq  %r14
        movq   %rsp, %rbp
        subq   $0, %rsp
-       movq $0, (%r15)
+       movq   $0, (%r15)
        addq   $0, %r15
        jmp _zero212start
 _zero212conclusion:
@@ -175,13 +175,13 @@ _one211block366:
        leaq   _zero212(%rip), %rdx
        movq   $20, %rdi
        callq *%rdx
-       movq   %rax, %rdx
-       movq   $42, %rsi
+       movq   %rax, -8(%r15)
+       movq   $42, %rbx
        movq   _free_ptr(%rip), %rdx
-       movq   %rdx, %rcx
-       addq   $24, %rcx
-       movq   _fromspace_end(%rip), %rdx
-       cmpq   %rdx, %rcx
+       movq   %rdx, %rdx
+       addq   $24, %rdx
+       movq   _fromspace_end(%rip), %rcx
+       cmpq   %rcx, %rdx
        jl _one211block357
        jmp _one211block358
 
@@ -198,7 +198,7 @@ _one211block354:
        jmp _one211block352
 
 _one211block367:
-       movq   %rdx, %rcx
+       movq   %rdx, %rbx
        movq   _free_ptr(%rip), %rdx
        movq   %rdx, %rcx
        addq   $16, %rcx
@@ -221,17 +221,18 @@ _one211block353:
        jmp _one211block352
 
 _one211block352:
-       movq   _free_ptr(%rip), %rcx
+       movq   _free_ptr(%rip), %rdx
        addq   $24, _free_ptr(%rip)
-       movq   %rcx, %r11
+       movq   %rdx, %r11
        movq   $133, 0(%r11)
-       movq   %rcx, %r11
-       movq   %rdx, 8(%r11)
-       movq   $0, %rdx
-       movq   %rcx, %r11
-       movq   %rsi, 16(%r11)
-       movq   $0, %rdx
-       movq   %rcx, %rax
+       movq   %rdx, %r11
+       movq   -8(%r15), %rax
+       movq   %rax, 8(%r11)
+       movq   $0, %rcx
+       movq   %rdx, %r11
+       movq   %rbx, 16(%r11)
+       movq   $0, %rcx
+       movq   %rdx, %rax
        jmp _one211conclusion
 
 _one211block364:
@@ -259,7 +260,7 @@ _one211block359:
        movq   %rdx, %r11
        movq   $3, 0(%r11)
        movq   %rdx, %r11
-       movq   %rcx, 8(%r11)
+       movq   %rbx, 8(%r11)
        movq   $0, %rcx
        movq   %rdx, %rdx
        movq   %rdx, %r11
@@ -285,7 +286,7 @@ _one211block359:
 .globl _one211
 .align 16
 _one211:
-pushq  %rsp
+       pushq  %rsp
        pushq  %rbp
        pushq  %rbx
        pushq  %r12
@@ -293,11 +294,11 @@ pushq  %rsp
        pushq  %r14
        movq   %rsp, %rbp
        subq   $0, %rsp
-       movq $0, (%r15)
-       addq   $0, %r15
+       movq   $0, (%r15)
+       addq   $16, %r15
        jmp _one211start
 _one211conclusion:
-       subq   $0, %r15
+       subq   $16, %r15
        addq   $0, %rsp
        popq   %r14
        popq   %r13
@@ -314,7 +315,7 @@ _two210start:
        jmp _two210block383
 
 _two210block383:
-       movq   %rdx, %rdx
+       movq   %rdx, %rbx
        movq   _free_ptr(%rip), %rdx
        movq   %rdx, %rcx
        addq   $16, %rcx
@@ -346,14 +347,14 @@ _two210block377:
        jmp _two210block375
 
 _two210block375:
-       movq   _free_ptr(%rip), %rcx
+       movq   _free_ptr(%rip), %rdx
        addq   $16, _free_ptr(%rip)
-       movq   %rcx, %r11
+       movq   %rdx, %r11
        movq   $3, 0(%r11)
-       movq   %rcx, %r11
-       movq   %rdx, 8(%r11)
-       movq   $0, %rdx
-       movq   %rcx, %rdx
+       movq   %rdx, %r11
+       movq   %rbx, 8(%r11)
+       movq   $0, %rcx
+       movq   %rdx, %rdx
        movq   %rdx, %r11
        movq   8(%r11), %rcx
        leaq   _minus213(%rip), %rdx
@@ -376,12 +377,12 @@ _two210block382:
        leaq   _zero212(%rip), %rdx
        movq   $20, %rdi
        callq *%rdx
-       movq   %rax, %rdx
-       movq   $42, %rdx
+       movq   %rax, -8(%r15)
+       movq   $42, %rbx
        leaq   _one211(%rip), %rdx
        movq   $20, %rdi
        callq *%rdx
-       movq   %rax, %rdx
+       movq   %rax, -16(%r15)
        movq   _free_ptr(%rip), %rdx
        movq   %rdx, %rcx
        addq   $32, %rcx
@@ -413,20 +414,22 @@ _two210block369:
        jmp _two210block368
 
 _two210block368:
-       movq   _free_ptr(%rip), %rsi
+       movq   _free_ptr(%rip), %rdx
        addq   $32, _free_ptr(%rip)
-       movq   %rsi, %r11
+       movq   %rdx, %r11
        movq   $647, 0(%r11)
-       movq   %rsi, %r11
-       movq   %rdx, 8(%r11)
+       movq   %rdx, %r11
+       movq   -8(%r15), %rax
+       movq   %rax, 8(%r11)
        movq   $0, %rcx
-       movq   %rsi, %r11
-       movq   %rdx, 16(%r11)
+       movq   %rdx, %r11
+       movq   %rbx, 16(%r11)
        movq   $0, %rcx
-       movq   %rsi, %r11
-       movq   %rdx, 24(%r11)
-       movq   $0, %rdx
-       movq   %rsi, %rax
+       movq   %rdx, %r11
+       movq   -16(%r15), %rax
+       movq   %rax, 24(%r11)
+       movq   $0, %rcx
+       movq   %rdx, %rax
        jmp _two210conclusion
 
 
@@ -434,7 +437,7 @@ _two210block368:
 .globl _two210
 .align 16
 _two210:
-pushq  %rsp
+       pushq  %rsp
        pushq  %rbp
        pushq  %rbx
        pushq  %r12
@@ -442,11 +445,11 @@ pushq  %rsp
        pushq  %r14
        movq   %rsp, %rbp
        subq   $0, %rsp
-       movq $0, (%r15)
-       addq   $0, %r15
+       movq   $0, (%r15)
+       addq   $16, %r15
        jmp _two210start
 _two210conclusion:
-       subq   $0, %r15
+       subq   $16, %r15
        addq   $0, %rsp
        popq   %r14
        popq   %r13
@@ -466,16 +469,16 @@ _three209block398:
        leaq   _zero212(%rip), %rdx
        movq   $20, %rdi
        callq *%rdx
-       movq   %rax, %rdx
-       movq   $42, %rcx
+       movq   %rax, -8(%r15)
+       movq   $42, %rbx
        leaq   _one211(%rip), %rdx
        movq   $20, %rdi
        callq *%rdx
-       movq   %rax, %rcx
+       movq   %rax, -16(%r15)
        leaq   _two210(%rip), %rdx
        movq   $20, %rdi
        callq *%rdx
-       movq   %rax, %rcx
+       movq   %rax, -24(%r15)
        movq   _free_ptr(%rip), %rdx
        movq   %rdx, %rdx
        addq   $40, %rdx
@@ -507,27 +510,30 @@ _three209block386:
        jmp _three209block384
 
 _three209block384:
-       movq   _free_ptr(%rip), %rsi
+       movq   _free_ptr(%rip), %rdx
        addq   $40, _free_ptr(%rip)
-       movq   %rsi, %r11
+       movq   %rdx, %r11
        movq   $1673, 0(%r11)
-       movq   %rsi, %r11
-       movq   %rdx, 8(%r11)
-       movq   $0, %rdx
-       movq   %rsi, %r11
-       movq   %rcx, 16(%r11)
-       movq   $0, %rdx
-       movq   %rsi, %r11
-       movq   %rcx, 24(%r11)
-       movq   $0, %rdx
-       movq   %rsi, %r11
-       movq   %rcx, 32(%r11)
-       movq   $0, %rdx
-       movq   %rsi, %rax
+       movq   %rdx, %r11
+       movq   -8(%r15), %rax
+       movq   %rax, 8(%r11)
+       movq   $0, %rcx
+       movq   %rdx, %r11
+       movq   %rbx, 16(%r11)
+       movq   $0, %rcx
+       movq   %rdx, %r11
+       movq   -16(%r15), %rax
+       movq   %rax, 24(%r11)
+       movq   $0, %rcx
+       movq   %rdx, %r11
+       movq   -24(%r15), %rax
+       movq   %rax, 32(%r11)
+       movq   $0, %rcx
+       movq   %rdx, %rax
        jmp _three209conclusion
 
 _three209block399:
-       movq   %rdx, %rcx
+       movq   %rdx, %rbx
        movq   _free_ptr(%rip), %rdx
        movq   %rdx, %rdx
        addq   $16, %rdx
@@ -564,7 +570,7 @@ _three209block391:
        movq   %rdx, %r11
        movq   $3, 0(%r11)
        movq   %rdx, %r11
-       movq   %rcx, 8(%r11)
+       movq   %rbx, 8(%r11)
        movq   $0, %rcx
        movq   %rdx, %rdx
        movq   %rdx, %r11
@@ -590,7 +596,7 @@ _three209block391:
 .globl _three209
 .align 16
 _three209:
-pushq  %rsp
+       pushq  %rsp
        pushq  %rbp
        pushq  %rbx
        pushq  %r12
@@ -598,11 +604,11 @@ pushq  %rsp
        pushq  %r14
        movq   %rsp, %rbp
        subq   $0, %rsp
-       movq $0, (%r15)
-       addq   $0, %r15
+       movq   $0, (%r15)
+       addq   $32, %r15
        jmp _three209start
 _three209conclusion:
-       subq   $0, %r15
+       subq   $32, %r15
        addq   $0, %rsp
        popq   %r14
        popq   %r13
@@ -615,25 +621,25 @@ _main208start:
        leaq   _zero212(%rip), %rdx
        movq   $20, %rdi
        callq *%rdx
-       movq   %rax, %rdx
-       movq   $42, %rsi
+       movq   %rax, -8(%r15)
+       movq   $42, %rbx
        leaq   _one211(%rip), %rdx
        movq   $20, %rdi
        callq *%rdx
-       movq   %rax, %rsi
+       movq   %rax, -16(%r15)
        leaq   _two210(%rip), %rdx
        movq   $20, %rdi
        callq *%rdx
-       movq   %rax, %rsi
+       movq   %rax, -24(%r15)
        leaq   _three209(%rip), %rdx
        movq   $20, %rdi
        callq *%rdx
-       movq   %rax, %rsi
+       movq   %rax, -32(%r15)
        movq   _free_ptr(%rip), %rdx
-       movq   %rdx, %rdx
-       addq   $48, %rdx
-       movq   _fromspace_end(%rip), %rcx
-       cmpq   %rcx, %rdx
+       movq   %rdx, %rcx
+       addq   $48, %rcx
+       movq   _fromspace_end(%rip), %rdx
+       cmpq   %rdx, %rcx
        jl _main208block405
        jmp _main208block406
 
@@ -660,26 +666,30 @@ _main208block402:
        jmp _main208block400
 
 _main208block400:
-       movq   _free_ptr(%rip), %rcx
+       movq   _free_ptr(%rip), %rdx
        addq   $48, _free_ptr(%rip)
-       movq   %rcx, %r11
+       movq   %rdx, %r11
        movq   $3723, 0(%r11)
-       movq   %rcx, %r11
-       movq   %rdx, 8(%r11)
-       movq   $0, %rdx
-       movq   %rcx, %r11
-       movq   %rsi, 16(%r11)
-       movq   $0, %rdx
-       movq   %rcx, %r11
-       movq   %rsi, 24(%r11)
-       movq   $0, %rdx
-       movq   %rcx, %r11
-       movq   %rsi, 32(%r11)
-       movq   $0, %rdx
-       movq   %rcx, %r11
-       movq   %rsi, 40(%r11)
-       movq   $0, %rdx
-       movq   %rcx, %rdx
+       movq   %rdx, %r11
+       movq   -8(%r15), %rax
+       movq   %rax, 8(%r11)
+       movq   $0, %rcx
+       movq   %rdx, %r11
+       movq   %rbx, 16(%r11)
+       movq   $0, %rcx
+       movq   %rdx, %r11
+       movq   -16(%r15), %rax
+       movq   %rax, 24(%r11)
+       movq   $0, %rcx
+       movq   %rdx, %r11
+       movq   -24(%r15), %rax
+       movq   %rax, 32(%r11)
+       movq   $0, %rcx
+       movq   %rdx, %r11
+       movq   -32(%r15), %rax
+       movq   %rax, 40(%r11)
+       movq   $0, %rcx
+       movq   %rdx, %rdx
        movq   %rdx, %r11
        movq   40(%r11), %rdx
        movq   %rdx, %r11
@@ -695,7 +705,7 @@ _main208block400:
 .globl _main
 .align 16
 _main:
-pushq  %rsp
+       pushq  %rsp
        pushq  %rbp
        pushq  %rbx
        pushq  %r12
@@ -707,11 +717,11 @@ pushq  %rsp
        movq   $16384, %rsi
        callq _initialize
        movq   _rootstack_begin(%rip), %r15
-       movq $0, (%r15)
-       addq   $0, %r15
+       movq   $0, (%r15)
+       addq   $32, %r15
        jmp _main208start
 _main208conclusion:
-       subq   $0, %r15
+       subq   $32, %r15
        addq   $0, %rsp
        popq   %r14
        popq   %r13

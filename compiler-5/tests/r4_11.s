@@ -7,15 +7,15 @@ _f51start:
        jmp _f51block81
 
 _f51block81:
-       movq   %rcx, %rsi
-       addq   $1, %rsi
+       movq   %rcx, %r12
+       addq   $1, %r12
        movq   %rdx, %r11
-       movq   8(%r11), %rcx
+       movq   8(%r11), %rbx
        movq   _free_ptr(%rip), %rdx
-       movq   %rdx, %rdx
-       addq   $16, %rdx
-       movq   _fromspace_end(%rip), %rcx
-       cmpq   %rcx, %rdx
+       movq   %rdx, %rcx
+       addq   $16, %rcx
+       movq   _fromspace_end(%rip), %rdx
+       cmpq   %rdx, %rcx
        jl _f51block78
        jmp _f51block79
 
@@ -52,11 +52,11 @@ _f51block73:
        movq   %rdx, %r11
        movq   $3, 0(%r11)
        movq   %rdx, %r11
-       movq   %rcx, 8(%r11)
+       movq   %rbx, 8(%r11)
        movq   $0, %rcx
        movq   %rdx, %rcx
        leaq   _f51(%rip), %rdx
-       movq   %rsi, %rdi
+       movq   %r12, %rdi
        movq   %rcx, %rsi
        movq   %rdx, %rax
        popq   %r14
@@ -72,7 +72,7 @@ _f51block73:
 .globl _f51
 .align 16
 _f51:
-pushq  %rsp
+       pushq  %rsp
        pushq  %rbp
        pushq  %rbx
        pushq  %r12
@@ -80,7 +80,7 @@ pushq  %rsp
        pushq  %r14
        movq   %rsp, %rbp
        subq   $0, %rsp
-       movq $0, (%r15)
+       movq   $0, (%r15)
        addq   $0, %r15
        jmp _f51start
 _f51conclusion:
@@ -94,7 +94,7 @@ _f51conclusion:
        popq   %rsp
        retq
 _main50start:
-       movq   $42, %rdx
+       movq   $42, %rbx
        movq   _free_ptr(%rip), %rdx
        movq   %rdx, %rcx
        addq   $16, %rcx
@@ -126,14 +126,14 @@ _main50block84:
        jmp _main50block82
 
 _main50block82:
-       movq   _free_ptr(%rip), %rcx
+       movq   _free_ptr(%rip), %rdx
        addq   $16, _free_ptr(%rip)
-       movq   %rcx, %r11
+       movq   %rdx, %r11
        movq   $3, 0(%r11)
-       movq   %rcx, %r11
-       movq   %rdx, 8(%r11)
-       movq   $0, %rdx
-       movq   %rcx, %rcx
+       movq   %rdx, %r11
+       movq   %rbx, 8(%r11)
+       movq   $0, %rcx
+       movq   %rdx, %rcx
        leaq   _f51(%rip), %rdx
        movq   $0, %rdi
        movq   %rcx, %rsi
@@ -151,7 +151,7 @@ _main50block82:
 .globl _main
 .align 16
 _main:
-pushq  %rsp
+       pushq  %rsp
        pushq  %rbp
        pushq  %rbx
        pushq  %r12
@@ -163,7 +163,7 @@ pushq  %rsp
        movq   $16384, %rsi
        callq _initialize
        movq   _rootstack_begin(%rip), %r15
-       movq $0, (%r15)
+       movq   $0, (%r15)
        addq   $0, %r15
        jmp _main50start
 _main50conclusion:

@@ -28,7 +28,7 @@ _h2066start:
 .globl _h2066
 .align 16
 _h2066:
-pushq  %rsp
+       pushq  %rsp
        pushq  %rbp
        pushq  %rbx
        pushq  %r12
@@ -36,7 +36,7 @@ pushq  %rsp
        pushq  %r14
        movq   %rsp, %rbp
        subq   $0, %rsp
-       movq $0, (%r15)
+       movq   $0, (%r15)
        addq   $0, %r15
        jmp _h2066start
 _h2066conclusion:
@@ -50,13 +50,13 @@ _h2066conclusion:
        popq   %rsp
        retq
 _main2065start:
-       movq   $6, %rdx
-       movq   $7, %rsi
+       movq   $6, %rbx
+       movq   $7, %r12
        movq   _free_ptr(%rip), %rdx
-       movq   %rdx, %rdx
-       addq   $24, %rdx
-       movq   _fromspace_end(%rip), %rcx
-       cmpq   %rcx, %rdx
+       movq   %rdx, %rcx
+       addq   $24, %rcx
+       movq   _fromspace_end(%rip), %rdx
+       cmpq   %rdx, %rcx
        jl _main2065block2098
        jmp _main2065block2099
 
@@ -83,17 +83,17 @@ _main2065block2095:
        jmp _main2065block2093
 
 _main2065block2093:
-       movq   _free_ptr(%rip), %rcx
+       movq   _free_ptr(%rip), %rdx
        addq   $24, _free_ptr(%rip)
-       movq   %rcx, %r11
+       movq   %rdx, %r11
        movq   $5, 0(%r11)
-       movq   %rcx, %r11
-       movq   %rdx, 8(%r11)
-       movq   $0, %rdx
-       movq   %rcx, %r11
-       movq   %rsi, 16(%r11)
-       movq   $0, %rdx
-       movq   %rcx, %r9
+       movq   %rdx, %r11
+       movq   %rbx, 8(%r11)
+       movq   $0, %rcx
+       movq   %rdx, %r11
+       movq   %r12, 16(%r11)
+       movq   $0, %rcx
+       movq   %rdx, %r9
        leaq   _h2066(%rip), %r10
        movq   $1, %rdi
        movq   $2, %rsi
@@ -115,7 +115,7 @@ _main2065block2093:
 .globl _main
 .align 16
 _main:
-pushq  %rsp
+       pushq  %rsp
        pushq  %rbp
        pushq  %rbx
        pushq  %r12
@@ -127,7 +127,7 @@ pushq  %rsp
        movq   $16384, %rsi
        callq _initialize
        movq   _rootstack_begin(%rip), %r15
-       movq $0, (%r15)
+       movq   $0, (%r15)
        addq   $0, %r15
        jmp _main2065start
 _main2065conclusion:

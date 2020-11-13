@@ -32,7 +32,7 @@ _fun2374start:
 .globl _fun2374
 .align 16
 _fun2374:
-pushq  %rsp
+       pushq  %rsp
        pushq  %rbp
        pushq  %rbx
        pushq  %r12
@@ -40,7 +40,7 @@ pushq  %rsp
        pushq  %r14
        movq   %rsp, %rbp
        subq   $0, %rsp
-       movq $0, (%r15)
+       movq   $0, (%r15)
        addq   $0, %r15
        jmp _fun2374start
 _fun2374conclusion:
@@ -54,14 +54,14 @@ _fun2374conclusion:
        popq   %rsp
        retq
 _main2373start:
-       movq   $5, %rdx
-       movq   $5, %rdx
-       movq   $7, %rdx
+       movq   $5, %r13
+       movq   $5, %r12
+       movq   $7, %rbx
        movq   _free_ptr(%rip), %rdx
-       movq   %rdx, %rcx
-       addq   $32, %rcx
-       movq   _fromspace_end(%rip), %rdx
-       cmpq   %rdx, %rcx
+       movq   %rdx, %rdx
+       addq   $32, %rdx
+       movq   _fromspace_end(%rip), %rcx
+       cmpq   %rcx, %rdx
        jl _main2373block2411
        jmp _main2373block2412
 
@@ -88,20 +88,20 @@ _main2373block2407:
        jmp _main2373block2406
 
 _main2373block2406:
-       movq   _free_ptr(%rip), %rsi
+       movq   _free_ptr(%rip), %rdx
        addq   $32, _free_ptr(%rip)
-       movq   %rsi, %r11
+       movq   %rdx, %r11
        movq   $7, 0(%r11)
-       movq   %rsi, %r11
-       movq   %rdx, 8(%r11)
+       movq   %rdx, %r11
+       movq   %r13, 8(%r11)
        movq   $0, %rcx
-       movq   %rsi, %r11
-       movq   %rdx, 16(%r11)
+       movq   %rdx, %r11
+       movq   %r12, 16(%r11)
        movq   $0, %rcx
-       movq   %rsi, %r11
-       movq   %rdx, 24(%r11)
-       movq   $0, %rdx
-       movq   %rsi, %r9
+       movq   %rdx, %r11
+       movq   %rbx, 24(%r11)
+       movq   $0, %rcx
+       movq   %rdx, %r9
        leaq   _fun2374(%rip), %r10
        movq   $5, %rdi
        movq   $5, %rsi
@@ -123,7 +123,7 @@ _main2373block2406:
 .globl _main
 .align 16
 _main:
-pushq  %rsp
+       pushq  %rsp
        pushq  %rbp
        pushq  %rbx
        pushq  %r12
@@ -135,7 +135,7 @@ pushq  %rsp
        movq   $16384, %rsi
        callq _initialize
        movq   _rootstack_begin(%rip), %r15
-       movq $0, (%r15)
+       movq   $0, (%r15)
        addq   $0, %r15
        jmp _main2373start
 _main2373conclusion:

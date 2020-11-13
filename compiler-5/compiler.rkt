@@ -158,7 +158,7 @@
                              vec-index-type))))])]))))
 
 (define param-regs
-  (list 'rdi 'rsi 'rdx 'rcx 'r8 'r9))
+  '(rdi rsi rdx rcx r8 r9))
 
 (define (fun-def-name d)
   (match d
@@ -1437,7 +1437,7 @@
 ; return a (list of (lists of variables that are live at that point))
 (define (liveness instr+ lv-after)
   (match instr+
-    ['() '(,lv-after)]
+    ['() `(,lv-after)]
     [(cons instr-a instr-d)
      (define-values (write-args read-args) (get-write/read instr-a))
      (define liveness-d (liveness instr-d lv-after))
@@ -2142,12 +2142,12 @@
      blk-label ":" newline
      ; odd number of callee-saved and subq one register --> boom
      ; it's 16-aligned
-     (print-callee-saved-regs #t)
+     indent (print-callee-saved-regs #t)
      ; indent "pushq  %rbp" newline
      "movq   %rsp, %rbp" newline
      indent (format "subq   $~a, %rsp" bytes-needed) newline
      (if is-main-main? (string-append main-main newline) "")
-     indent "movq $0, (%r15)" newline
+     indent "movq   $0, (%r15)" newline
      indent (print-instr
              (Instr 'addq
                     (list (Imm root-bytes-needed) (Reg 'r15)))
@@ -2269,27 +2269,16 @@
    shrink
    reveal-functions
    limit-functions
-   #;
    uniquify
-   #;
    expose-allocation
-   #;
    remove-complex-opera*
-   #;
    explicate-control
-   #;
    uncover-locals
-   #;
    select-instructions
-   #;
    uncover-live
-   #;
    build-interference
-   #;
    allocate-registers
-   #;
    patch-instructions
-   #;
    print-x86
    ))
 
@@ -2323,9 +2312,10 @@
 (define vec-vec-test
   '(vector-ref (vector-ref (vector (vector 42)) 0) 0))
 
-(define big-vec-test '(let ([v0 (vector 0 1 2 3 4 5 6 7 8 9
-                                        10 11 12 13 14 15 16 17 18 19
-                                        20 21 22 23 24 25 26 27 28 29
-                                        30 31 32 33 34 35 36 37 38 39
-                                        40 41 42 43 44 45 46 47 48 49)])
-                        (vector-ref v0 42)))
+(define big-vec-test
+  '(let ([v0 (vector 0 1 2 3 4 5 6 7 8 9
+                     10 11 12 13 14 15 16 17 18 19
+                     20 21 22 23 24 25 26 27 28 29
+                     30 31 32 33 34 35 36 37 38 39
+                     40 41 42 43 44 45 46 47 48 49)])
+     (vector-ref v0 42)))

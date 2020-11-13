@@ -45,7 +45,7 @@ _zero152block185:
        jmp _zero152conclusion
 
 _zero152block200:
-       movq   %rdx, %rdx
+       movq   %rdx, %rbx
        movq   _free_ptr(%rip), %rdx
        movq   %rdx, %rcx
        addq   $16, %rcx
@@ -77,14 +77,14 @@ _zero152block194:
        jmp _zero152block192
 
 _zero152block192:
-       movq   _free_ptr(%rip), %rcx
+       movq   _free_ptr(%rip), %rdx
        addq   $16, _free_ptr(%rip)
-       movq   %rcx, %r11
+       movq   %rdx, %r11
        movq   $3, 0(%r11)
-       movq   %rcx, %r11
-       movq   %rdx, 8(%r11)
-       movq   $0, %rdx
-       movq   %rcx, %rdx
+       movq   %rdx, %r11
+       movq   %rbx, 8(%r11)
+       movq   $0, %rcx
+       movq   %rdx, %rdx
        movq   %rdx, %r11
        movq   8(%r11), %rcx
        movq   $1, %rdx
@@ -107,7 +107,7 @@ _zero152block192:
 .globl _zero152
 .align 16
 _zero152:
-pushq  %rsp
+       pushq  %rsp
        pushq  %rbp
        pushq  %rbx
        pushq  %r12
@@ -115,7 +115,7 @@ pushq  %rsp
        pushq  %r14
        movq   %rsp, %rbp
        subq   $0, %rsp
-       movq $0, (%r15)
+       movq   $0, (%r15)
        addq   $0, %r15
        jmp _zero152start
 _zero152conclusion:
@@ -132,12 +132,12 @@ _main151start:
        leaq   _zero152(%rip), %rdx
        movq   $1, %rdi
        callq *%rdx
-       movq   %rax, %rdx
+       movq   %rax, -8(%r15)
        leaq   _zero152(%rip), %rdx
        movq   $2, %rdi
        callq *%rdx
-       movq   %rax, %rsi
-       movq   $42, %rsi
+       movq   %rax, -16(%r15)
+       movq   $42, %rbx
        movq   _free_ptr(%rip), %rdx
        movq   %rdx, %rdx
        addq   $32, %rdx
@@ -169,20 +169,22 @@ _main151block203:
        jmp _main151block201
 
 _main151block201:
-       movq   _free_ptr(%rip), %rcx
+       movq   _free_ptr(%rip), %rdx
        addq   $32, _free_ptr(%rip)
-       movq   %rcx, %r11
+       movq   %rdx, %r11
        movq   $391, 0(%r11)
-       movq   %rcx, %r11
-       movq   %rdx, 8(%r11)
-       movq   $0, %rdx
-       movq   %rcx, %r11
-       movq   %rsi, 16(%r11)
-       movq   $0, %rdx
-       movq   %rcx, %r11
-       movq   %rsi, 24(%r11)
-       movq   $0, %rdx
-       movq   %rcx, %rdx
+       movq   %rdx, %r11
+       movq   -8(%r15), %rax
+       movq   %rax, 8(%r11)
+       movq   $0, %rcx
+       movq   %rdx, %r11
+       movq   -16(%r15), %rax
+       movq   %rax, 16(%r11)
+       movq   $0, %rcx
+       movq   %rdx, %r11
+       movq   %rbx, 24(%r11)
+       movq   $0, %rcx
+       movq   %rdx, %rdx
        movq   %rdx, %r11
        movq   24(%r11), %rax
        jmp _main151conclusion
@@ -192,7 +194,7 @@ _main151block201:
 .globl _main
 .align 16
 _main:
-pushq  %rsp
+       pushq  %rsp
        pushq  %rbp
        pushq  %rbx
        pushq  %r12
@@ -204,11 +206,11 @@ pushq  %rsp
        movq   $16384, %rsi
        callq _initialize
        movq   _rootstack_begin(%rip), %r15
-       movq $0, (%r15)
-       addq   $0, %r15
+       movq   $0, (%r15)
+       addq   $16, %r15
        jmp _main151start
 _main151conclusion:
-       subq   $0, %r15
+       subq   $16, %r15
        addq   $0, %rsp
        popq   %r14
        popq   %r13

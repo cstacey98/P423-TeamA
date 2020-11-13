@@ -1,18 +1,18 @@
 _map6start:
-       movq   %rdi, %rbx
+       movq   %rdi, %r12
        movq   %rsi, -8(%r15)
        movq   -8(%r15), %r11
        movq   8(%r11), %rcx
-       movq   %rbx, %rdx
+       movq   %r12, %rdx
        movq   %rcx, %rdi
        callq *%rdx
-       movq   %rax, %rdx
+       movq   %rax, %rbx
        movq   -8(%r15), %r11
        movq   16(%r11), %rcx
-       movq   %rbx, %rdx
+       movq   %r12, %rdx
        movq   %rcx, %rdi
        callq *%rdx
-       movq   %rax, %rsi
+       movq   %rax, %r12
        movq   _free_ptr(%rip), %rdx
        movq   %rdx, %rcx
        addq   $24, %rcx
@@ -44,17 +44,17 @@ _map6block37:
        jmp _map6block36
 
 _map6block36:
-       movq   _free_ptr(%rip), %rcx
+       movq   _free_ptr(%rip), %rdx
        addq   $24, _free_ptr(%rip)
-       movq   %rcx, %r11
+       movq   %rdx, %r11
        movq   $5, 0(%r11)
-       movq   %rcx, %r11
-       movq   %rdx, 8(%r11)
-       movq   $0, %rdx
-       movq   %rcx, %r11
-       movq   %rsi, 16(%r11)
-       movq   $0, %rdx
-       movq   %rcx, %rax
+       movq   %rdx, %r11
+       movq   %rbx, 8(%r11)
+       movq   $0, %rcx
+       movq   %rdx, %r11
+       movq   %r12, 16(%r11)
+       movq   $0, %rcx
+       movq   %rdx, %rax
        jmp _map6conclusion
 
 
@@ -62,7 +62,7 @@ _map6block36:
 .globl _map6
 .align 16
 _map6:
-pushq  %rsp
+       pushq  %rsp
        pushq  %rbp
        pushq  %rbx
        pushq  %r12
@@ -70,7 +70,7 @@ pushq  %rsp
        pushq  %r14
        movq   %rsp, %rbp
        subq   $0, %rsp
-       movq $0, (%r15)
+       movq   $0, (%r15)
        addq   $16, %r15
        jmp _map6start
 _map6conclusion:
@@ -94,7 +94,7 @@ _add15start:
 .globl _add15
 .align 16
 _add15:
-pushq  %rsp
+       pushq  %rsp
        pushq  %rbp
        pushq  %rbx
        pushq  %r12
@@ -102,7 +102,7 @@ pushq  %rsp
        pushq  %r14
        movq   %rsp, %rbp
        subq   $0, %rsp
-       movq $0, (%r15)
+       movq   $0, (%r15)
        addq   $0, %r15
        jmp _add15start
 _add15conclusion:
@@ -116,9 +116,9 @@ _add15conclusion:
        popq   %rsp
        retq
 _main4start:
-       leaq   _add15(%rip), %rsi
-       movq   $0, %rcx
-       movq   $41, %rsi
+       leaq   _add15(%rip), %r13
+       movq   $0, %r12
+       movq   $41, %rbx
        movq   _free_ptr(%rip), %rdx
        movq   %rdx, %rcx
        addq   $24, %rcx
@@ -155,14 +155,14 @@ _main4block43:
        movq   %rdx, %r11
        movq   $5, 0(%r11)
        movq   %rdx, %r11
-       movq   %rcx, 8(%r11)
+       movq   %r12, 8(%r11)
        movq   $0, %rcx
        movq   %rdx, %r11
-       movq   %rsi, 16(%r11)
+       movq   %rbx, 16(%r11)
        movq   $0, %rcx
        movq   %rdx, %rcx
        leaq   _map6(%rip), %rdx
-       movq   %rsi, %rdi
+       movq   %r13, %rdi
        movq   %rcx, %rsi
        callq *%rdx
        movq   %rax, %rdx
@@ -175,7 +175,7 @@ _main4block43:
 .globl _main
 .align 16
 _main:
-pushq  %rsp
+       pushq  %rsp
        pushq  %rbp
        pushq  %rbx
        pushq  %r12
@@ -187,7 +187,7 @@ pushq  %rsp
        movq   $16384, %rsi
        callq _initialize
        movq   _rootstack_begin(%rip), %r15
-       movq $0, (%r15)
+       movq   $0, (%r15)
        addq   $0, %r15
        jmp _main4start
 _main4conclusion:

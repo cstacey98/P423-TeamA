@@ -8,7 +8,7 @@ _id2157start:
 .globl _id2157
 .align 16
 _id2157:
-pushq  %rsp
+       pushq  %rsp
        pushq  %rbp
        pushq  %rbx
        pushq  %r12
@@ -16,7 +16,7 @@ pushq  %rsp
        pushq  %r14
        movq   %rsp, %rbp
        subq   $0, %rsp
-       movq $0, (%r15)
+       movq   $0, (%r15)
        addq   $0, %r15
        jmp _id2157start
 _id2157conclusion:
@@ -40,7 +40,7 @@ _f2156start:
 .globl _f2156
 .align 16
 _f2156:
-pushq  %rsp
+       pushq  %rsp
        pushq  %rbp
        pushq  %rbx
        pushq  %r12
@@ -48,7 +48,7 @@ pushq  %rsp
        pushq  %r14
        movq   %rsp, %rbp
        subq   $0, %rsp
-       movq $0, (%r15)
+       movq   $0, (%r15)
        addq   $0, %r15
        jmp _f2156start
 _f2156conclusion:
@@ -62,7 +62,7 @@ _f2156conclusion:
        popq   %rsp
        retq
 _main2155start:
-       leaq   _id2157(%rip), %rcx
+       leaq   _id2157(%rip), %rbx
        movq   _free_ptr(%rip), %rdx
        movq   %rdx, %rdx
        addq   $16, %rdx
@@ -99,7 +99,7 @@ _main2155block2170:
        movq   %rdx, %r11
        movq   $3, 0(%r11)
        movq   %rdx, %r11
-       movq   %rcx, 8(%r11)
+       movq   %rbx, 8(%r11)
        movq   $0, %rcx
        movq   %rdx, %rcx
        leaq   _f2156(%rip), %rdx
@@ -121,7 +121,7 @@ _main2155block2170:
 .globl _main
 .align 16
 _main:
-pushq  %rsp
+       pushq  %rsp
        pushq  %rbp
        pushq  %rbx
        pushq  %r12
@@ -133,7 +133,7 @@ pushq  %rsp
        movq   $16384, %rsi
        callq _initialize
        movq   _rootstack_begin(%rip), %r15
-       movq $0, (%r15)
+       movq   $0, (%r15)
        addq   $0, %r15
        jmp _main2155start
 _main2155conclusion:
