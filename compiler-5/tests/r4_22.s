@@ -1,4 +1,4 @@
-_h2066start:
+h2066start:
        movq   %rdi, %rdi
        movq   %rsi, %rsi
        movq   %rdx, %rdx
@@ -21,14 +21,13 @@ _h2066start:
        addq   %rdx, %rcx
        movq   %rdi, %rax
        addq   %rcx, %rax
-       jmp _h2066conclusion
+       jmp h2066conclusion
 
 
 
-.globl _h2066
+.globl h2066
 .align 16
-_h2066:
-       pushq  %rsp
+h2066:
        pushq  %rbp
        pushq  %rbx
        pushq  %r12
@@ -36,10 +35,9 @@ _h2066:
        pushq  %r14
        movq   %rsp, %rbp
        subq   $0, %rsp
-       movq   $0, (%r15)
        addq   $0, %r15
-       jmp _h2066start
-_h2066conclusion:
+       jmp h2066start
+h2066conclusion:
        subq   $0, %r15
        addq   $0, %rsp
        popq   %r14
@@ -47,44 +45,43 @@ _h2066conclusion:
        popq   %r12
        popq   %rbx
        popq   %rbp
-       popq   %rsp
        retq
-_main2065start:
+main2065start:
        movq   $6, %rbx
        movq   $7, %r12
-       movq   _free_ptr(%rip), %rdx
+       movq   free_ptr(%rip), %rdx
        movq   %rdx, %rcx
        addq   $24, %rcx
-       movq   _fromspace_end(%rip), %rdx
+       movq   fromspace_end(%rip), %rdx
        cmpq   %rdx, %rcx
-       jl _main2065block2098
-       jmp _main2065block2099
+       jl main2065block2098
+       jmp main2065block2099
 
-_main2065block2098:
-       jmp _main2065block2096
+main2065block2098:
+       jmp main2065block2096
 
-_main2065block2096:
-       jmp _main2065block2094
+main2065block2096:
+       jmp main2065block2094
 
-_main2065block2094:
+main2065block2094:
        movq   $0, %rdx
-       jmp _main2065block2093
+       jmp main2065block2093
 
-_main2065block2099:
-       jmp _main2065block2097
+main2065block2099:
+       jmp main2065block2097
 
-_main2065block2097:
-       jmp _main2065block2095
+main2065block2097:
+       jmp main2065block2095
 
-_main2065block2095:
+main2065block2095:
        movq   %r15, %rdi
        movq   $24, %rsi
-       callq _collect
-       jmp _main2065block2093
+       callq collect
+       jmp main2065block2093
 
-_main2065block2093:
-       movq   _free_ptr(%rip), %rdx
-       addq   $24, _free_ptr(%rip)
+main2065block2093:
+       movq   free_ptr(%rip), %rdx
+       addq   $24, free_ptr(%rip)
        movq   %rdx, %r11
        movq   $5, 0(%r11)
        movq   %rdx, %r11
@@ -94,7 +91,7 @@ _main2065block2093:
        movq   %r12, 16(%r11)
        movq   $0, %rcx
        movq   %rdx, %r9
-       leaq   _h2066(%rip), %r10
+       leaq   h2066(%rip), %r10
        movq   $1, %rdi
        movq   $2, %rsi
        movq   $3, %rdx
@@ -102,20 +99,20 @@ _main2065block2093:
        movq   $5, %r8
        movq   %r9, %r9
        movq   %r10, %rax
+       subq   $0, %r15
+       addq   $0, %rsp
        popq   %r14
        popq   %r13
        popq   %r12
        popq   %rbx
        popq   %rbp
-       popq   %rsp
        jmp *%rax
 
 
 
-.globl _main
+.globl main
 .align 16
-_main:
-       pushq  %rsp
+main:
        pushq  %rbp
        pushq  %rbx
        pushq  %r12
@@ -125,12 +122,11 @@ _main:
        subq   $0, %rsp
        movq   $16384, %rdi
        movq   $16384, %rsi
-       callq _initialize
-       movq   _rootstack_begin(%rip), %r15
-       movq   $0, (%r15)
+       callq initialize
+       movq   rootstack_begin(%rip), %r15
        addq   $0, %r15
-       jmp _main2065start
-_main2065conclusion:
+       jmp main2065start
+main2065conclusion:
        subq   $0, %r15
        addq   $0, %rsp
        popq   %r14
@@ -138,6 +134,5 @@ _main2065conclusion:
        popq   %r12
        popq   %rbx
        popq   %rbp
-       popq   %rsp
        retq
 

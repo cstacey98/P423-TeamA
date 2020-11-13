@@ -1,84 +1,84 @@
-_zero152start:
+zero152start:
        movq   %rdi, %rdx
        movq   $0, %rax
        cmpq   %rax, %rdx
-       je _zero152block199
-       jmp _zero152block200
+       je zero152block199
+       jmp zero152block200
 
-_zero152block199:
-       movq   _free_ptr(%rip), %rdx
+zero152block199:
+       movq   free_ptr(%rip), %rdx
        movq   %rdx, %rcx
        addq   $8, %rcx
-       movq   _fromspace_end(%rip), %rdx
+       movq   fromspace_end(%rip), %rdx
        cmpq   %rdx, %rcx
-       jl _zero152block190
-       jmp _zero152block191
+       jl zero152block190
+       jmp zero152block191
 
-_zero152block191:
-       jmp _zero152block189
+zero152block191:
+       jmp zero152block189
 
-_zero152block189:
-       jmp _zero152block187
+zero152block189:
+       jmp zero152block187
 
-_zero152block187:
+zero152block187:
        movq   %r15, %rdi
        movq   $8, %rsi
-       callq _collect
-       jmp _zero152block185
+       callq collect
+       jmp zero152block185
 
-_zero152block190:
-       jmp _zero152block188
+zero152block190:
+       jmp zero152block188
 
-_zero152block188:
-       jmp _zero152block186
+zero152block188:
+       jmp zero152block186
 
-_zero152block186:
+zero152block186:
        movq   $0, %rdx
-       jmp _zero152block185
+       jmp zero152block185
 
-_zero152block185:
-       movq   _free_ptr(%rip), %rdx
-       addq   $8, _free_ptr(%rip)
+zero152block185:
+       movq   free_ptr(%rip), %rdx
+       addq   $8, free_ptr(%rip)
        movq   %rdx, %r11
        movq   $1, 0(%r11)
        movq   %rdx, %rax
-       jmp _zero152conclusion
+       jmp zero152conclusion
 
-_zero152block200:
+zero152block200:
        movq   %rdx, %rbx
-       movq   _free_ptr(%rip), %rdx
+       movq   free_ptr(%rip), %rdx
        movq   %rdx, %rcx
        addq   $16, %rcx
-       movq   _fromspace_end(%rip), %rdx
+       movq   fromspace_end(%rip), %rdx
        cmpq   %rdx, %rcx
-       jl _zero152block197
-       jmp _zero152block198
+       jl zero152block197
+       jmp zero152block198
 
-_zero152block197:
-       jmp _zero152block195
+zero152block197:
+       jmp zero152block195
 
-_zero152block195:
-       jmp _zero152block193
+zero152block195:
+       jmp zero152block193
 
-_zero152block193:
+zero152block193:
        movq   $0, %rdx
-       jmp _zero152block192
+       jmp zero152block192
 
-_zero152block198:
-       jmp _zero152block196
+zero152block198:
+       jmp zero152block196
 
-_zero152block196:
-       jmp _zero152block194
+zero152block196:
+       jmp zero152block194
 
-_zero152block194:
+zero152block194:
        movq   %r15, %rdi
        movq   $16, %rsi
-       callq _collect
-       jmp _zero152block192
+       callq collect
+       jmp zero152block192
 
-_zero152block192:
-       movq   _free_ptr(%rip), %rdx
-       addq   $16, _free_ptr(%rip)
+zero152block192:
+       movq   free_ptr(%rip), %rdx
+       addq   $16, free_ptr(%rip)
        movq   %rdx, %r11
        movq   $3, 0(%r11)
        movq   %rdx, %r11
@@ -91,34 +91,9 @@ _zero152block192:
        negq   %rdx
        movq   %rcx, %rcx
        addq   %rdx, %rcx
-       leaq   _zero152(%rip), %rdx
+       leaq   zero152(%rip), %rdx
        movq   %rcx, %rdi
        movq   %rdx, %rax
-       popq   %r14
-       popq   %r13
-       popq   %r12
-       popq   %rbx
-       popq   %rbp
-       popq   %rsp
-       jmp *%rax
-
-
-
-.globl _zero152
-.align 16
-_zero152:
-       pushq  %rsp
-       pushq  %rbp
-       pushq  %rbx
-       pushq  %r12
-       pushq  %r13
-       pushq  %r14
-       movq   %rsp, %rbp
-       subq   $0, %rsp
-       movq   $0, (%r15)
-       addq   $0, %r15
-       jmp _zero152start
-_zero152conclusion:
        subq   $0, %r15
        addq   $0, %rsp
        popq   %r14
@@ -126,51 +101,74 @@ _zero152conclusion:
        popq   %r12
        popq   %rbx
        popq   %rbp
-       popq   %rsp
+       jmp *%rax
+
+
+
+.globl zero152
+.align 16
+zero152:
+       pushq  %rbp
+       pushq  %rbx
+       pushq  %r12
+       pushq  %r13
+       pushq  %r14
+       movq   %rsp, %rbp
+       subq   $0, %rsp
+       addq   $0, %r15
+       jmp zero152start
+zero152conclusion:
+       subq   $0, %r15
+       addq   $0, %rsp
+       popq   %r14
+       popq   %r13
+       popq   %r12
+       popq   %rbx
+       popq   %rbp
        retq
-_main151start:
-       leaq   _zero152(%rip), %rdx
+main151start:
+       leaq   zero152(%rip), %rdx
        movq   $1, %rdi
        callq *%rdx
        movq   %rax, -8(%r15)
-       leaq   _zero152(%rip), %rdx
+       leaq   zero152(%rip), %rdx
        movq   $2, %rdi
        callq *%rdx
        movq   %rax, -16(%r15)
        movq   $42, %rbx
-       movq   _free_ptr(%rip), %rdx
+       movq   free_ptr(%rip), %rdx
        movq   %rdx, %rdx
        addq   $32, %rdx
-       movq   _fromspace_end(%rip), %rcx
+       movq   fromspace_end(%rip), %rcx
        cmpq   %rcx, %rdx
-       jl _main151block206
-       jmp _main151block207
+       jl main151block206
+       jmp main151block207
 
-_main151block207:
-       jmp _main151block205
+main151block207:
+       jmp main151block205
 
-_main151block206:
-       jmp _main151block204
+main151block206:
+       jmp main151block204
 
-_main151block204:
-       jmp _main151block202
+main151block204:
+       jmp main151block202
 
-_main151block202:
+main151block202:
        movq   $0, %rdx
-       jmp _main151block201
+       jmp main151block201
 
-_main151block205:
-       jmp _main151block203
+main151block205:
+       jmp main151block203
 
-_main151block203:
+main151block203:
        movq   %r15, %rdi
        movq   $32, %rsi
-       callq _collect
-       jmp _main151block201
+       callq collect
+       jmp main151block201
 
-_main151block201:
-       movq   _free_ptr(%rip), %rdx
-       addq   $32, _free_ptr(%rip)
+main151block201:
+       movq   free_ptr(%rip), %rdx
+       addq   $32, free_ptr(%rip)
        movq   %rdx, %r11
        movq   $391, 0(%r11)
        movq   %rdx, %r11
@@ -187,14 +185,13 @@ _main151block201:
        movq   %rdx, %rdx
        movq   %rdx, %r11
        movq   24(%r11), %rax
-       jmp _main151conclusion
+       jmp main151conclusion
 
 
 
-.globl _main
+.globl main
 .align 16
-_main:
-       pushq  %rsp
+main:
        pushq  %rbp
        pushq  %rbx
        pushq  %r12
@@ -204,12 +201,13 @@ _main:
        subq   $0, %rsp
        movq   $16384, %rdi
        movq   $16384, %rsi
-       callq _initialize
-       movq   _rootstack_begin(%rip), %r15
-       movq   $0, (%r15)
+       callq initialize
+       movq   rootstack_begin(%rip), %r15
+       movq   $0, 0(%r15)
+       movq   $0, 8(%r15)
        addq   $16, %r15
-       jmp _main151start
-_main151conclusion:
+       jmp main151start
+main151conclusion:
        subq   $16, %r15
        addq   $0, %rsp
        popq   %r14
@@ -217,6 +215,5 @@ _main151conclusion:
        popq   %r12
        popq   %rbx
        popq   %rbp
-       popq   %rsp
        retq
 

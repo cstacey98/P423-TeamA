@@ -2143,15 +2143,11 @@
       indent
       (print-instr
        (Instr 'movq (list (Imm 0)
-                          (Deref 'r15 n)))
-               'dummy-label -69 -420) newline
-      indent (print-instr
-              (Instr 'addq
-                     (list (Imm rbn) (Reg 'r15)))
-              'dummy-label -69 -420) newline
-      ))
+                          (Deref 'r15 (* n 8))))
+       'dummy-label -69 -420) newline
+      str))
    ""
-   (range rbn)))
+   (range (/ rbn 8))))
 
 (define (print-main bytes-needed root-bytes-needed def-label is-main-main?)
   (let* ([blk-label (if is-main-main? 'main def-label)]
@@ -2168,6 +2164,10 @@
      indent (format "subq   $~a, %rsp" bytes-needed) newline
      (if is-main-main? (string-append main-main newline) "")
      (allocate-r15 root-bytes-needed)
+     indent (print-instr
+             (Instr 'addq
+                    (list (Imm root-bytes-needed) (Reg 'r15)))
+             'dummy-label -69 -420) newline
      indent (print-instr (Jmp 'start) def-label
                          bytes-needed root-bytes-needed))))
 

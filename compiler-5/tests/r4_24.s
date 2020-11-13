@@ -1,4 +1,4 @@
-_big2132start:
+big2132start:
        movq   %rdi, %rcx
        movq   %rsi, %rsi
        movq   %rdx, %rdx
@@ -32,14 +32,13 @@ _big2132start:
        addq   %rcx, %rdx
        movq   %r8, %rax
        addq   %rdx, %rax
-       jmp _big2132conclusion
+       jmp big2132conclusion
 
 
 
-.globl _big2132
+.globl big2132
 .align 16
-_big2132:
-       pushq  %rsp
+big2132:
        pushq  %rbp
        pushq  %rbx
        pushq  %r12
@@ -47,10 +46,9 @@ _big2132:
        pushq  %r14
        movq   %rsp, %rbp
        subq   $0, %rsp
-       movq   $0, (%r15)
        addq   $0, %r15
-       jmp _big2132start
-_big2132conclusion:
+       jmp big2132start
+big2132conclusion:
        subq   $0, %r15
        addq   $0, %rsp
        popq   %r14
@@ -58,16 +56,15 @@ _big2132conclusion:
        popq   %r12
        popq   %rbx
        popq   %rbp
-       popq   %rsp
        retq
-_main2131start:
-       callq _read_int
+main2131start:
+       callq read_int
        movq   %rax, %rbx
-       callq _read_int
+       callq read_int
        movq   %rax, %r12
-       callq _read_int
+       callq read_int
        movq   %rax, %rdx
-       leaq   _big2132(%rip), %rcx
+       leaq   big2132(%rip), %rcx
        movq   %rbx, %rdi
        movq   %r12, %rsi
        movq   %rdx, %rdx
@@ -75,14 +72,13 @@ _main2131start:
        movq   %rax, %rdx
        movq   $42, %rax
        addq   %rdx, %rax
-       jmp _main2131conclusion
+       jmp main2131conclusion
 
 
 
-.globl _main
+.globl main
 .align 16
-_main:
-       pushq  %rsp
+main:
        pushq  %rbp
        pushq  %rbx
        pushq  %r12
@@ -92,12 +88,11 @@ _main:
        subq   $0, %rsp
        movq   $16384, %rdi
        movq   $16384, %rsi
-       callq _initialize
-       movq   _rootstack_begin(%rip), %r15
-       movq   $0, (%r15)
+       callq initialize
+       movq   rootstack_begin(%rip), %r15
        addq   $0, %r15
-       jmp _main2131start
-_main2131conclusion:
+       jmp main2131start
+main2131conclusion:
        subq   $0, %r15
        addq   $0, %rsp
        popq   %r14
@@ -105,6 +100,5 @@ _main2131conclusion:
        popq   %r12
        popq   %rbx
        popq   %rbp
-       popq   %rsp
        retq
 

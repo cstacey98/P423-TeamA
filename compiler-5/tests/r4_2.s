@@ -1,16 +1,15 @@
-_add1987start:
+add1987start:
        movq   %rdi, %rdx
        movq   %rsi, %rcx
        movq   %rdx, %rax
        addq   %rcx, %rax
-       jmp _add1987conclusion
+       jmp add1987conclusion
 
 
 
-.globl _add1987
+.globl add1987
 .align 16
-_add1987:
-       pushq  %rsp
+add1987:
        pushq  %rbp
        pushq  %rbx
        pushq  %r12
@@ -18,10 +17,9 @@ _add1987:
        pushq  %r14
        movq   %rsp, %rbp
        subq   $0, %rsp
-       movq   $0, (%r15)
        addq   $0, %r15
-       jmp _add1987start
-_add1987conclusion:
+       jmp add1987start
+add1987conclusion:
        subq   $0, %r15
        addq   $0, %rsp
        popq   %r14
@@ -29,27 +27,26 @@ _add1987conclusion:
        popq   %r12
        popq   %rbx
        popq   %rbp
-       popq   %rsp
        retq
-_main1986start:
-       leaq   _add1987(%rip), %rdx
+main1986start:
+       leaq   add1987(%rip), %rdx
        movq   $40, %rdi
        movq   $2, %rsi
        movq   %rdx, %rax
+       subq   $0, %r15
+       addq   $0, %rsp
        popq   %r14
        popq   %r13
        popq   %r12
        popq   %rbx
        popq   %rbp
-       popq   %rsp
        jmp *%rax
 
 
 
-.globl _main
+.globl main
 .align 16
-_main:
-       pushq  %rsp
+main:
        pushq  %rbp
        pushq  %rbx
        pushq  %r12
@@ -59,12 +56,11 @@ _main:
        subq   $0, %rsp
        movq   $16384, %rdi
        movq   $16384, %rsi
-       callq _initialize
-       movq   _rootstack_begin(%rip), %r15
-       movq   $0, (%r15)
+       callq initialize
+       movq   rootstack_begin(%rip), %r15
        addq   $0, %r15
-       jmp _main1986start
-_main1986conclusion:
+       jmp main1986start
+main1986conclusion:
        subq   $0, %r15
        addq   $0, %rsp
        popq   %r14
@@ -72,6 +68,5 @@ _main1986conclusion:
        popq   %r12
        popq   %rbx
        popq   %rbp
-       popq   %rsp
        retq
 

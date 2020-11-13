@@ -1,14 +1,13 @@
-_id1start:
+id1start:
        movq   %rdi, %rdx
        movq   %rdx, %rax
-       jmp _id1conclusion
+       jmp id1conclusion
 
 
 
-.globl _id1
+.globl id1
 .align 16
-_id1:
-       pushq  %rsp
+id1:
        pushq  %rbp
        pushq  %rbx
        pushq  %r12
@@ -16,10 +15,9 @@ _id1:
        pushq  %r14
        movq   %rsp, %rbp
        subq   $0, %rsp
-       movq   $0, (%r15)
        addq   $0, %r15
-       jmp _id1start
-_id1conclusion:
+       jmp id1start
+id1conclusion:
        subq   $0, %r15
        addq   $0, %rsp
        popq   %r14
@@ -27,26 +25,25 @@ _id1conclusion:
        popq   %r12
        popq   %rbx
        popq   %rbp
-       popq   %rsp
        retq
-_main0start:
-       leaq   _id1(%rip), %rdx
+main0start:
+       leaq   id1(%rip), %rdx
        movq   $42, %rdi
        movq   %rdx, %rax
+       subq   $0, %r15
+       addq   $0, %rsp
        popq   %r14
        popq   %r13
        popq   %r12
        popq   %rbx
        popq   %rbp
-       popq   %rsp
        jmp *%rax
 
 
 
-.globl _main
+.globl main
 .align 16
-_main:
-       pushq  %rsp
+main:
        pushq  %rbp
        pushq  %rbx
        pushq  %r12
@@ -56,12 +53,11 @@ _main:
        subq   $0, %rsp
        movq   $16384, %rdi
        movq   $16384, %rsi
-       callq _initialize
-       movq   _rootstack_begin(%rip), %r15
-       movq   $0, (%r15)
+       callq initialize
+       movq   rootstack_begin(%rip), %r15
        addq   $0, %r15
-       jmp _main0start
-_main0conclusion:
+       jmp main0start
+main0conclusion:
        subq   $0, %r15
        addq   $0, %rsp
        popq   %r14
@@ -69,6 +65,5 @@ _main0conclusion:
        popq   %r12
        popq   %rbx
        popq   %rbp
-       popq   %rsp
        retq
 

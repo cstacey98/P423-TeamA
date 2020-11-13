@@ -1,4 +1,4 @@
-_fun2374start:
+fun2374start:
        movq   %rdi, %rdi
        movq   %rsi, %rsi
        movq   %rdx, %rdx
@@ -25,14 +25,13 @@ _fun2374start:
        addq   %rdx, %rcx
        movq   %rdi, %rax
        addq   %rcx, %rax
-       jmp _fun2374conclusion
+       jmp fun2374conclusion
 
 
 
-.globl _fun2374
+.globl fun2374
 .align 16
-_fun2374:
-       pushq  %rsp
+fun2374:
        pushq  %rbp
        pushq  %rbx
        pushq  %r12
@@ -40,10 +39,9 @@ _fun2374:
        pushq  %r14
        movq   %rsp, %rbp
        subq   $0, %rsp
-       movq   $0, (%r15)
        addq   $0, %r15
-       jmp _fun2374start
-_fun2374conclusion:
+       jmp fun2374start
+fun2374conclusion:
        subq   $0, %r15
        addq   $0, %rsp
        popq   %r14
@@ -51,45 +49,44 @@ _fun2374conclusion:
        popq   %r12
        popq   %rbx
        popq   %rbp
-       popq   %rsp
        retq
-_main2373start:
+main2373start:
        movq   $5, %r13
        movq   $5, %r12
        movq   $7, %rbx
-       movq   _free_ptr(%rip), %rdx
+       movq   free_ptr(%rip), %rdx
        movq   %rdx, %rdx
        addq   $32, %rdx
-       movq   _fromspace_end(%rip), %rcx
+       movq   fromspace_end(%rip), %rcx
        cmpq   %rcx, %rdx
-       jl _main2373block2411
-       jmp _main2373block2412
+       jl main2373block2411
+       jmp main2373block2412
 
-_main2373block2412:
-       jmp _main2373block2410
+main2373block2412:
+       jmp main2373block2410
 
-_main2373block2410:
-       jmp _main2373block2408
+main2373block2410:
+       jmp main2373block2408
 
-_main2373block2408:
+main2373block2408:
        movq   %r15, %rdi
        movq   $32, %rsi
-       callq _collect
-       jmp _main2373block2406
+       callq collect
+       jmp main2373block2406
 
-_main2373block2411:
-       jmp _main2373block2409
+main2373block2411:
+       jmp main2373block2409
 
-_main2373block2409:
-       jmp _main2373block2407
+main2373block2409:
+       jmp main2373block2407
 
-_main2373block2407:
+main2373block2407:
        movq   $0, %rdx
-       jmp _main2373block2406
+       jmp main2373block2406
 
-_main2373block2406:
-       movq   _free_ptr(%rip), %rdx
-       addq   $32, _free_ptr(%rip)
+main2373block2406:
+       movq   free_ptr(%rip), %rdx
+       addq   $32, free_ptr(%rip)
        movq   %rdx, %r11
        movq   $7, 0(%r11)
        movq   %rdx, %r11
@@ -102,7 +99,7 @@ _main2373block2406:
        movq   %rbx, 24(%r11)
        movq   $0, %rcx
        movq   %rdx, %r9
-       leaq   _fun2374(%rip), %r10
+       leaq   fun2374(%rip), %r10
        movq   $5, %rdi
        movq   $5, %rsi
        movq   $5, %rdx
@@ -110,20 +107,20 @@ _main2373block2406:
        movq   $5, %r8
        movq   %r9, %r9
        movq   %r10, %rax
+       subq   $0, %r15
+       addq   $0, %rsp
        popq   %r14
        popq   %r13
        popq   %r12
        popq   %rbx
        popq   %rbp
-       popq   %rsp
        jmp *%rax
 
 
 
-.globl _main
+.globl main
 .align 16
-_main:
-       pushq  %rsp
+main:
        pushq  %rbp
        pushq  %rbx
        pushq  %r12
@@ -133,12 +130,11 @@ _main:
        subq   $0, %rsp
        movq   $16384, %rdi
        movq   $16384, %rsi
-       callq _initialize
-       movq   _rootstack_begin(%rip), %r15
-       movq   $0, (%r15)
+       callq initialize
+       movq   rootstack_begin(%rip), %r15
        addq   $0, %r15
-       jmp _main2373start
-_main2373conclusion:
+       jmp main2373start
+main2373conclusion:
        subq   $0, %r15
        addq   $0, %rsp
        popq   %r14
@@ -146,6 +142,5 @@ _main2373conclusion:
        popq   %r12
        popq   %rbx
        popq   %rbp
-       popq   %rsp
        retq
 
