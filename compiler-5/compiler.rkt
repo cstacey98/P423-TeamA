@@ -1381,7 +1381,7 @@
   (not (not (memv r caller-saved))))
 
 (define callee-saved (list 'rsp 'rbp 'rbx 'r12 'r13 'r14 'r15))
-(define callee-saved-to-save (list 'rsp 'rbp 'rbx 'r12 'r13 'r14))
+(define callee-saved-to-save (list 'rbp 'rbx 'r12 'r13 'r14))
 ; membership predicate
 (define (callee-saved? r)
   (not (not (memv r callee-saved))))
@@ -2136,6 +2136,23 @@
        ""
        (reverse callee-saved-to-save))))
 
+(define (allocate-r15 rbn)
+  (foldr
+   (lambda (n str)
+     (string-append
+      indent
+      (print-instr
+       (Instr 'movq (list (Imm 0)
+                          (Deref 'r15 n)))
+               'dummy-label -69 -420) newline
+      indent (print-instr
+              (Instr 'addq
+                     (list (Imm rbn) (Reg 'r15)))
+              'dummy-label -69 -420) newline
+      ))
+   ""
+   (range rbn)))
+
 (define (print-main bytes-needed root-bytes-needed def-label is-main-main?)
   (let* ([blk-label (if is-main-main? 'main def-label)]
          [blk-label (os-label blk-label)])
@@ -2150,11 +2167,7 @@
      "movq   %rsp, %rbp" newline
      indent (format "subq   $~a, %rsp" bytes-needed) newline
      (if is-main-main? (string-append main-main newline) "")
-     indent "movq   $0, (%r15)" newline
-     indent (print-instr
-             (Instr 'addq
-                    (list (Imm root-bytes-needed) (Reg 'r15)))
-             def-label bytes-needed root-bytes-needed) newline
+     (allocate-r15 root-bytes-needed)
      indent (print-instr (Jmp 'start) def-label
                          bytes-needed root-bytes-needed))))
 
