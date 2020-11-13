@@ -2174,9 +2174,9 @@
     [(Instr op (list arg))
      (format "~a   ~a" op (print-arg arg))]
     [(Jmp label)
-     (format "jmp ~a~a" (os-label def-label) label)]
+     (format "jmp ~a" (os-label (symbol-append def-label label)))]
     [(JmpIf cc label)
-     (format "j~a ~a~a" cc (os-label def-label) label)]
+     (format "j~a ~a" cc (os-label (symbol-append def-label label)))]
     [(TailJmp jmp-to arity)
      (string-append
       (print-callee-saved-regs #f)
