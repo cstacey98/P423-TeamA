@@ -29,6 +29,40 @@
  print-x86
  )
 
+(define (get-free-vars p)
+  (match p
+    [(ProgramDefsExp doot1 doot2 main)
+     ((get-exp-free-vars '()) main)]))
+
+(define (get-exp-free-vars env)
+  (lambda (e)
+    (match e
+      [(HasType expr t)
+       ((get-exp-free-vars env) expr)]
+      [(Int n) '()]
+      [(Bool b) '()]
+      [(Void) '()]
+      [(Var x)
+       (if (not (assv x env))
+           (list x)
+           '())]
+      [(Let lhs rhs body)
+       (define rhs-fv ((get-exp-free-vars env) rhs))
+       (define body-fv ((get-exp-free-vars
+                         (cons `(,lhs . dummy-name) env)) body))
+       (append rhs-fv body-fv)]
+      [(Prim op args)
+       (foldr append '() (map (get-exp-free-vars env) args))]
+      [(If cnd cnsq alt)
+       (foldr append '()
+              (map (get-exp-free-vars env)
+                   (list cnd cnsq alt)))]
+      [(Apply f-exp args)
+       (foldr append '() (map (get-exp-free-vars env) args))]
+      [(Lambda (list `[,prms : ,prm-ts] ...) rt body)
+       (define prms-assoc (map (lambda (p) (cons p 'dummy-name)) prms))
+       ((get-exp-free-vars (append prms-assoc env)) body)])))
+
 (define (replace-in-symbol sym find replace)
   (begin
     (define str (symbol->string sym))
@@ -95,6 +129,11 @@
      (is-vector? t2)]
     [whatever #f]))
 
+(define (is-function-type? t)
+  (match t
+    [`(,prm-ts ... -> ,rt) #t]
+    [whatever #f]))
+
 (define (type-check-prim env)
   (lambda (prim)
     (let ([recur (type-check-exp env)])
@@ -102,6 +141,11 @@
         [(Prim op args)
          (define args-tc (map recur args))
          (cond
+           [(eq? op 'procedure-arity)
+            (define e-tc (recur (car args)))
+            (if (is-function-type? (get-type e-tc))
+                (HasType (Prim op args-tc) 'Integer)
+                (error "type error with Prim " op))]
            [(eq? op 'eq?)
             (define e1-tc (recur (car args)))
             (define e2-tc (recur (cadr args)))
@@ -190,6 +234,14 @@
     (let ([recur (type-check-exp env)])
       (match e
         [(HasType expr t) (recur expr)]
+        [(Lambda (and params `([,xs : ,ts] ...)) rt body)
+         (define body-tc
+           ((type-check-exp (append (map cons xs ts) env)) body))
+         (define t `(,@ts -> ,rt))
+         (cond
+           [(eq? rt (get-type body-tc))
+            (Lambda params rt body-tc)]
+           [else (error "mismatch in return type" (get-type body-tc) rt)])]
         [(Var x)
          (HasType e (dict-ref env x))]
         [(Int n) (HasType e 'Integer)]
@@ -2292,20 +2344,36 @@
 ; all the passes needed to be used in (t .)
 (define test-passes
   (list
+   #;
+   get-free-vars
    type-check
+   #;
    shrink
+   #;
    reveal-functions
+   #;
    limit-functions
+   #;
    uniquify
+   #;
    expose-allocation
+   #;
    remove-complex-opera*
+   #;
    explicate-control
+   #;
    uncover-locals
+   #;
    select-instructions
+   #;
    uncover-live
+   #;
    build-interference
+   #;
    allocate-registers
+   #;
    patch-instructions
+   #;
    print-x86
    ))
 
