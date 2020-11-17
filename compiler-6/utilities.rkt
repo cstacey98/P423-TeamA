@@ -1260,8 +1260,8 @@ Changelog:
      (Program info (parse-exp body))]
     [`(program ,info ,def* ,body)
      (ProgramDefsExp info
-                  (for/list ([d def*]) (parse-def d))
-                  (parse-exp body))]))
+                     (for/list ([d def*]) (parse-def d))
+                     (parse-exp body))]))
 
 (define (unparse-exp e)
   (match e
