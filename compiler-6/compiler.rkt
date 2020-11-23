@@ -111,6 +111,10 @@
 (define (get-type ht)
   (match ht
     [(HasType expr type) type]
+    #;
+    [(Lambda param* rt body)
+     ; param types look like [x : Tx], (caddr `[x : Tx]) === Tx
+     `(,@(map caddr param*) -> ,rt)]
     [whatever (error (format "Called get-type on non-HasType ~a" ht))]))
 
 (define (check-args-consistency args T)
@@ -240,7 +244,7 @@
          (define t `(,@ts -> ,rt))
          (cond
            [(eq? rt (get-type body-tc))
-            (Lambda params rt body-tc)]
+            (HasType (Lambda params rt body-tc) t)]
            [else (error "mismatch in return type" (get-type body-tc) rt)])]
         [(Var x)
          (HasType e (dict-ref env x))]
@@ -396,6 +400,14 @@
         [(Var x) e]
         [(Bool b) e]
         [(Void) e]
+        [(Lambda prm* rt body)
+         (define env^
+           (foldr (lambda (prm envr)
+                    (dict-set envr (car prm) (caddr prm)))
+                  env
+                  prm*))
+         (define body^ ((shrink-exp env^) body))
+         (Lambda prm* rt body^)]
         [(Prim op args)
          ((shrink-prim env) e)]
         [(If cnd cnsq alt)
@@ -405,7 +417,6 @@
          (If shrunk-cnd
              shrunk-cnsq
              shrunk-alt)
-         #;(get-type shrunk-cnsq)
          ]
         [(Let x expr body)
          (define shrunk-expr (recur expr))
@@ -413,7 +424,6 @@
          (define shrunk-body ((shrink-exp new-env) body))
          (Let x shrunk-expr
               shrunk-body)
-         #;(get-type shrunk-body)
          ]
         [(Apply fn args)
          (Apply fn (map recur args))]))))
@@ -458,6 +468,8 @@
     [(HasType doot t)
      (define doot-rev (reveal-fun-in-body doot def-names))
      (HasType doot-rev t)]
+    [(Lambda prm* rt body)
+     (Lambda prm* rt (reveal-fun-in-body body def-names))]
     [(Apply ex args)
      (define ex-rev
        (reveal-fun-in-body ex def-names))
@@ -1247,7 +1259,7 @@
              ([arg-exp args]
               [reg used-regs])
            (Instr 'movq (list (si-atm arg-exp) (Reg reg))))
-         (list (IndirectCallq f (length args))
+         (list (IndirectCallq f #;(length args))
                (Instr 'movq (list (Reg 'rax) var))))]
        [(GlobalValue name) (list (Instr 'movq (list (si-atm expr) var)))]
        ; can't really assign collect to anything, as per syntax in book
@@ -1385,7 +1397,7 @@
           ([arg-exp args]
            [reg used-regs])
         (Instr 'movq (list (si-atm arg-exp) (Reg reg))))
-      (list (TailJmp f (length args))))]
+      (list (TailJmp f #;(length args))))]
     [(Return expr)
      (append (si-stmt (Assign (Reg 'rax) expr))
              (list (Jmp 'conclusion)))]
@@ -1475,10 +1487,10 @@
     [(Instr 'movzbq (list arg1 arg2))
      (values (filter interferable? (list arg2))
              '())]
-    [(IndirectCallq calling arity)
+    [(IndirectCallq calling #;arity)
      (values '()
              (filter interferable? (list calling)))]
-    [(TailJmp jmp-to arity)
+    [(TailJmp jmp-to #;arity)
      (values '()
              (filter interferable? (list jmp-to)))]
     [(Jmp label) (values '() '())]
@@ -1589,9 +1601,9 @@
     [(cons (JmpIf cc label) instr-d)
      ; interference is not changed by jmpif, right?
      (interference-graph (cdr bl-info) instr-d base-g types)]
-    [(cons (TailJmp jmp-to arity) instr-d)
+    [(cons (TailJmp jmp-to #;arity) instr-d)
      base-g]
-    [(cons (IndirectCallq calling arity) instr-d)
+    [(cons (IndirectCallq calling #;arity) instr-d)
      (define graph-d
        (interference-graph (cdr bl-info) instr-d base-g types))
      (for/list ([reg caller-saved])
@@ -1989,10 +2001,11 @@
        (match instr-a
          [(Instr op args)
           (Instr op (map arg-to-color args))]
-         [(TailJmp jmp-to arity)
-          (TailJmp (arg-to-color jmp-to) arity)]
-         [(IndirectCallq calling arity)
-          (IndirectCallq (arg-to-color calling) arity)]
+         [(TailJmp jmp-to #;arity)
+          (TailJmp (arg-to-color jmp-to) #;arity)]
+         [(IndirectCallq calling #;arity
+                         )
+          (IndirectCallq (arg-to-color calling) #;arity)]
          [whatever
           instr-a]))
      (define new-instr-d
@@ -2086,13 +2099,13 @@
     ['() '()]
     [`(,instr-a . ,instr-d)
      (match instr-a
-       [(TailJmp jmp-to arity)
+       [(TailJmp jmp-to #;arity)
         (if (and (Reg? jmp-to)
                  (eq? 'rax (Reg-name jmp-to)))
             (cons instr-a
                   (pi-helper instr-d))
             (append (list (Instr 'movq (list jmp-to (Reg 'rax)))
-                          (TailJmp (Reg 'rax) arity))
+                          (TailJmp (Reg 'rax) #;arity))
                     (pi-helper instr-d)))]
        [(Instr 'leaq (list lbl into))
         (if (mem-ref? into)
@@ -2246,7 +2259,7 @@
      (format "jmp ~a" (os-label (symbol-append def-label label)))]
     [(JmpIf cc label)
      (format "j~a ~a" cc (os-label (symbol-append def-label label)))]
-    [(TailJmp jmp-to arity)
+    [(TailJmp jmp-to #;arity)
      (string-append
       (print-instr
               (Instr 'subq (list (Imm rbn)
@@ -2259,7 +2272,7 @@
               def-label -69 -420) newline
       indent (print-callee-saved-regs #f)
       (format "jmp *%~a" (Reg-name jmp-to)))]
-    [(IndirectCallq calling arity)
+    [(IndirectCallq calling #;arity)
      (format "callq *~a" (print-arg calling))]
     [(Callq label) (format "callq ~a" (os-label label))]))
 
@@ -2341,13 +2354,13 @@
       ""
       defs)]))
 
+#;
+get-free-vars
+
 ; all the passes needed to be used in (t .)
 (define test-passes
   (list
-   #;
-   get-free-vars
    type-check
-   #;
    shrink
    #;
    reveal-functions

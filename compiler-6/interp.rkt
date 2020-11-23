@@ -5,6 +5,7 @@
          R1-interp-x86 R2-interp-x86 R3-interp-x86
          interp-R1-class interp-R2-class interp-R3-class
 	 interp-R4-class interp-R5-class interp-R6-class
+         interp-F1
          interp-C2 interp-C3
          interp-pseudo-x86-0 interp-x86-0
          interp-pseudo-x86-1 interp-x86-1
@@ -18,6 +19,10 @@
 ;; The interpreters for the source languages (R0, R1, ..., R7)
 ;; and the C intermediate languages C0 and C1
 ;; are in separate files, e.g., interp-R0.rkt.
+
+(define interp-F1
+  (lambda (p)
+    ((send (new interp-R4-class) interp-F '()) p)))
 
 ;; Interpreters for C2 and C3.
 
@@ -51,6 +56,12 @@
   (lambda (p)
     ((send (new interp-R3-class) interp-pseudo-x86 '()) p)))
 
+;; The interp-x86-2 interpreter takes a program of the form
+;; (Program info (CFG G))
+;; Also, the info field must be an association list
+;; with a key 'num-spills that maps to a pair (i.e. cons)
+;; containing the number of spills to the regular stack
+;; and the number of spills to the root stack.
 (define interp-x86-2
   (lambda (p)
     ((send (new interp-R3-class) interp-x86 '()) p)))
@@ -1056,7 +1067,8 @@
   (class interp-R3-class
     (super-new)
     (inherit primitives interp-op initialize! display-by-type
-             return-from-tail interp-x86-block memory-read memory-write!)
+             return-from-tail interp-x86-block memory-read memory-write!
+             interp-x86-store)
 
     (inherit-field result rootstack_begin free_ptr fromspace_end
 		   uninitialized)
@@ -1263,6 +1275,8 @@
         [(StackArg n) (stack-arg-name n)]
 	 [else (super get-name ast)]))
 
+    (define root-stack-pointer 0)
+
     (define (call-function f-val cont-ss env)
       (match f-val
 	[`(lambda ,info ,G ,def-env)
@@ -1273,24 +1287,25 @@
 	 ;; copy argument registers over to new-env
 	 (define passing-regs
 	   (filter (lambda (p) p)
-		   (for/list ([r arg-registers])
+		   (for/list ([r (vector-take arg-registers n)])
                      (let ([v (lookup r env #f)])
                        (if v (cons r v) #f)))))
          (debug "interp-x86 call-function" passing-regs)
-         (define new-env
-           (cond [spills
-                  (define variable-size 8) ;; ugh -Jeremy
-                  (define root-size (* variable-size (cdr spills)))
-                  (cons (cons 'r15 (+ root-size (unbox rootstack_begin)))
-                        (append passing-regs def-env))]
-                 [else
-                  (cons (cons 'r15 (unbox rootstack_begin)) ;; ??? -Jeremy
-                        (append passing-regs def-env))]))
+         (define variable-size 8) ;; ugh -Jeremy
+         (define root-size
+           (cond [spills (* variable-size (cdr spills))]
+                 [else 0]))
+         (set! root-stack-pointer (+ root-stack-pointer root-size))
+         (define new-env (cons (cons 'r15 root-stack-pointer)
+                               (append passing-regs def-env)))
+         ;; interpret the body of the function in the new-env
          (define result-env
            (parameterize ([get-CFG G])
              ((interp-x86-block new-env)
               (dict-ref G (symbol-append f 'start)))))
+         (set! root-stack-pointer (- root-stack-pointer root-size))
          (define res (lookup 'rax result-env))
+         ;; return and continue after the function call, back in env
          ((interp-x86-instr (cons (cons 'rax res) env)) cont-ss)]
         [else (error "interp-x86, expected a function, not" f-val)]))
 
@@ -1341,14 +1356,14 @@
 	(match ast
           ;; Treat lea like mov -Jeremy
           [(cons (Instr 'leaq (list s d)) ss)
-           (define x (get-name d))
-           (define v ((interp-x86-exp env) s))
-           ((interp-x86-instr (cons (cons x v) env)) ss)]
-          [(cons (IndirectCallq f arity) ss)
+           (define value   ((interp-x86-exp env) s))
+           (define new-env ((interp-x86-store env) d value))
+           ((interp-x86-instr new-env) ss)]
+          [(cons (IndirectCallq f) ss)
            (debug "indirect callq" ast)
            (define f-val ((interp-x86-exp env) f))
            (call-function f-val ss env)]
-          [(cons (TailJmp f arity) ss)
+          [(cons (TailJmp f) ss)
            (debug "tail jmp" ast)
            (define f-val ((interp-x86-exp env) f))
            (call-function f-val '() env)]
@@ -1373,12 +1388,13 @@
           [(ProgramDefs info ds)
            ((initialize!) runtime-config:rootstack-size
                           runtime-config:heap-size)
-            (define top-level (for/list ([d ds]) (interp-x86-def d)))
-            ;; tie the knot
-            (for/list ([b top-level])
-              (set-mcdr! b (match (mcdr b)
-                             [`(lambda ,xs ,body ())
-                              `(lambda ,xs ,body ,top-level)])))
+           (set! root-stack-pointer (unbox rootstack_begin))
+           (define top-level (for/list ([d ds]) (interp-x86-def d)))
+           ;; tie the knot
+           (for/list ([b top-level])
+             (set-mcdr! b (match (mcdr b)
+                            [`(lambda ,xs ,body ())
+                             `(lambda ,xs ,body ,top-level)])))
            (define env^ (list (cons 'r15 (unbox rootstack_begin))))
            (define result-env (call-function (lookup 'main top-level) '() env^))
            (display-by-type 'Integer (lookup 'rax result-env))]
@@ -1392,6 +1408,7 @@
           [(ProgramDefs info ds)
            ((initialize!) runtime-config:rootstack-size
                           runtime-config:heap-size)
+           (set! root-stack-pointer (unbox rootstack_begin))
            (define top-level (for/list ([d ds]) (interp-x86-def d)))
            ;; tie the knot
            (for/list ([b top-level])

@@ -104,10 +104,10 @@ Changelog:
          (contract-out [struct Deref ((reg symbol?) (offset fixnum?))])
          (contract-out [struct Instr ((name symbol?) (arg* arg-list?))])
          (contract-out [struct Callq ((target symbol?))])
-         (contract-out [struct IndirectCallq ((target arg?) (arity fixnum?))])
+         (contract-out [struct IndirectCallq ((target arg?))])
          (struct-out Retq)
          (contract-out [struct Jmp ((target symbol?))])
-         (contract-out [struct TailJmp ((target arg?) (arity fixnum?))])
+         (contract-out [struct TailJmp ((target arg?))])
          (contract-out [struct Block ((info any?) (instr* instr-list?))])
          (struct-out StackArg)
          (struct-out Global)
@@ -991,18 +991,16 @@ Changelog:
                 (csp ast port mode)]
                ))))])
 
-(struct IndirectCallq (target arity) #:transparent #:property prop:custom-print-quotable 'never
+(struct IndirectCallq (target) #:transparent #:property prop:custom-print-quotable 'never
   #:methods gen:custom-write
   [(define (write-proc ast port mode)
      (let ([recur (make-recur port mode)])
        (match ast
-         [(IndirectCallq target arity)
+         [(IndirectCallq target)
           (let-values ([(line col pos) (port-next-location port)])
             (write-string "callq" port)
             (write-string " " port)
             (write-string "*" port)
-            (write-string " " port)
-            (write-string (number->string arity) port)
             (recur target port)
             (newline-and-indent port col))])))])
 
@@ -1025,22 +1023,20 @@ Changelog:
                 (csp ast port mode)]
                ))))])
   
-(struct TailJmp (target arity) #:transparent #:property prop:custom-print-quotable 'never
+(struct TailJmp (target) #:transparent #:property prop:custom-print-quotable 'never
   #:methods gen:custom-write
   [(define write-proc
      (let ([csp (make-constructor-style-printer
                  (lambda (obj) 'TailJmp)
-                 (lambda (obj) (list (TailJmp-target obj) (TailJmp-arity obj))))])
+                 (lambda (obj) (list (TailJmp-target obj))))])
        (lambda (ast port mode)
          (cond [(eq? (AST-output-syntax) 'concrete-syntax)
                 (match ast
-                  [(TailJmp target arity)
+                  [(TailJmp target)
                    (let-values ([(line col pos) (port-next-location port)])
                      (write-string "tailjmp" port)
                      (write-string " " port)
                      (write target port)
-                     (write-string " " port)
-                     (write (number->string arity) port)
                      (newline-and-indent port col))])]
                [(eq? (AST-output-syntax) 'abstract-syntax)
                 (csp ast port mode)]
@@ -1205,9 +1201,9 @@ Changelog:
     [(Instr n arg*) #t]
     [(Callq t) #t]
     [(Retq) #t]
-    [(IndirectCallq a ar) #t]
+    [(IndirectCallq a) #t]
     [(Jmp t) #t]
-    [(TailJmp t a) #t]
+    [(TailJmp t) #t]
     [(JmpIf c t) #t]
     [else #f]
     ))
@@ -1222,7 +1218,9 @@ Changelog:
 
 
 (define src-primitives
-  '(read + - eq? < <= > >= and or not vector vector-ref vector-set!
+  '(read + - eq? < <= > >= and or not
+         vector vector-ref vector-set! vector-length
+         procedure-arity
          boolean? integer? vector? procedure? void?))
 
 (define (parse-exp e)
@@ -1260,8 +1258,9 @@ Changelog:
      (Program info (parse-exp body))]
     [`(program ,info ,def* ,body)
      (ProgramDefsExp info
-                     (for/list ([d def*]) (parse-def d))
-                     (parse-exp body))]))
+                  (for/list ([d def*]) (parse-def d))
+                  (parse-exp body))]
+    ))
 
 (define (unparse-exp e)
   (match e
@@ -1392,11 +1391,21 @@ Changelog:
       (lambda (f)
         (define frick
           `(,@(for/list ([e (in-port read f)]) e)))
+        #;(displayln frick)
         `(program () ,(reverse (cdr (reverse frick)))
-                  ,(last frick)))))
+          ,(last frick))
+        #;`(program () ,@(for/list ([e (in-port read f)]) e))
+        )))
   (define parsed-prog (parse-program input-prog))
   (debug "utilities/read-program" parsed-prog)
   parsed-prog)
+#|
+(define frick
+  `(,@(for/list ([e (in-port read f)]) e)))
+`(program () ,(reverse (cdr (reverse frick)))
+          ,(last frick)))))
+
+|#
 
 (define (make-dispatcher mt)
   (lambda (e . rest)
@@ -1776,12 +1785,12 @@ Changelog:
   (if f
       (begin
         ;; need at least 2 arg-registers, see limit-functions -Jeremy
-        (set! arg-registers (vector 'rcx 'rdx))
-        ;(set! registers-for-alloc (vector 'rcx 'rdx))
+        (set! arg-registers (vector 'rdi 'rsi))
         (set! registers-for-alloc (vector 'rbx 'rcx))
         )
       (begin
-        (set! arg-registers (vector 'rcx 'rdx 'rdi 'rsi 'r8 'r9))
+        ;; The following ordering is specified in the x86-64 conventions.
+        (set! arg-registers (vector 'rdi 'rsi 'rdx 'rcx 'r8 'r9))
         (set! registers-for-alloc general-registers))))
 
 (use-minimal-set-of-registers! #f)
