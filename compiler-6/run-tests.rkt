@@ -3,31 +3,32 @@
 
 (require "utilities.rkt")
 ;(require "interp-R1.rkt");(require "interp-C0.rkt")
-(require "interp-R4.rkt")
+(require "interp-R5.rkt")
 ; (require "interp-C2.rkt")
 (require "interp.rkt")
 (require "compiler.rkt")
 ; (debug-level 1)
 (AST-output-syntax 'abstract-syntax)
 (define interp-R-after-expose
-  (let ([interp (new interp-R4-class)])
+  (let ([interp (new interp-R5-class)])
     (send interp interp-scheme '())))
 
-(define interp-F1
+(define interp-F2
   (lambda (p)
-    ((send (new interp-R4-class) interp-F '()) p)))
+    ((send (new interp-R5-class) interp-F '()) p)))
 
 ;; Define the passes to be used by interp-tests and the grader
 ;; Note that your compiler file (or whatever file provides your passes)
 ;; should be named "compiler.rkt"
-(define r4-passes
-  `( ("type-check" ,type-check ,interp-R4)
-     ("shrink" ,shrink ,interp-R4)
-     ("uniquify" ,uniquify ,interp-R4)
-     ("reveal-functions" ,reveal-functions ,interp-F1)
-     ("limit-functions" ,limit-functions ,interp-F1)
-     ("expose allocation" ,expose-allocation ,interp-F1)
-     ("remove complex opera*" ,remove-complex-opera* ,interp-F1)
+(define r5-passes
+  `( ("type-check" ,type-check ,interp-R5)
+     ("shrink" ,shrink ,interp-R5)
+     ("uniquify" ,uniquify ,interp-R5)
+     ("reveal-functions" ,reveal-functions ,interp-F2)
+     ("convert closures" ,convert-to-closures ,interp-F2)
+     ("limit-functions" ,limit-functions ,interp-F2)
+     ("expose allocation" ,expose-allocation ,interp-F2)
+     ("remove complex opera*" ,remove-complex-opera* ,interp-F2)
      ("explicate control" ,explicate-control ,interp-C3)
      ("uncover locals" ,uncover-locals ,interp-C3)
      ("instruction selection" ,select-instructions ,interp-pseudo-x86-3)
@@ -53,4 +54,4 @@
         all-tests)))
 
 ; (interp-tests "r3" #f r3-passes interp-R3 "r3" (tests-for "r3"))
-(compiler-tests "r4" #f r4-passes "r4" (tests-for "r4"))
+(compiler-tests "r5" #f r5-passes "r5" (tests-for "r5"))
