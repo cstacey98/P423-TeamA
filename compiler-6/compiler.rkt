@@ -15,6 +15,7 @@
  type-check
  shrink
  reveal-functions
+ convert-to-closures
  limit-functions
  uniquify
  expose-allocation
@@ -38,30 +39,32 @@
   (lambda (e)
     (match e
       [(HasType expr t)
-       ((get-exp-free-vars env) expr)]
-      [(Int n) '()]
-      [(Bool b) '()]
-      [(Void) '()]
-      [(Var x)
-       (if (not (assv x env))
-           (list x)
-           '())]
-      [(Let lhs rhs body)
-       (define rhs-fv ((get-exp-free-vars env) rhs))
-       (define body-fv ((get-exp-free-vars
-                         (cons `(,lhs . dummy-name) env)) body))
-       (append rhs-fv body-fv)]
-      [(Prim op args)
-       (foldr append '() (map (get-exp-free-vars env) args))]
-      [(If cnd cnsq alt)
-       (foldr append '()
-              (map (get-exp-free-vars env)
-                   (list cnd cnsq alt)))]
-      [(Apply f-exp args)
-       (foldr append '() (map (get-exp-free-vars env) args))]
-      [(Lambda (list `[,prms : ,prm-ts] ...) rt body)
-       (define prms-assoc (map (lambda (p) (cons p 'dummy-name)) prms))
-       ((get-exp-free-vars (append prms-assoc env)) body)])))
+       (match expr
+         [(Int n) '()]
+         [(Bool b) '()]
+         [(Void) '()]
+         [(Var x)
+          (if (not (assv x env))
+              (list (cons x t))
+              '())]
+         [(Let lhs rhs body)
+          (define rhs-fv ((get-exp-free-vars env) rhs))
+          (define body-fv
+            ((get-exp-free-vars
+              (cons `(,lhs . ,(get-type rhs)) env)) body))
+          (append rhs-fv body-fv)]
+         [(Prim op args)
+          (foldr append '() (map (get-exp-free-vars env) args))]
+         [(If cnd cnsq alt)
+          (foldr append '()
+                 (map (get-exp-free-vars env)
+                      (list cnd cnsq alt)))]
+         [(Apply f-exp args)
+          (foldr append '() (map (get-exp-free-vars env) args))]
+         [(Lambda (list `[,prms : ,prm-ts] ...) rt body)
+          (define prms-assoc
+            (map (lambda (p pt) (cons p pt)) prms prm-ts))
+          ((get-exp-free-vars (append prms-assoc env)) body)])])))
 
 (define (replace-in-symbol sym find replace)
   (begin
@@ -457,6 +460,105 @@
       (append shrunk-defs
               (list (Def 'main '() 'Integer '() shrunk-body))))]))
 
+
+
+
+
+
+
+; Our symtab is going to be an association list
+; A table is a [Listof [Pairof Symbol Int]]
+; any time you see ,var you should use the unique ,(gensym var)
+(define (extend-symtab table var)
+  (cons `(,var . ,(gensym var))
+        table))
+
+; Complementary operation to extend-symtab
+; complete with ~error handlin~
+(define (search-symtab table var)
+  (cdr (or (assv var table)
+           (error (format "Error: variable ~a not found in ~a" var table)))))
+
+(define (uniquify-exp symtab)
+  (lambda (e)
+    (let ([recur (uniquify-exp symtab)])
+      (match e
+        ; TODO (?): make simpler hastype matching (revert but add hastype case)
+        [(HasType expr t)
+         (HasType (recur expr) t)]
+        [(Lambda (and prm* (list `[,xs : ,ts] ...)) rt body)
+         (define new-env
+           (foldr
+            (lambda (x tbl)
+              (extend-symtab tbl x))
+            symtab
+            xs))
+         (Lambda (for/list ([x xs]
+                            [t ts])
+                   `[,(search-symtab new-env x) : ,t])
+                 rt
+                 ((uniquify-exp new-env) body))]
+        [(FunRef f) (FunRef (search-symtab symtab f))]
+        [(Apply f args)
+         (Apply (recur f)
+                (map recur args))]
+        [(Var x) (Var (search-symtab symtab x))]
+        [(Int n) (Int n)]
+        [(Bool b) (Bool b)]
+        [(If cnd cnsq alt)
+         (let* ([cnd-uniq (recur cnd)]
+                [cnsq-uniq (recur cnsq)]
+                [alt-uniq (recur alt)])
+           (If cnd-uniq cnsq-uniq alt-uniq))]
+        [(Let x e body)
+         (let* ([e-uniq (recur e)]
+                [symtab-x (extend-symtab symtab x)]
+                [x-uniq (search-symtab symtab-x x)]
+                [body-uniq ((uniquify-exp symtab-x) body)])
+           
+           (Let x-uniq
+                e-uniq
+                body-uniq))]
+        [(Prim op es)
+         (Prim
+          op
+          (for/list ([e es])
+            (recur e)))]))))
+
+(define (uniquify-def env)
+  (lambda (def)
+    (match def
+      [(Def f (and args (list `[,xs : ,ts] ...)) rt info body)
+       (define new-env
+         (map (lambda (x) (cons x (gensym x))) xs))
+       (define new-args
+         (map (lambda (x t) `[,(cdr x) : ,t]) new-env ts))
+       (Def (cdr (assv f env))
+         new-args
+         rt
+         info
+         ((uniquify-exp (append new-env env)) body))])))
+
+;; uniquify : R1 -> R1
+(define (uniquify p)
+  (match p
+    [(ProgramDefs info defs)
+     (define env
+       (foldr
+        (lambda (d envv)
+          (extend-symtab envv (fun-def-name d)))
+        '()
+        defs))
+     (ProgramDefs info (map (uniquify-def env) defs))]))
+
+
+
+
+
+
+
+
+
 #;
 (define (is-function? t)
   (match t
@@ -512,6 +614,120 @@
       (map
        (lambda (d) (reveal-funs-def d def-names))
        defs))]))
+
+(define (closure-conversion-type t)
+  (match t
+    [simple-t #:when (symbol? t) t]
+    [`(Vector ,components ...)
+     `(Vector ,@(map closure-conversion-type components))]
+    [`(,prm-ts ... -> ,rt)
+     `(Vector (,@(map closure-conversion-type prm-ts)
+               ->
+               ,(closure-conversion-type rt)))]))
+
+(define dummy-type '_)
+
+(define (closure-conversion-exp e)
+  (match e
+    [(HasType doot t)
+     (define t^ (closure-conversion-type t))
+     (define doot^
+       (match doot
+         [(Lambda prm* rt body)
+          (define typed-fvs ((get-exp-free-vars '()) body))
+          (define fv-names (map car typed-fvs))
+          (define fvts (map cdr typed-fvs))
+
+          (define lambda-name (gensym 'lambda-))
+          (define clos-name (gensym 'clos-))
+          (define clos-type `(Vector ,dummy-type ,@fvts))
+
+          (define body^ (closure-conversion-exp body))
+          (define t-body^ (get-type body^))
+          (define index (add1 (length typed-fvs)))
+          (define body-with-fvs-bound
+            (foldr
+             (lambda (fv bodyy)
+               (set! index (sub1 index))
+               (HasType
+                (Let fv
+                     (HasType
+                      (Prim 'vector-ref
+                            (list (Var clos-name) (Int index)))
+                      (list-ref fvts (sub1 index)))
+                     bodyy)
+                t-body^))
+             body^
+             fv-names))
+
+          (define prm*^
+            (for/list ([prm prm*])
+              (match prm
+                [`[,pname : ,pt]
+                 `[,pname : ,(closure-conversion-type pt)]])))
+
+          (define lambda-def
+            (Def lambda-name (cons `[,clos-name : ,clos-type]
+                                   prm*^)
+              rt '() body-with-fvs-bound))
+          (add-lambda-def lambda-def)
+          (define fvs
+            (for/list ([fv typed-fvs])
+              (HasType (Var (car fv)) (cdr fv))))
+          (Prim 'vector `(,(HasType (FunRef lambda-name)
+                                    (cons clos-type t))
+                          ,@fvs))]
+         [(Apply ex arg*)
+          (define ex^ (closure-conversion-exp ex))
+          (define tmp-var (gensym 'applying-))
+          (define typed-tmp-var
+            (HasType (Var tmp-var) (get-type ex^)))
+          (Let tmp-var ex^
+               (HasType
+                (Apply
+                 (HasType
+                  (Prim 'vector-ref (list typed-tmp-var
+                                          (HasType (Int 0) 'Integer)))
+                  (clos-fun-type (get-type ex^)))
+                 (cons typed-tmp-var (map closure-conversion-exp arg*)))
+                t^))]
+         [(FunRef f)
+          (Prim 'vector (list (HasType (FunRef f) t)))]
+         [y #:when (atomic? y) y]
+         [(Prim op args)
+          (Prim op (map closure-conversion-exp args))]
+         [(If cnd cnsq alt)
+          (If (closure-conversion-exp cnd)
+              (closure-conversion-exp cnsq)
+              (closure-conversion-exp alt))]
+         [(Let x rhs body)
+          (Let
+           x
+           (closure-conversion-exp rhs)
+           (closure-conversion-exp body))]))
+     (HasType doot^ t^)]))
+
+(define (clos-fun-type t-clos)
+  (match t-clos
+    [`(Vector ,t-fn ,t-others ...) t-fn]))
+
+(define (closure-conversion-def def)
+  (match def
+    [(Def f (and args (list `[,xs : ,ts] ...)) rt info body)
+     (define clos-name (gensym 'clos-))
+     (define clos `[,clos-name : ,dummy-type])
+     (Def f (cons clos args) rt info (closure-conversion-exp body))]))
+
+(define lambda-defs '())
+(define (add-lambda-def new-def)
+  (set! lambda-defs (cons new-def lambda-defs)))
+(define (convert-to-closures p)
+  (match p
+    [(ProgramDefs info defs)
+     (set! lambda-defs '())
+     (define defs^ (map closure-conversion-def defs))
+     (ProgramDefs info (append defs^ lambda-defs))]))
+
 
 
 (define (first-n n ls)
@@ -645,83 +861,29 @@
      (ProgramDefs info (map limit-funs-def defs))]))
 
 
-; Our symtab is going to be an association list
-; A table is a [Listof [Pairof Symbol Int]]
-; any time you see ,var you should use the unique ,(gensym var)
-(define (extend-symtab table var)
-  (cons `(,var . ,(gensym var))
-        table))
+; TODO
+#|
 
-; Complementary operation to extend-symtab
-; complete with ~error handlin~
-(define (search-symtab table var)
-  (cdr (or (assv var table)
-           (error (format "Error: variable ~a not found" var)))))
+compiler.rkt> (p '((lambda: ([y : Integer]) : Integer (+ 1 y)) 41)
+                 '())
+; car: contract violation
+;   expected: pair?
+;   given: '()
+; Context:
+;  /Users/zac/co/compiler-6/compiler.rkt:126:0 list-ind
+;  /Users/zac/co/compiler-6/compiler.rkt:945:0 assign-all
+;  /Users/zac/co/compiler-6/compiler.rkt:945:0 assign-all
+;  /Users/zac/co/compiler-6/compiler.rkt:866:0 expose-prim
+;  /Applications/Racket v7.8/collects/racket/match/compiler.rkt:507:40 f1471
+;  /Applications/Racket v7.8/collects/racket/match/compiler.rkt:507:40 f1502
+;  /Users/zac/co/compiler-6/compiler.rkt:985:0 expose-alloc-def
+;  /Users/zac/co/compiler-6/compiler.rkt:990:0 expose-allocation
+;  /Users/zac/co/compiler-6/compiler.rkt:2530:0 testttt
+;  /Users/zac/co/compiler-6/compiler.rkt:2543:0 p
+;  /Applications/Racket v7.8/collects/racket/repl.rkt:11:26
 
-(define (uniquify-exp symtab)
-  (lambda (e)
-    (let ([recur (uniquify-exp symtab)])
-      (match e
-        ; TODO (?): make simpler hastype matching (revert but add hastype case)
-        [(HasType expr t)
-         (HasType (recur expr) t)]
-        [(FunRef f) (FunRef (search-symtab symtab f))]
-        [(Apply f args)
-         (Apply (recur f)
-                (map recur args))]
-        [(Var x) (Var (search-symtab symtab x))]
-        [(Int n) (Int n)]
-        [(Bool b) (Bool b)]
-        [(If cnd cnsq alt)
-         (let* ([cnd-uniq (recur cnd)]
-                [cnsq-uniq (recur cnsq)]
-                [alt-uniq (recur alt)])
-           (If cnd-uniq cnsq-uniq alt-uniq))]
-        [(Let x e body)
-         (let* ([e-uniq (recur e)]
-                [symtab-x (extend-symtab symtab x)]
-                [x-uniq (search-symtab symtab-x x)]
-                [body-uniq ((uniquify-exp symtab-x) body)])
-           
-           (Let x-uniq
-                e-uniq
-                body-uniq))]
-        [(Prim op es)
-         (Prim
-          op
-          (for/list ([e es])
-            (recur e)))]))))
 
-(define (uniquify-def env)
-  (lambda (def)
-    (match def
-      [(Def f (and args (list `[,xs : ,ts] ...)) rt info body)
-       (define new-env
-         (map (lambda (x) (cons x (gensym x))) xs))
-       (define new-args
-         (map (lambda (x t) `[,(cdr x) : ,t]) new-env ts))
-       (Def (cdr (assv f env))
-         new-args
-         rt
-         info
-         ((uniquify-exp (append new-env env)) body))])))
-
-;; uniquify : R1 -> R1
-(define (uniquify p)
-  (match p
-    [(ProgramDefs info defs)
-     (define env
-       (foldr
-        (lambda (d envv)
-          (extend-symtab envv (fun-def-name d)))
-        '()
-        defs))
-     (ProgramDefs
-      info
-      (map
-       (uniquify-def
-        env)
-       defs))]))
+|#
 
 
 ; TODO fix and test this
@@ -2362,31 +2524,19 @@ get-free-vars
   (list
    type-check
    shrink
-   #;
-   reveal-functions
-   #;
-   limit-functions
-   #;
    uniquify
-   #;
+   reveal-functions
+   convert-to-closures
+   limit-functions
    expose-allocation
-   #;
    remove-complex-opera*
-   #;
    explicate-control
-   #;
    uncover-locals
-   #;
    select-instructions
-   #;
    uncover-live
-   #;
    build-interference
-   #;
    allocate-registers
-   #;
    patch-instructions
-   #;
    print-x86
    ))
 
