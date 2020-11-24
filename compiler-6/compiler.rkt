@@ -634,7 +634,8 @@
      (define doot^
        (match doot
          [(Lambda prm* rt body)
-          (define typed-fvs ((get-exp-free-vars '()) body))
+          (define typed-fvs ((get-exp-free-vars '()) e))
+          (displayln typed-fvs)
           (define fv-names (map car typed-fvs))
           (define fvts (map cdr typed-fvs))
 
@@ -894,6 +895,7 @@ compiler.rkt> (p '((lambda: ([y : Integer]) : Integer (+ 1 y)) 41)
 
      (define v-name (gensym 'vec-init-))
      (define len (length components))
+     (displayln (format "components ~a" components))
      (define vars
        (map (lambda (n) (gensym (string->symbol (format "x-~a-" n))))
             (build-list len identity)))
@@ -970,6 +972,10 @@ compiler.rkt> (p '((lambda: ([y : Integer]) : Integer (+ 1 y)) 41)
   (match to-assign
     ['() (HasType vec-name types)]
     [`(,a . ,d)
+     (displayln 'to-assign)
+     (displayln to-assign)
+     (displayln 'types)
+     (displayln types)
      (HasType
       (Let (gensym '_)
            (HasType
@@ -977,7 +983,9 @@ compiler.rkt> (p '((lambda: ([y : Integer]) : Integer (+ 1 y)) 41)
                   (list (HasType vec-name types)
                         ; n-assigned
                         (HasType (Int n-assigned) 'Integer)
-                        (HasType (Var a) (list-ind n-assigned (cdr types)))))
+                        (HasType
+                         (Var a)
+                         (list-ind n-assigned (cdr types)))))
             'Void)
            (assign-all d (add1 n-assigned) vec-name types))
       types)]))
