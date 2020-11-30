@@ -283,7 +283,8 @@
            [`(,tes* ... -> ,rt)
             (for ([arg-ty (map get-type es^)] [prm-ty tes*])
               (unless (equal? arg-ty prm-ty)
-                (error "argument ~a not equal to parameter ~a" arg-ty prm-ty)))
+                (error (format "argument ~a not equal to parameter ~a"
+                               arg-ty prm-ty))))
             (HasType (Apply f^ es^) rt)]
            [wtf (error "expected a function, not" tf)])]
         [else
@@ -313,7 +314,8 @@
         '(not . Boolean)
         '(vector . Vector)
         '(vector-set! . Void)
-        '(vector-ref . VectorRef)))
+        '(vector-ref . VectorRef)
+        '(procedure-arity . Integer)))
 
 (define (shrink-prim env)
   (lambda (p)
