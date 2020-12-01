@@ -1,41 +1,41 @@
-_f47start:
+f47start:
        movq   %rdi, %rdx
        movq   %rsi, %rdx
-       leaq   _lambda51(%rip), %rbx
+       leaq   lambda51(%rip), %rbx
        movq   %rdx, %r12
-       movq   _free_ptr(%rip), %rdx
+       movq   free_ptr(%rip), %rdx
        movq   %rdx, %rcx
        addq   $24, %rcx
-       movq   _fromspace_end(%rip), %rdx
+       movq   fromspace_end(%rip), %rdx
        cmpq   %rdx, %rcx
-       jl _f47block82
-       jmp _f47block83
+       jl f47block82
+       jmp f47block83
 
-_f47block83:
-       jmp _f47block81
+f47block83:
+       jmp f47block81
 
-_f47block81:
-       jmp _f47block79
+f47block81:
+       jmp f47block79
 
-_f47block79:
+f47block79:
        movq   %r15, %rdi
        movq   $24, %rsi
-       callq _collect
-       jmp _f47block77
+       callq collect
+       jmp f47block77
 
-_f47block82:
-       jmp _f47block80
+f47block82:
+       jmp f47block80
 
-_f47block80:
-       jmp _f47block78
+f47block80:
+       jmp f47block78
 
-_f47block78:
+f47block78:
        movq   $0, %rdx
-       jmp _f47block77
+       jmp f47block77
 
-_f47block77:
-       movq   _free_ptr(%rip), %rdx
-       addq   $24, _free_ptr(%rip)
+f47block77:
+       movq   free_ptr(%rip), %rdx
+       addq   $24, free_ptr(%rip)
        movq   %rdx, %r11
        movq   $5, 0(%r11)
        movq   %rdx, %r11
@@ -45,13 +45,13 @@ _f47block77:
        movq   %r12, 16(%r11)
        movq   $0, %rcx
        movq   %rdx, %rax
-       jmp _f47conclusion
+       jmp f47conclusion
 
 
 
-.globl _f47
+.globl f47
 .align 16
-_f47:
+f47:
        pushq  %rbp
        pushq  %rbx
        pushq  %r12
@@ -60,8 +60,8 @@ _f47:
        movq   %rsp, %rbp
        subq   $0, %rsp
        addq   $0, %r15
-       jmp _f47start
-_f47conclusion:
+       jmp f47start
+f47conclusion:
        subq   $0, %r15
        addq   $0, %rsp
        popq   %r14
@@ -70,49 +70,49 @@ _f47conclusion:
        popq   %rbx
        popq   %rbp
        retq
-_main46start:
+main46start:
        movq   %rdi, %rdx
-       leaq   _f47(%rip), %rbx
-       movq   _free_ptr(%rip), %rdx
+       leaq   f47(%rip), %rbx
+       movq   free_ptr(%rip), %rdx
        movq   %rdx, %rcx
        addq   $16, %rcx
-       movq   _fromspace_end(%rip), %rdx
+       movq   fromspace_end(%rip), %rdx
        cmpq   %rdx, %rcx
-       jl _main46block89
-       jmp _main46block90
+       jl main46block89
+       jmp main46block90
 
-_main46block90:
-       jmp _main46block88
+main46block90:
+       jmp main46block88
 
-_main46block88:
-       jmp _main46block86
+main46block88:
+       jmp main46block86
 
-_main46block86:
+main46block86:
        movq   %r15, %rdi
        movq   $16, %rsi
-       callq _collect
-       jmp _main46block84
+       callq collect
+       jmp main46block84
 
-_main46block89:
-       jmp _main46block87
+main46block89:
+       jmp main46block87
 
-_main46block87:
-       jmp _main46block85
+main46block87:
+       jmp main46block85
 
-_main46block85:
+main46block85:
        movq   $0, %rdx
-       jmp _main46block84
+       jmp main46block84
 
-_main46block84:
-       movq   _free_ptr(%rip), %rdx
-       addq   $16, _free_ptr(%rip)
+main46block84:
+       movq   free_ptr(%rip), %rdx
+       addq   $16, free_ptr(%rip)
        movq   %rdx, %r11
        movq   $3, 0(%r11)
        movq   %rdx, %r11
        movq   %rbx, 8(%r11)
        movq   $0, %rcx
        movq   %rdx, %rbx
-       callq _read_int
+       callq read_int
        movq   %rax, %rcx
        movq   %rbx, %r11
        movq   8(%r11), %rdx
@@ -120,7 +120,7 @@ _main46block84:
        movq   %rcx, %rsi
        callq *%rdx
        movq   %rax, %rbx
-       callq _read_int
+       callq read_int
        movq   %rax, %rcx
        movq   %rbx, %r11
        movq   8(%r11), %rdx
@@ -138,9 +138,9 @@ _main46block84:
 
 
 
-.globl _main
+.globl main
 .align 16
-_main:
+main:
        pushq  %rbp
        pushq  %rbx
        pushq  %r12
@@ -150,11 +150,11 @@ _main:
        subq   $0, %rsp
        movq   $16384, %rdi
        movq   $16384, %rsi
-       callq _initialize
-       movq   _rootstack_begin(%rip), %r15
+       callq initialize
+       movq   rootstack_begin(%rip), %r15
        addq   $0, %r15
-       jmp _main46start
-_main46conclusion:
+       jmp main46start
+main46conclusion:
        subq   $0, %r15
        addq   $0, %rsp
        popq   %r14
@@ -163,7 +163,7 @@ _main46conclusion:
        popq   %rbx
        popq   %rbp
        retq
-_lambda51start:
+lambda51start:
        movq   %rdi, %rdx
        movq   %rsi, %rcx
        movq   %rdx, %r11
@@ -172,13 +172,13 @@ _lambda51start:
        negq   %rcx
        movq   %rdx, %rax
        addq   %rcx, %rax
-       jmp _lambda51conclusion
+       jmp lambda51conclusion
 
 
 
-.globl _lambda51
+.globl lambda51
 .align 16
-_lambda51:
+lambda51:
        pushq  %rbp
        pushq  %rbx
        pushq  %r12
@@ -187,8 +187,8 @@ _lambda51:
        movq   %rsp, %rbp
        subq   $0, %rsp
        addq   $0, %r15
-       jmp _lambda51start
-_lambda51conclusion:
+       jmp lambda51start
+lambda51conclusion:
        subq   $0, %r15
        addq   $0, %rsp
        popq   %r14

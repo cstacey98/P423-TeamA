@@ -1,4 +1,4 @@
-_app1921start:
+app1931start:
        movq   %rdi, %rdx
        movq   %rsi, %rdx
        movq   %rdx, %rcx
@@ -18,9 +18,9 @@ _app1921start:
 
 
 
-.globl _app1921
+.globl app1931
 .align 16
-_app1921:
+app1931:
        pushq  %rbp
        pushq  %rbx
        pushq  %r12
@@ -29,8 +29,8 @@ _app1921:
        movq   %rsp, %rbp
        subq   $0, %rsp
        addq   $0, %r15
-       jmp _app1921start
-_app1921conclusion:
+       jmp app1931start
+app1931conclusion:
        subq   $0, %r15
        addq   $0, %rsp
        popq   %r14
@@ -39,18 +39,18 @@ _app1921conclusion:
        popq   %rbx
        popq   %rbp
        retq
-_add1920start:
+add1930start:
        movq   %rdi, %rdx
        movq   %rsi, %rdx
        movq   %rdx, %rax
        addq   $1, %rax
-       jmp _add1920conclusion
+       jmp add1930conclusion
 
 
 
-.globl _add1920
+.globl add1930
 .align 16
-_add1920:
+add1930:
        pushq  %rbp
        pushq  %rbx
        pushq  %r12
@@ -59,8 +59,8 @@ _add1920:
        movq   %rsp, %rbp
        subq   $0, %rsp
        addq   $0, %r15
-       jmp _add1920start
-_add1920conclusion:
+       jmp add1930start
+add1930conclusion:
        subq   $0, %r15
        addq   $0, %rsp
        popq   %r14
@@ -69,154 +69,154 @@ _add1920conclusion:
        popq   %rbx
        popq   %rbp
        retq
-_main919start:
+main929start:
        movq   %rdi, %rdx
-       leaq   _app1921(%rip), %rbx
-       movq   _free_ptr(%rip), %rdx
-       movq   %rdx, %rcx
-       addq   $16, %rcx
-       movq   _fromspace_end(%rip), %rdx
-       cmpq   %rdx, %rcx
-       jl _main919block981
-       jmp _main919block982
+       leaq   app1931(%rip), %rbx
+       movq   free_ptr(%rip), %rdx
+       movq   %rdx, %rdx
+       addq   $16, %rdx
+       movq   fromspace_end(%rip), %rcx
+       cmpq   %rcx, %rdx
+       jl main929block991
+       jmp main929block992
 
-_main919block982:
-       jmp _main919block980
+main929block991:
+       jmp main929block989
 
-_main919block980:
-       jmp _main919block978
+main929block989:
+       jmp main929block987
 
-_main919block978:
+main929block987:
+       movq   $0, %rdx
+       jmp main929block986
+
+main929block992:
+       jmp main929block990
+
+main929block990:
+       jmp main929block988
+
+main929block988:
        movq   %r15, %rdi
        movq   $16, %rsi
-       callq _collect
-       jmp _main919block976
+       callq collect
+       jmp main929block986
 
-_main919block981:
-       jmp _main919block979
-
-_main919block979:
-       jmp _main919block977
-
-_main919block977:
-       movq   $0, %rdx
-       jmp _main919block976
-
-_main919block976:
-       movq   _free_ptr(%rip), %rdx
-       addq   $16, _free_ptr(%rip)
+main929block986:
+       movq   free_ptr(%rip), %rdx
+       addq   $16, free_ptr(%rip)
        movq   %rdx, %r11
        movq   $3, 0(%r11)
        movq   %rdx, %r11
        movq   %rbx, 8(%r11)
        movq   $0, %rcx
        movq   %rdx, -8(%r15)
-       callq _read_int
+       callq read_int
        movq   %rax, %rdx
        movq   $0, %rax
        cmpq   %rax, %rdx
-       je _main919block974
-       jmp _main919block975
+       je main929block984
+       jmp main929block985
 
-_main919block975:
-       jmp _main919block973
+main929block984:
+       jmp main929block982
 
-_main919block973:
-       leaq   _lambda930(%rip), %rbx
-       movq   _free_ptr(%rip), %rdx
+main929block982:
+       leaq   add1930(%rip), %rbx
+       movq   free_ptr(%rip), %rdx
        movq   %rdx, %rdx
        addq   $16, %rdx
-       movq   _fromspace_end(%rip), %rcx
+       movq   fromspace_end(%rip), %rcx
        cmpq   %rcx, %rdx
-       jl _main919block970
-       jmp _main919block971
+       jl main929block973
+       jmp main929block974
 
-_main919block971:
-       jmp _main919block969
+main929block973:
+       jmp main929block971
 
-_main919block969:
-       jmp _main919block967
+main929block971:
+       jmp main929block969
 
-_main919block967:
+main929block969:
+       movq   $0, %rdx
+       jmp main929block968
+
+main929block985:
+       jmp main929block983
+
+main929block983:
+       leaq   lambda940(%rip), %rbx
+       movq   free_ptr(%rip), %rdx
+       movq   %rdx, %rdx
+       addq   $16, %rdx
+       movq   fromspace_end(%rip), %rcx
+       cmpq   %rcx, %rdx
+       jl main929block980
+       jmp main929block981
+
+main929block981:
+       jmp main929block979
+
+main929block979:
+       jmp main929block977
+
+main929block974:
+       jmp main929block972
+
+main929block972:
+       jmp main929block970
+
+main929block970:
        movq   %r15, %rdi
        movq   $16, %rsi
-       callq _collect
-       jmp _main919block965
+       callq collect
+       jmp main929block968
 
-_main919block970:
-       jmp _main919block968
-
-_main919block968:
-       jmp _main919block966
-
-_main919block966:
-       movq   $0, %rdx
-       jmp _main919block965
-
-_main919block965:
-       movq   _free_ptr(%rip), %rdx
-       addq   $16, _free_ptr(%rip)
+main929block968:
+       movq   free_ptr(%rip), %rdx
+       addq   $16, free_ptr(%rip)
        movq   %rdx, %r11
        movq   $3, 0(%r11)
        movq   %rdx, %r11
        movq   %rbx, 8(%r11)
        movq   $0, %rcx
        movq   %rdx, %rcx
-       jmp _main919block957
+       jmp main929block967
 
-_main919block974:
-       jmp _main919block972
-
-_main919block972:
-       leaq   _add1920(%rip), %rbx
-       movq   _free_ptr(%rip), %rdx
-       movq   %rdx, %rdx
-       addq   $16, %rdx
-       movq   _fromspace_end(%rip), %rcx
-       cmpq   %rcx, %rdx
-       jl _main919block963
-       jmp _main919block964
-
-_main919block963:
-       jmp _main919block961
-
-_main919block964:
-       jmp _main919block962
-
-_main919block962:
-       jmp _main919block960
-
-_main919block961:
-       jmp _main919block959
-
-_main919block959:
-       movq   $0, %rdx
-       jmp _main919block958
-
-_main919block960:
+main929block977:
        movq   %r15, %rdi
        movq   $16, %rsi
-       callq _collect
-       jmp _main919block958
+       callq collect
+       jmp main929block975
 
-_main919block958:
-       movq   _free_ptr(%rip), %rdx
-       addq   $16, _free_ptr(%rip)
+main929block980:
+       jmp main929block978
+
+main929block978:
+       jmp main929block976
+
+main929block976:
+       movq   $0, %rdx
+       jmp main929block975
+
+main929block975:
+       movq   free_ptr(%rip), %rdx
+       addq   $16, free_ptr(%rip)
        movq   %rdx, %r11
        movq   $3, 0(%r11)
        movq   %rdx, %r11
        movq   %rbx, 8(%r11)
        movq   $0, %rcx
        movq   %rdx, %rcx
-       jmp _main919block957
+       jmp main929block967
 
-_main919block957:
+main929block967:
        movq   -8(%r15), %r11
        movq   8(%r11), %rdx
        movq   -8(%r15), %rdi
        movq   %rcx, %rsi
        movq   %rdx, %rax
-       subq   $16, %r15
+       subq   $8, %r15
        addq   $0, %rsp
        popq   %r14
        popq   %r13
@@ -227,9 +227,9 @@ _main919block957:
 
 
 
-.globl _main
+.globl main
 .align 16
-_main:
+main:
        pushq  %rbp
        pushq  %rbx
        pushq  %r12
@@ -239,14 +239,13 @@ _main:
        subq   $0, %rsp
        movq   $16384, %rdi
        movq   $16384, %rsi
-       callq _initialize
-       movq   _rootstack_begin(%rip), %r15
+       callq initialize
+       movq   rootstack_begin(%rip), %r15
        movq   $0, 0(%r15)
-       movq   $0, 8(%r15)
-       addq   $16, %r15
-       jmp _main919start
-_main919conclusion:
-       subq   $16, %r15
+       addq   $8, %r15
+       jmp main929start
+main929conclusion:
+       subq   $8, %r15
        addq   $0, %rsp
        popq   %r14
        popq   %r13
@@ -254,17 +253,17 @@ _main919conclusion:
        popq   %rbx
        popq   %rbp
        retq
-_lambda930start:
+lambda940start:
        movq   %rdi, %rdx
        movq   %rsi, %rdx
        movq   %rdx, %rax
-       jmp _lambda930conclusion
+       jmp lambda940conclusion
 
 
 
-.globl _lambda930
+.globl lambda940
 .align 16
-_lambda930:
+lambda940:
        pushq  %rbp
        pushq  %rbx
        pushq  %r12
@@ -273,8 +272,8 @@ _lambda930:
        movq   %rsp, %rbp
        subq   $0, %rsp
        addq   $0, %r15
-       jmp _lambda930start
-_lambda930conclusion:
+       jmp lambda940start
+lambda940conclusion:
        subq   $0, %r15
        addq   $0, %rsp
        popq   %r14

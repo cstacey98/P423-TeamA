@@ -1,39 +1,39 @@
-_main0start:
+main0start:
        movq   %rdi, %rdx
-       leaq   _lambda3(%rip), %rbx
-       movq   _free_ptr(%rip), %rdx
+       leaq   lambda3(%rip), %rbx
+       movq   free_ptr(%rip), %rdx
        movq   %rdx, %rcx
        addq   $16, %rcx
-       movq   _fromspace_end(%rip), %rdx
+       movq   fromspace_end(%rip), %rdx
        cmpq   %rdx, %rcx
-       jl _main0block19
-       jmp _main0block20
+       jl main0block19
+       jmp main0block20
 
-_main0block19:
-       jmp _main0block17
+main0block19:
+       jmp main0block17
 
-_main0block17:
-       jmp _main0block15
+main0block17:
+       jmp main0block15
 
-_main0block20:
-       jmp _main0block18
+main0block20:
+       jmp main0block18
 
-_main0block18:
-       jmp _main0block16
+main0block18:
+       jmp main0block16
 
-_main0block15:
+main0block15:
        movq   $0, %rdx
-       jmp _main0block14
+       jmp main0block14
 
-_main0block16:
+main0block16:
        movq   %r15, %rdi
        movq   $16, %rsi
-       callq _collect
-       jmp _main0block14
+       callq collect
+       jmp main0block14
 
-_main0block14:
-       movq   _free_ptr(%rip), %rdx
-       addq   $16, _free_ptr(%rip)
+main0block14:
+       movq   free_ptr(%rip), %rdx
+       addq   $16, free_ptr(%rip)
        movq   %rdx, %r11
        movq   $3, 0(%r11)
        movq   %rdx, %r11
@@ -56,9 +56,9 @@ _main0block14:
 
 
 
-.globl _main
+.globl main
 .align 16
-_main:
+main:
        pushq  %rbp
        pushq  %rbx
        pushq  %r12
@@ -68,11 +68,11 @@ _main:
        subq   $0, %rsp
        movq   $16384, %rdi
        movq   $16384, %rsi
-       callq _initialize
-       movq   _rootstack_begin(%rip), %r15
+       callq initialize
+       movq   rootstack_begin(%rip), %r15
        addq   $0, %r15
-       jmp _main0start
-_main0conclusion:
+       jmp main0start
+main0conclusion:
        subq   $0, %r15
        addq   $0, %rsp
        popq   %r14
@@ -81,17 +81,17 @@ _main0conclusion:
        popq   %rbx
        popq   %rbp
        retq
-_lambda3start:
+lambda3start:
        movq   %rdi, %rdx
        movq   %rsi, %rdx
        movq   %rdx, %rax
-       jmp _lambda3conclusion
+       jmp lambda3conclusion
 
 
 
-.globl _lambda3
+.globl lambda3
 .align 16
-_lambda3:
+lambda3:
        pushq  %rbp
        pushq  %rbx
        pushq  %r12
@@ -100,8 +100,8 @@ _lambda3:
        movq   %rsp, %rbp
        subq   $0, %rsp
        addq   $0, %r15
-       jmp _lambda3start
-_lambda3conclusion:
+       jmp lambda3start
+lambda3conclusion:
        subq   $0, %r15
        addq   $0, %rsp
        popq   %r14

@@ -1,39 +1,39 @@
-_main415start:
+main415start:
        movq   %rdi, %rdx
-       leaq   _lambda419(%rip), %rbx
-       movq   _free_ptr(%rip), %rdx
+       leaq   lambda419(%rip), %rbx
+       movq   free_ptr(%rip), %rdx
        movq   %rdx, %rdx
        addq   $16, %rdx
-       movq   _fromspace_end(%rip), %rcx
+       movq   fromspace_end(%rip), %rcx
        cmpq   %rcx, %rdx
-       jl _main415block448
-       jmp _main415block449
+       jl main415block448
+       jmp main415block449
 
-_main415block449:
-       jmp _main415block447
+main415block449:
+       jmp main415block447
 
-_main415block448:
-       jmp _main415block446
+main415block448:
+       jmp main415block446
 
-_main415block446:
-       jmp _main415block444
+main415block446:
+       jmp main415block444
 
-_main415block444:
+main415block444:
        movq   $0, %rdx
-       jmp _main415block443
+       jmp main415block443
 
-_main415block447:
-       jmp _main415block445
+main415block447:
+       jmp main415block445
 
-_main415block445:
+main415block445:
        movq   %r15, %rdi
        movq   $16, %rsi
-       callq _collect
-       jmp _main415block443
+       callq collect
+       jmp main415block443
 
-_main415block443:
-       movq   _free_ptr(%rip), %rdx
-       addq   $16, _free_ptr(%rip)
+main415block443:
+       movq   free_ptr(%rip), %rdx
+       addq   $16, free_ptr(%rip)
        movq   %rdx, %r11
        movq   $3, 0(%r11)
        movq   %rdx, %r11
@@ -62,9 +62,9 @@ _main415block443:
 
 
 
-.globl _main
+.globl main
 .align 16
-_main:
+main:
        pushq  %rbp
        pushq  %rbx
        pushq  %r12
@@ -74,11 +74,11 @@ _main:
        subq   $0, %rsp
        movq   $16384, %rdi
        movq   $16384, %rsi
-       callq _initialize
-       movq   _rootstack_begin(%rip), %r15
+       callq initialize
+       movq   rootstack_begin(%rip), %r15
        addq   $0, %r15
-       jmp _main415start
-_main415conclusion:
+       jmp main415start
+main415conclusion:
        subq   $0, %r15
        addq   $0, %rsp
        popq   %r14
@@ -87,44 +87,44 @@ _main415conclusion:
        popq   %rbx
        popq   %rbp
        retq
-_lambda419start:
+lambda419start:
        movq   %rdi, %rdx
        movq   %rsi, %rdx
-       leaq   _lambda421(%rip), %rbx
+       leaq   lambda421(%rip), %rbx
        movq   %rdx, %r12
-       movq   _free_ptr(%rip), %rdx
+       movq   free_ptr(%rip), %rdx
        movq   %rdx, %rdx
        addq   $24, %rdx
-       movq   _fromspace_end(%rip), %rcx
+       movq   fromspace_end(%rip), %rcx
        cmpq   %rcx, %rdx
-       jl _lambda419block455
-       jmp _lambda419block456
+       jl lambda419block455
+       jmp lambda419block456
 
-_lambda419block455:
-       jmp _lambda419block453
+lambda419block455:
+       jmp lambda419block453
 
-_lambda419block453:
-       jmp _lambda419block451
+lambda419block453:
+       jmp lambda419block451
 
-_lambda419block451:
+lambda419block451:
        movq   $0, %rdx
-       jmp _lambda419block450
+       jmp lambda419block450
 
-_lambda419block456:
-       jmp _lambda419block454
+lambda419block456:
+       jmp lambda419block454
 
-_lambda419block454:
-       jmp _lambda419block452
+lambda419block454:
+       jmp lambda419block452
 
-_lambda419block452:
+lambda419block452:
        movq   %r15, %rdi
        movq   $24, %rsi
-       callq _collect
-       jmp _lambda419block450
+       callq collect
+       jmp lambda419block450
 
-_lambda419block450:
-       movq   _free_ptr(%rip), %rdx
-       addq   $24, _free_ptr(%rip)
+lambda419block450:
+       movq   free_ptr(%rip), %rdx
+       addq   $24, free_ptr(%rip)
        movq   %rdx, %r11
        movq   $5, 0(%r11)
        movq   %rdx, %r11
@@ -134,13 +134,13 @@ _lambda419block450:
        movq   %r12, 16(%r11)
        movq   $0, %rcx
        movq   %rdx, %rax
-       jmp _lambda419conclusion
+       jmp lambda419conclusion
 
 
 
-.globl _lambda419
+.globl lambda419
 .align 16
-_lambda419:
+lambda419:
        pushq  %rbp
        pushq  %rbx
        pushq  %r12
@@ -149,8 +149,8 @@ _lambda419:
        movq   %rsp, %rbp
        subq   $0, %rsp
        addq   $0, %r15
-       jmp _lambda419start
-_lambda419conclusion:
+       jmp lambda419start
+lambda419conclusion:
        subq   $0, %r15
        addq   $0, %rsp
        popq   %r14
@@ -159,19 +159,19 @@ _lambda419conclusion:
        popq   %rbx
        popq   %rbp
        retq
-_lambda421start:
+lambda421start:
        movq   %rdi, %rdx
        movq   %rsi, %rcx
        movq   %rdx, %r11
        movq   16(%r11), %rdx
        movq   %rdx, %rax
-       jmp _lambda421conclusion
+       jmp lambda421conclusion
 
 
 
-.globl _lambda421
+.globl lambda421
 .align 16
-_lambda421:
+lambda421:
        pushq  %rbp
        pushq  %rbx
        pushq  %r12
@@ -180,8 +180,8 @@ _lambda421:
        movq   %rsp, %rbp
        subq   $0, %rsp
        addq   $0, %r15
-       jmp _lambda421start
-_lambda421conclusion:
+       jmp lambda421start
+lambda421conclusion:
        subq   $0, %r15
        addq   $0, %rsp
        popq   %r14

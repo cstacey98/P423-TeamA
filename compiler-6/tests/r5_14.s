@@ -1,81 +1,81 @@
-_f266start:
+f266start:
        movq   %rdi, %rdx
        movq   $0, %rbx
-       movq   _free_ptr(%rip), %rdx
+       movq   free_ptr(%rip), %rdx
        movq   %rdx, %rcx
        addq   $16, %rcx
-       movq   _fromspace_end(%rip), %rdx
+       movq   fromspace_end(%rip), %rdx
        cmpq   %rdx, %rcx
-       jl _f266block338
-       jmp _f266block339
+       jl f266block338
+       jmp f266block339
 
-_f266block338:
-       jmp _f266block336
+f266block338:
+       jmp f266block336
 
-_f266block336:
-       jmp _f266block334
+f266block336:
+       jmp f266block334
 
-_f266block334:
+f266block334:
        movq   $0, %rdx
-       jmp _f266block333
+       jmp f266block333
 
-_f266block339:
-       jmp _f266block337
+f266block339:
+       jmp f266block337
 
-_f266block337:
-       jmp _f266block335
+f266block337:
+       jmp f266block335
 
-_f266block335:
+f266block335:
        movq   %r15, %rdi
        movq   $16, %rsi
-       callq _collect
-       jmp _f266block333
+       callq collect
+       jmp f266block333
 
-_f266block333:
-       movq   _free_ptr(%rip), %rdx
-       addq   $16, _free_ptr(%rip)
+f266block333:
+       movq   free_ptr(%rip), %rdx
+       addq   $16, free_ptr(%rip)
        movq   %rdx, %r11
        movq   $3, 0(%r11)
        movq   %rdx, %r11
        movq   %rbx, 8(%r11)
        movq   $0, %rcx
        movq   %rdx, %rdx
-       leaq   _lambda277(%rip), %rbx
+       leaq   lambda277(%rip), %rbx
        movq   %rdx, -8(%r15)
        movq   %rdx, -16(%r15)
-       movq   _free_ptr(%rip), %rdx
+       movq   free_ptr(%rip), %rdx
        movq   %rdx, %rdx
        addq   $32, %rdx
-       movq   _fromspace_end(%rip), %rcx
+       movq   fromspace_end(%rip), %rcx
        cmpq   %rcx, %rdx
-       jl _f266block331
-       jmp _f266block332
+       jl f266block331
+       jmp f266block332
 
-_f266block332:
-       jmp _f266block330
+f266block332:
+       jmp f266block330
 
-_f266block330:
-       jmp _f266block328
+f266block330:
+       jmp f266block328
 
-_f266block328:
+f266block328:
        movq   %r15, %rdi
        movq   $32, %rsi
-       callq _collect
-       jmp _f266block326
+       callq collect
+       jmp f266block326
 
-_f266block331:
-       jmp _f266block329
+f266block331:
+       jmp f266block329
 
-_f266block329:
-       jmp _f266block327
+f266block329:
+       jmp f266block327
 
-_f266block327:
+f266block327:
        movq   $0, %rdx
-       jmp _f266block326
+       jmp f266block326
 
-_f266block326:
-       movq   _free_ptr(%rip), %rdx
-       addq   $32, _free_ptr(%rip)
+f266block326:
+       movq   free_ptr(%rip), %rdx
+       addq   $32, free_ptr(%rip)
        movq   %rdx, %r11
        movq   $775, 0(%r11)
        movq   %rdx, %r11
@@ -90,13 +90,13 @@ _f266block326:
        movq   %rax, 24(%r11)
        movq   $0, %rcx
        movq   %rdx, %rax
-       jmp _f266conclusion
+       jmp f266conclusion
 
 
 
-.globl _f266
+.globl f266
 .align 16
-_f266:
+f266:
        pushq  %rbp
        pushq  %rbx
        pushq  %r12
@@ -107,8 +107,8 @@ _f266:
        movq   $0, 0(%r15)
        movq   $0, 8(%r15)
        addq   $16, %r15
-       jmp _f266start
-_f266conclusion:
+       jmp f266start
+f266conclusion:
        subq   $16, %r15
        addq   $0, %rsp
        popq   %r14
@@ -117,42 +117,42 @@ _f266conclusion:
        popq   %rbx
        popq   %rbp
        retq
-_main265start:
+main265start:
        movq   %rdi, %rdx
-       leaq   _f266(%rip), %rbx
-       movq   _free_ptr(%rip), %rdx
+       leaq   f266(%rip), %rbx
+       movq   free_ptr(%rip), %rdx
        movq   %rdx, %rdx
        addq   $16, %rdx
-       movq   _fromspace_end(%rip), %rcx
+       movq   fromspace_end(%rip), %rcx
        cmpq   %rcx, %rdx
-       jl _main265block352
-       jmp _main265block353
+       jl main265block352
+       jmp main265block353
 
-_main265block352:
-       jmp _main265block350
+main265block352:
+       jmp main265block350
 
-_main265block350:
-       jmp _main265block348
+main265block350:
+       jmp main265block348
 
-_main265block348:
+main265block348:
        movq   $0, %rdx
-       jmp _main265block347
+       jmp main265block347
 
-_main265block353:
-       jmp _main265block351
+main265block353:
+       jmp main265block351
 
-_main265block351:
-       jmp _main265block349
+main265block351:
+       jmp main265block349
 
-_main265block349:
+main265block349:
        movq   %r15, %rdi
        movq   $16, %rsi
-       callq _collect
-       jmp _main265block347
+       callq collect
+       jmp main265block347
 
-_main265block347:
-       movq   _free_ptr(%rip), %rdx
-       addq   $16, _free_ptr(%rip)
+main265block347:
+       movq   free_ptr(%rip), %rdx
+       addq   $16, free_ptr(%rip)
        movq   %rdx, %r11
        movq   $3, 0(%r11)
        movq   %rdx, %r11
@@ -164,40 +164,40 @@ _main265block347:
        movq   %rcx, %rdi
        callq *%rdx
        movq   %rax, -8(%r15)
-       leaq   _f266(%rip), %rbx
-       movq   _free_ptr(%rip), %rdx
+       leaq   f266(%rip), %rbx
+       movq   free_ptr(%rip), %rdx
        movq   %rdx, %rdx
        addq   $16, %rdx
-       movq   _fromspace_end(%rip), %rcx
+       movq   fromspace_end(%rip), %rcx
        cmpq   %rcx, %rdx
-       jl _main265block345
-       jmp _main265block346
+       jl main265block345
+       jmp main265block346
 
-_main265block345:
-       jmp _main265block343
+main265block345:
+       jmp main265block343
 
-_main265block343:
-       jmp _main265block341
+main265block343:
+       jmp main265block341
 
-_main265block341:
+main265block341:
        movq   $0, %rdx
-       jmp _main265block340
+       jmp main265block340
 
-_main265block346:
-       jmp _main265block344
+main265block346:
+       jmp main265block344
 
-_main265block344:
-       jmp _main265block342
+main265block344:
+       jmp main265block342
 
-_main265block342:
+main265block342:
        movq   %r15, %rdi
        movq   $16, %rsi
-       callq _collect
-       jmp _main265block340
+       callq collect
+       jmp main265block340
 
-_main265block340:
-       movq   _free_ptr(%rip), %rdx
-       addq   $16, _free_ptr(%rip)
+main265block340:
+       movq   free_ptr(%rip), %rdx
+       addq   $16, free_ptr(%rip)
        movq   %rdx, %r11
        movq   $3, 0(%r11)
        movq   %rdx, %r11
@@ -243,13 +243,13 @@ _main265block340:
        movq   8(%r11), %rdx
        movq   %rcx, %rax
        addq   %rdx, %rax
-       jmp _main265conclusion
+       jmp main265conclusion
 
 
 
-.globl _main
+.globl main
 .align 16
-_main:
+main:
        pushq  %rbp
        pushq  %rbx
        pushq  %r12
@@ -259,13 +259,13 @@ _main:
        subq   $0, %rsp
        movq   $16384, %rdi
        movq   $16384, %rsi
-       callq _initialize
-       movq   _rootstack_begin(%rip), %r15
+       callq initialize
+       movq   rootstack_begin(%rip), %r15
        movq   $0, 0(%r15)
        movq   $0, 8(%r15)
        addq   $16, %r15
-       jmp _main265start
-_main265conclusion:
+       jmp main265start
+main265conclusion:
        subq   $16, %r15
        addq   $0, %rsp
        popq   %r14
@@ -274,7 +274,7 @@ _main265conclusion:
        popq   %rbx
        popq   %rbp
        retq
-_lambda277start:
+lambda277start:
        movq   %rdi, %rdx
        movq   %rsi, %rsi
        movq   %rdx, %r11
@@ -285,13 +285,13 @@ _lambda277start:
        movq   %rsi, 8(%r11)
        movq   $0, %rdx
        movq   %rcx, %rax
-       jmp _lambda277conclusion
+       jmp lambda277conclusion
 
 
 
-.globl _lambda277
+.globl lambda277
 .align 16
-_lambda277:
+lambda277:
        pushq  %rbp
        pushq  %rbx
        pushq  %r12
@@ -300,8 +300,8 @@ _lambda277:
        movq   %rsp, %rbp
        subq   $0, %rsp
        addq   $0, %r15
-       jmp _lambda277start
-_lambda277conclusion:
+       jmp lambda277start
+lambda277conclusion:
        subq   $0, %r15
        addq   $0, %rsp
        popq   %r14

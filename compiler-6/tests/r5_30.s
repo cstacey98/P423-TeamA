@@ -1,83 +1,87 @@
-_main1048start:
+main1058start:
        movq   %rdi, %rdx
-       leaq   _lambda1054(%rip), %rbx
-       movq   _free_ptr(%rip), %rdx
-       movq   %rdx, %rcx
-       addq   $16, %rcx
-       movq   _fromspace_end(%rip), %rdx
-       cmpq   %rdx, %rcx
-       jl _main1048block1088
-       jmp _main1048block1089
+       leaq   lambda1064(%rip), %rbx
+       movq   free_ptr(%rip), %rdx
+       movq   %rdx, %rdx
+       addq   $16, %rdx
+       movq   fromspace_end(%rip), %rcx
+       cmpq   %rcx, %rdx
+       jl main1058block1100
+       jmp main1058block1101
 
-_main1048block1089:
-       jmp _main1048block1087
+main1058block1100:
+       jmp main1058block1098
 
-_main1048block1087:
-       jmp _main1048block1085
+main1058block1098:
+       jmp main1058block1096
 
-_main1048block1085:
+main1058block1096:
+       movq   $0, %rdx
+       jmp main1058block1095
+
+main1058block1101:
+       jmp main1058block1099
+
+main1058block1099:
+       jmp main1058block1097
+
+main1058block1097:
        movq   %r15, %rdi
        movq   $16, %rsi
-       callq _collect
-       jmp _main1048block1083
+       callq collect
+       jmp main1058block1095
 
-_main1048block1088:
-       jmp _main1048block1086
-
-_main1048block1086:
-       jmp _main1048block1084
-
-_main1048block1084:
-       movq   $0, %rdx
-       jmp _main1048block1083
-
-_main1048block1083:
-       movq   _free_ptr(%rip), %rdx
-       addq   $16, _free_ptr(%rip)
+main1058block1095:
+       movq   free_ptr(%rip), %rdx
+       addq   $16, free_ptr(%rip)
        movq   %rdx, %r11
        movq   $3, 0(%r11)
        movq   %rdx, %r11
        movq   %rbx, 8(%r11)
        movq   $0, %rcx
        movq   %rdx, %rdx
-       leaq   _lambda1056(%rip), %rbx
-       movq   _free_ptr(%rip), %rdx
+       leaq   lambda1066(%rip), %r12
+       movq   %rdx, %rbx
+       movq   free_ptr(%rip), %rdx
        movq   %rdx, %rcx
-       addq   $16, %rcx
-       movq   _fromspace_end(%rip), %rdx
+       addq   $24, %rcx
+       movq   fromspace_end(%rip), %rdx
        cmpq   %rdx, %rcx
-       jl _main1048block1081
-       jmp _main1048block1082
+       jl main1058block1093
+       jmp main1058block1094
 
-_main1048block1081:
-       jmp _main1048block1079
+main1058block1093:
+       jmp main1058block1091
 
-_main1048block1079:
-       jmp _main1048block1077
+main1058block1091:
+       jmp main1058block1089
 
-_main1048block1077:
+main1058block1089:
        movq   $0, %rdx
-       jmp _main1048block1076
+       jmp main1058block1088
 
-_main1048block1082:
-       jmp _main1048block1080
+main1058block1094:
+       jmp main1058block1092
 
-_main1048block1080:
-       jmp _main1048block1078
+main1058block1092:
+       jmp main1058block1090
 
-_main1048block1078:
+main1058block1090:
        movq   %r15, %rdi
-       movq   $16, %rsi
-       callq _collect
-       jmp _main1048block1076
+       movq   $24, %rsi
+       callq collect
+       jmp main1058block1088
 
-_main1048block1076:
-       movq   _free_ptr(%rip), %rdx
-       addq   $16, _free_ptr(%rip)
+main1058block1088:
+       movq   free_ptr(%rip), %rdx
+       addq   $24, free_ptr(%rip)
        movq   %rdx, %r11
-       movq   $3, 0(%r11)
+       movq   $5, 0(%r11)
        movq   %rdx, %r11
-       movq   %rbx, 8(%r11)
+       movq   %r12, 8(%r11)
+       movq   $0, %rcx
+       movq   %rdx, %r11
+       movq   %rbx, 16(%r11)
        movq   $0, %rcx
        movq   %rdx, %rdx
        movq   %rdx, %rcx
@@ -97,9 +101,9 @@ _main1048block1076:
 
 
 
-.globl _main
+.globl main
 .align 16
-_main:
+main:
        pushq  %rbp
        pushq  %rbx
        pushq  %r12
@@ -109,11 +113,11 @@ _main:
        subq   $0, %rsp
        movq   $16384, %rdi
        movq   $16384, %rsi
-       callq _initialize
-       movq   _rootstack_begin(%rip), %r15
+       callq initialize
+       movq   rootstack_begin(%rip), %r15
        addq   $0, %r15
-       jmp _main1048start
-_main1048conclusion:
+       jmp main1058start
+main1058conclusion:
        subq   $0, %r15
        addq   $0, %rsp
        popq   %r14
@@ -122,10 +126,12 @@ _main1048conclusion:
        popq   %rbx
        popq   %rbp
        retq
-_lambda1056start:
+lambda1066start:
        movq   %rdi, %rdx
        movq   %rsi, %rcx
-       movq   %rsi, %rsi
+       movq   %rdx, %r11
+       movq   16(%r11), %rdx
+       movq   %rdx, %rsi
        movq   %rsi, %r11
        movq   8(%r11), %rdx
        movq   %rsi, %rdi
@@ -142,9 +148,9 @@ _lambda1056start:
 
 
 
-.globl _lambda1056
+.globl lambda1066
 .align 16
-_lambda1056:
+lambda1066:
        pushq  %rbp
        pushq  %rbx
        pushq  %r12
@@ -153,8 +159,8 @@ _lambda1056:
        movq   %rsp, %rbp
        subq   $0, %rsp
        addq   $0, %r15
-       jmp _lambda1056start
-_lambda1056conclusion:
+       jmp lambda1066start
+lambda1066conclusion:
        subq   $0, %r15
        addq   $0, %rsp
        popq   %r14
@@ -163,17 +169,17 @@ _lambda1056conclusion:
        popq   %rbx
        popq   %rbp
        retq
-_lambda1054start:
+lambda1064start:
        movq   %rdi, %rdx
        movq   %rsi, %rdx
        movq   %rdx, %rax
-       jmp _lambda1054conclusion
+       jmp lambda1064conclusion
 
 
 
-.globl _lambda1054
+.globl lambda1064
 .align 16
-_lambda1054:
+lambda1064:
        pushq  %rbp
        pushq  %rbx
        pushq  %r12
@@ -182,8 +188,8 @@ _lambda1054:
        movq   %rsp, %rbp
        subq   $0, %rsp
        addq   $0, %r15
-       jmp _lambda1054start
-_lambda1054conclusion:
+       jmp lambda1064start
+lambda1064conclusion:
        subq   $0, %r15
        addq   $0, %rsp
        popq   %r14

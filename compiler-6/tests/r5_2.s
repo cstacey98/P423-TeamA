@@ -1,40 +1,40 @@
-_doubleid458start:
+doubleid458start:
        movq   %rdi, %rdx
        movq   %rsi, %r12
-       leaq   _lambda462(%rip), %rbx
-       movq   _free_ptr(%rip), %rdx
+       leaq   lambda462(%rip), %rbx
+       movq   free_ptr(%rip), %rdx
        movq   %rdx, %rdx
        addq   $16, %rdx
-       movq   _fromspace_end(%rip), %rcx
+       movq   fromspace_end(%rip), %rcx
        cmpq   %rcx, %rdx
-       jl _doubleid458block488
-       jmp _doubleid458block489
+       jl doubleid458block488
+       jmp doubleid458block489
 
-_doubleid458block488:
-       jmp _doubleid458block486
+doubleid458block488:
+       jmp doubleid458block486
 
-_doubleid458block486:
-       jmp _doubleid458block484
+doubleid458block486:
+       jmp doubleid458block484
 
-_doubleid458block484:
+doubleid458block484:
        movq   $0, %rdx
-       jmp _doubleid458block483
+       jmp doubleid458block483
 
-_doubleid458block489:
-       jmp _doubleid458block487
+doubleid458block489:
+       jmp doubleid458block487
 
-_doubleid458block487:
-       jmp _doubleid458block485
+doubleid458block487:
+       jmp doubleid458block485
 
-_doubleid458block485:
+doubleid458block485:
        movq   %r15, %rdi
        movq   $16, %rsi
-       callq _collect
-       jmp _doubleid458block483
+       callq collect
+       jmp doubleid458block483
 
-_doubleid458block483:
-       movq   _free_ptr(%rip), %rdx
-       addq   $16, _free_ptr(%rip)
+doubleid458block483:
+       movq   free_ptr(%rip), %rdx
+       addq   $16, free_ptr(%rip)
        movq   %rdx, %r11
        movq   $3, 0(%r11)
        movq   %rdx, %r11
@@ -57,9 +57,9 @@ _doubleid458block483:
 
 
 
-.globl _doubleid458
+.globl doubleid458
 .align 16
-_doubleid458:
+doubleid458:
        pushq  %rbp
        pushq  %rbx
        pushq  %r12
@@ -68,8 +68,8 @@ _doubleid458:
        movq   %rsp, %rbp
        subq   $0, %rsp
        addq   $0, %r15
-       jmp _doubleid458start
-_doubleid458conclusion:
+       jmp doubleid458start
+doubleid458conclusion:
        subq   $0, %r15
        addq   $0, %rsp
        popq   %r14
@@ -78,42 +78,42 @@ _doubleid458conclusion:
        popq   %rbx
        popq   %rbp
        retq
-_main457start:
+main457start:
        movq   %rdi, %rdx
-       leaq   _doubleid458(%rip), %rbx
-       movq   _free_ptr(%rip), %rdx
+       leaq   doubleid458(%rip), %rbx
+       movq   free_ptr(%rip), %rdx
        movq   %rdx, %rcx
        addq   $16, %rcx
-       movq   _fromspace_end(%rip), %rdx
+       movq   fromspace_end(%rip), %rdx
        cmpq   %rdx, %rcx
-       jl _main457block495
-       jmp _main457block496
+       jl main457block495
+       jmp main457block496
 
-_main457block496:
-       jmp _main457block494
+main457block496:
+       jmp main457block494
 
-_main457block494:
-       jmp _main457block492
+main457block494:
+       jmp main457block492
 
-_main457block495:
-       jmp _main457block493
+main457block495:
+       jmp main457block493
 
-_main457block493:
-       jmp _main457block491
+main457block493:
+       jmp main457block491
 
-_main457block491:
+main457block491:
        movq   $0, %rdx
-       jmp _main457block490
+       jmp main457block490
 
-_main457block492:
+main457block492:
        movq   %r15, %rdi
        movq   $16, %rsi
-       callq _collect
-       jmp _main457block490
+       callq collect
+       jmp main457block490
 
-_main457block490:
-       movq   _free_ptr(%rip), %rdx
-       addq   $16, _free_ptr(%rip)
+main457block490:
+       movq   free_ptr(%rip), %rdx
+       addq   $16, free_ptr(%rip)
        movq   %rdx, %r11
        movq   $3, 0(%r11)
        movq   %rdx, %r11
@@ -136,9 +136,9 @@ _main457block490:
 
 
 
-.globl _main
+.globl main
 .align 16
-_main:
+main:
        pushq  %rbp
        pushq  %rbx
        pushq  %r12
@@ -148,11 +148,11 @@ _main:
        subq   $0, %rsp
        movq   $16384, %rdi
        movq   $16384, %rsi
-       callq _initialize
-       movq   _rootstack_begin(%rip), %r15
+       callq initialize
+       movq   rootstack_begin(%rip), %r15
        addq   $0, %r15
-       jmp _main457start
-_main457conclusion:
+       jmp main457start
+main457conclusion:
        subq   $0, %r15
        addq   $0, %rsp
        popq   %r14
@@ -161,17 +161,17 @@ _main457conclusion:
        popq   %rbx
        popq   %rbp
        retq
-_lambda462start:
+lambda462start:
        movq   %rdi, %rdx
        movq   %rsi, %rdx
        movq   %rdx, %rax
-       jmp _lambda462conclusion
+       jmp lambda462conclusion
 
 
 
-.globl _lambda462
+.globl lambda462
 .align 16
-_lambda462:
+lambda462:
        pushq  %rbp
        pushq  %rbx
        pushq  %r12
@@ -180,8 +180,8 @@ _lambda462:
        movq   %rsp, %rbp
        subq   $0, %rsp
        addq   $0, %r15
-       jmp _lambda462start
-_lambda462conclusion:
+       jmp lambda462start
+lambda462conclusion:
        subq   $0, %r15
        addq   $0, %rsp
        popq   %r14

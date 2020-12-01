@@ -1,39 +1,39 @@
-_main354start:
+main354start:
        movq   %rdi, %rdx
-       leaq   _lambda357(%rip), %rbx
-       movq   _free_ptr(%rip), %rdx
+       leaq   lambda357(%rip), %rbx
+       movq   free_ptr(%rip), %rdx
        movq   %rdx, %rdx
        addq   $16, %rdx
-       movq   _fromspace_end(%rip), %rcx
+       movq   fromspace_end(%rip), %rcx
        cmpq   %rcx, %rdx
-       jl _main354block373
-       jmp _main354block374
+       jl main354block373
+       jmp main354block374
 
-_main354block373:
-       jmp _main354block371
+main354block373:
+       jmp main354block371
 
-_main354block371:
-       jmp _main354block369
+main354block371:
+       jmp main354block369
 
-_main354block369:
+main354block369:
        movq   $0, %rdx
-       jmp _main354block368
+       jmp main354block368
 
-_main354block374:
-       jmp _main354block372
+main354block374:
+       jmp main354block372
 
-_main354block372:
-       jmp _main354block370
+main354block372:
+       jmp main354block370
 
-_main354block370:
+main354block370:
        movq   %r15, %rdi
        movq   $16, %rsi
-       callq _collect
-       jmp _main354block368
+       callq collect
+       jmp main354block368
 
-_main354block368:
-       movq   _free_ptr(%rip), %rdx
-       addq   $16, _free_ptr(%rip)
+main354block368:
+       movq   free_ptr(%rip), %rdx
+       addq   $16, free_ptr(%rip)
        movq   %rdx, %r11
        movq   $3, 0(%r11)
        movq   %rdx, %r11
@@ -56,9 +56,9 @@ _main354block368:
 
 
 
-.globl _main
+.globl main
 .align 16
-_main:
+main:
        pushq  %rbp
        pushq  %rbx
        pushq  %r12
@@ -68,11 +68,11 @@ _main:
        subq   $0, %rsp
        movq   $16384, %rdi
        movq   $16384, %rsi
-       callq _initialize
-       movq   _rootstack_begin(%rip), %r15
+       callq initialize
+       movq   rootstack_begin(%rip), %r15
        addq   $0, %r15
-       jmp _main354start
-_main354conclusion:
+       jmp main354start
+main354conclusion:
        subq   $0, %r15
        addq   $0, %rsp
        popq   %r14
@@ -81,17 +81,17 @@ _main354conclusion:
        popq   %rbx
        popq   %rbp
        retq
-_lambda357start:
+lambda357start:
        movq   %rdi, %rdx
        movq   %rsi, %rdx
        movq   %rdx, %rax
-       jmp _lambda357conclusion
+       jmp lambda357conclusion
 
 
 
-.globl _lambda357
+.globl lambda357
 .align 16
-_lambda357:
+lambda357:
        pushq  %rbp
        pushq  %rbx
        pushq  %r12
@@ -100,8 +100,8 @@ _lambda357:
        movq   %rsp, %rbp
        subq   $0, %rsp
        addq   $0, %r15
-       jmp _lambda357start
-_lambda357conclusion:
+       jmp lambda357start
+lambda357conclusion:
        subq   $0, %r15
        addq   $0, %rsp
        popq   %r14

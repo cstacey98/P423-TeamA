@@ -1,50 +1,50 @@
-_g1517start:
+g1539start:
        movq   %rdi, %rcx
        movq   %rsi, %rcx
        movq   %rdx, %rbx
        movq   %rcx, -8(%r15)
-       movq   %rbx, %rbx
        movq   %rbx, %r12
-       movq   _free_ptr(%rip), %rdx
+       movq   %rbx, %rbx
+       movq   free_ptr(%rip), %rdx
        movq   %rdx, %rdx
        addq   $24, %rdx
-       movq   _fromspace_end(%rip), %rcx
+       movq   fromspace_end(%rip), %rcx
        cmpq   %rcx, %rdx
-       jl _g1517block1565
-       jmp _g1517block1566
+       jl g1539block1587
+       jmp g1539block1588
 
-_g1517block1565:
-       jmp _g1517block1563
+g1539block1588:
+       jmp g1539block1586
 
-_g1517block1563:
-       jmp _g1517block1561
+g1539block1587:
+       jmp g1539block1585
 
-_g1517block1561:
+g1539block1585:
+       jmp g1539block1583
+
+g1539block1586:
+       jmp g1539block1584
+
+g1539block1583:
        movq   $0, %rdx
-       jmp _g1517block1560
+       jmp g1539block1582
 
-_g1517block1566:
-       jmp _g1517block1564
-
-_g1517block1564:
-       jmp _g1517block1562
-
-_g1517block1562:
+g1539block1584:
        movq   %r15, %rdi
        movq   $24, %rsi
-       callq _collect
-       jmp _g1517block1560
+       callq collect
+       jmp g1539block1582
 
-_g1517block1560:
-       movq   _free_ptr(%rip), %rdx
-       addq   $24, _free_ptr(%rip)
+g1539block1582:
+       movq   free_ptr(%rip), %rdx
+       addq   $24, free_ptr(%rip)
        movq   %rdx, %r11
        movq   $5, 0(%r11)
        movq   %rdx, %r11
-       movq   %rbx, 8(%r11)
+       movq   %r12, 8(%r11)
        movq   $0, %rcx
        movq   %rdx, %r11
-       movq   %r12, 16(%r11)
+       movq   %rbx, 16(%r11)
        movq   $0, %rcx
        movq   %rdx, %r9
        movq   -8(%r15), %r11
@@ -56,7 +56,7 @@ _g1517block1560:
        movq   %rbx, %r8
        movq   %r9, %r9
        movq   %r10, %rax
-       subq   $16, %r15
+       subq   $8, %r15
        addq   $0, %rsp
        popq   %r14
        popq   %r13
@@ -67,9 +67,9 @@ _g1517block1560:
 
 
 
-.globl _g1517
+.globl g1539
 .align 16
-_g1517:
+g1539:
        pushq  %rbp
        pushq  %rbx
        pushq  %r12
@@ -78,11 +78,10 @@ _g1517:
        movq   %rsp, %rbp
        subq   $0, %rsp
        movq   $0, 0(%r15)
-       movq   $0, 8(%r15)
-       addq   $16, %r15
-       jmp _g1517start
-_g1517conclusion:
-       subq   $16, %r15
+       addq   $8, %r15
+       jmp g1539start
+g1539conclusion:
+       subq   $8, %r15
        addq   $0, %rsp
        popq   %r14
        popq   %r13
@@ -90,82 +89,82 @@ _g1517conclusion:
        popq   %rbx
        popq   %rbp
        retq
-_main1516start:
+main1538start:
        movq   %rdi, %rdx
-       leaq   _g1517(%rip), %rbx
-       movq   _free_ptr(%rip), %rdx
+       leaq   g1539(%rip), %rbx
+       movq   free_ptr(%rip), %rdx
        movq   %rdx, %rdx
        addq   $16, %rdx
-       movq   _fromspace_end(%rip), %rcx
+       movq   fromspace_end(%rip), %rcx
        cmpq   %rcx, %rdx
-       jl _main1516block1579
-       jmp _main1516block1580
+       jl main1538block1601
+       jmp main1538block1602
 
-_main1516block1580:
-       jmp _main1516block1578
+main1538block1602:
+       jmp main1538block1600
 
-_main1516block1578:
-       jmp _main1516block1576
+main1538block1600:
+       jmp main1538block1598
 
-_main1516block1576:
+main1538block1598:
        movq   %r15, %rdi
        movq   $16, %rsi
-       callq _collect
-       jmp _main1516block1574
+       callq collect
+       jmp main1538block1596
 
-_main1516block1579:
-       jmp _main1516block1577
+main1538block1601:
+       jmp main1538block1599
 
-_main1516block1577:
-       jmp _main1516block1575
+main1538block1599:
+       jmp main1538block1597
 
-_main1516block1575:
+main1538block1597:
        movq   $0, %rdx
-       jmp _main1516block1574
+       jmp main1538block1596
 
-_main1516block1574:
-       movq   _free_ptr(%rip), %rdx
-       addq   $16, _free_ptr(%rip)
+main1538block1596:
+       movq   free_ptr(%rip), %rdx
+       addq   $16, free_ptr(%rip)
        movq   %rdx, %r11
        movq   $3, 0(%r11)
        movq   %rdx, %r11
        movq   %rbx, 8(%r11)
        movq   $0, %rcx
        movq   %rdx, -8(%r15)
-       leaq   _lambda1530(%rip), %rbx
-       movq   _free_ptr(%rip), %rdx
+       leaq   lambda1552(%rip), %rbx
+       movq   free_ptr(%rip), %rdx
        movq   %rdx, %rdx
        addq   $16, %rdx
-       movq   _fromspace_end(%rip), %rcx
+       movq   fromspace_end(%rip), %rcx
        cmpq   %rcx, %rdx
-       jl _main1516block1572
-       jmp _main1516block1573
+       jl main1538block1594
+       jmp main1538block1595
 
-_main1516block1572:
-       jmp _main1516block1570
+main1538block1595:
+       jmp main1538block1593
 
-_main1516block1570:
-       jmp _main1516block1568
+main1538block1593:
+       jmp main1538block1591
 
-_main1516block1568:
-       movq   $0, %rdx
-       jmp _main1516block1567
+main1538block1594:
+       jmp main1538block1592
 
-_main1516block1573:
-       jmp _main1516block1571
+main1538block1592:
+       jmp main1538block1590
 
-_main1516block1571:
-       jmp _main1516block1569
-
-_main1516block1569:
+main1538block1591:
        movq   %r15, %rdi
        movq   $16, %rsi
-       callq _collect
-       jmp _main1516block1567
+       callq collect
+       jmp main1538block1589
 
-_main1516block1567:
-       movq   _free_ptr(%rip), %rdx
-       addq   $16, _free_ptr(%rip)
+main1538block1590:
+       movq   $0, %rdx
+       jmp main1538block1589
+
+main1538block1589:
+       movq   free_ptr(%rip), %rdx
+       addq   $16, free_ptr(%rip)
        movq   %rdx, %r11
        movq   $3, 0(%r11)
        movq   %rdx, %r11
@@ -178,7 +177,7 @@ _main1516block1567:
        movq   %rdx, %rsi
        movq   $42, %rdx
        movq   %rcx, %rax
-       subq   $16, %r15
+       subq   $8, %r15
        addq   $0, %rsp
        popq   %r14
        popq   %r13
@@ -189,9 +188,9 @@ _main1516block1567:
 
 
 
-.globl _main
+.globl main
 .align 16
-_main:
+main:
        pushq  %rbp
        pushq  %rbx
        pushq  %r12
@@ -201,14 +200,13 @@ _main:
        subq   $0, %rsp
        movq   $16384, %rdi
        movq   $16384, %rsi
-       callq _initialize
-       movq   _rootstack_begin(%rip), %r15
+       callq initialize
+       movq   rootstack_begin(%rip), %r15
        movq   $0, 0(%r15)
-       movq   $0, 8(%r15)
-       addq   $16, %r15
-       jmp _main1516start
-_main1516conclusion:
-       subq   $16, %r15
+       addq   $8, %r15
+       jmp main1538start
+main1538conclusion:
+       subq   $8, %r15
        addq   $0, %rsp
        popq   %r14
        popq   %r13
@@ -216,7 +214,7 @@ _main1516conclusion:
        popq   %rbx
        popq   %rbp
        retq
-_lambda1530start:
+lambda1552start:
        movq   %rdi, %rdi
        movq   %rsi, %rsi
        movq   %rdx, %rdx
@@ -224,13 +222,13 @@ _lambda1530start:
        movq   %r8, %rdx
        movq   %r9, %rdx
        movq   %rsi, %rax
-       jmp _lambda1530conclusion
+       jmp lambda1552conclusion
 
 
 
-.globl _lambda1530
+.globl lambda1552
 .align 16
-_lambda1530:
+lambda1552:
        pushq  %rbp
        pushq  %rbx
        pushq  %r12
@@ -239,8 +237,8 @@ _lambda1530:
        movq   %rsp, %rbp
        subq   $0, %rsp
        addq   $0, %r15
-       jmp _lambda1530start
-_lambda1530conclusion:
+       jmp lambda1552start
+lambda1552conclusion:
        subq   $0, %r15
        addq   $0, %rsp
        popq   %r14

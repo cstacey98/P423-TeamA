@@ -1,81 +1,81 @@
-_cell813start:
+cell823start:
        movq   %rdi, %rdx
        movq   $0, %rbx
-       movq   _free_ptr(%rip), %rdx
-       movq   %rdx, %rdx
-       addq   $16, %rdx
-       movq   _fromspace_end(%rip), %rcx
-       cmpq   %rcx, %rdx
-       jl _cell813block894
-       jmp _cell813block895
+       movq   free_ptr(%rip), %rdx
+       movq   %rdx, %rcx
+       addq   $16, %rcx
+       movq   fromspace_end(%rip), %rdx
+       cmpq   %rdx, %rcx
+       jl cell823block904
+       jmp cell823block905
 
-_cell813block895:
-       jmp _cell813block893
+cell823block904:
+       jmp cell823block902
 
-_cell813block893:
-       jmp _cell813block891
+cell823block902:
+       jmp cell823block900
 
-_cell813block891:
+cell823block900:
+       movq   $0, %rdx
+       jmp cell823block899
+
+cell823block905:
+       jmp cell823block903
+
+cell823block903:
+       jmp cell823block901
+
+cell823block901:
        movq   %r15, %rdi
        movq   $16, %rsi
-       callq _collect
-       jmp _cell813block889
+       callq collect
+       jmp cell823block899
 
-_cell813block894:
-       jmp _cell813block892
-
-_cell813block892:
-       jmp _cell813block890
-
-_cell813block890:
-       movq   $0, %rdx
-       jmp _cell813block889
-
-_cell813block889:
-       movq   _free_ptr(%rip), %rdx
-       addq   $16, _free_ptr(%rip)
+cell823block899:
+       movq   free_ptr(%rip), %rdx
+       addq   $16, free_ptr(%rip)
        movq   %rdx, %r11
        movq   $3, 0(%r11)
        movq   %rdx, %r11
        movq   %rbx, 8(%r11)
        movq   $0, %rcx
        movq   %rdx, %rdx
-       leaq   _lambda822(%rip), %rbx
+       leaq   lambda832(%rip), %rbx
        movq   %rdx, -8(%r15)
        movq   %rdx, -16(%r15)
-       movq   _free_ptr(%rip), %rdx
+       movq   free_ptr(%rip), %rdx
        movq   %rdx, %rdx
        addq   $32, %rdx
-       movq   _fromspace_end(%rip), %rcx
+       movq   fromspace_end(%rip), %rcx
        cmpq   %rcx, %rdx
-       jl _cell813block887
-       jmp _cell813block888
+       jl cell823block897
+       jmp cell823block898
 
-_cell813block887:
-       jmp _cell813block885
+cell823block897:
+       jmp cell823block895
 
-_cell813block885:
-       jmp _cell813block883
+cell823block898:
+       jmp cell823block896
 
-_cell813block883:
+cell823block895:
+       jmp cell823block893
+
+cell823block893:
        movq   $0, %rdx
-       jmp _cell813block882
+       jmp cell823block892
 
-_cell813block888:
-       jmp _cell813block886
+cell823block896:
+       jmp cell823block894
 
-_cell813block886:
-       jmp _cell813block884
-
-_cell813block884:
+cell823block894:
        movq   %r15, %rdi
        movq   $32, %rsi
-       callq _collect
-       jmp _cell813block882
+       callq collect
+       jmp cell823block892
 
-_cell813block882:
-       movq   _free_ptr(%rip), %rdx
-       addq   $32, _free_ptr(%rip)
+cell823block892:
+       movq   free_ptr(%rip), %rdx
+       addq   $32, free_ptr(%rip)
        movq   %rdx, %r11
        movq   $775, 0(%r11)
        movq   %rdx, %r11
@@ -90,13 +90,13 @@ _cell813block882:
        movq   %rax, 24(%r11)
        movq   $0, %rcx
        movq   %rdx, %rax
-       jmp _cell813conclusion
+       jmp cell823conclusion
 
 
 
-.globl _cell813
+.globl cell823
 .align 16
-_cell813:
+cell823:
        pushq  %rbp
        pushq  %rbx
        pushq  %r12
@@ -107,8 +107,8 @@ _cell813:
        movq   $0, 0(%r15)
        movq   $0, 8(%r15)
        addq   $16, %r15
-       jmp _cell813start
-_cell813conclusion:
+       jmp cell823start
+cell823conclusion:
        subq   $16, %r15
        addq   $0, %rsp
        popq   %r14
@@ -117,42 +117,42 @@ _cell813conclusion:
        popq   %rbx
        popq   %rbp
        retq
-_main812start:
+main822start:
        movq   %rdi, %rdx
-       leaq   _cell813(%rip), %rbx
-       movq   _free_ptr(%rip), %rdx
+       leaq   cell823(%rip), %rbx
+       movq   free_ptr(%rip), %rdx
        movq   %rdx, %rdx
        addq   $16, %rdx
-       movq   _fromspace_end(%rip), %rcx
+       movq   fromspace_end(%rip), %rcx
        cmpq   %rcx, %rdx
-       jl _main812block901
-       jmp _main812block902
+       jl main822block911
+       jmp main822block912
 
-_main812block902:
-       jmp _main812block900
+main822block911:
+       jmp main822block909
 
-_main812block900:
-       jmp _main812block898
+main822block909:
+       jmp main822block907
 
-_main812block901:
-       jmp _main812block899
-
-_main812block899:
-       jmp _main812block897
-
-_main812block897:
+main822block907:
        movq   $0, %rdx
-       jmp _main812block896
+       jmp main822block906
 
-_main812block898:
+main822block912:
+       jmp main822block910
+
+main822block910:
+       jmp main822block908
+
+main822block908:
        movq   %r15, %rdi
        movq   $16, %rsi
-       callq _collect
-       jmp _main812block896
+       callq collect
+       jmp main822block906
 
-_main812block896:
-       movq   _free_ptr(%rip), %rdx
-       addq   $16, _free_ptr(%rip)
+main822block906:
+       movq   free_ptr(%rip), %rdx
+       addq   $16, free_ptr(%rip)
        movq   %rdx, %r11
        movq   $3, 0(%r11)
        movq   %rdx, %r11
@@ -189,7 +189,7 @@ _main812block896:
        movq   %rcx, %rdi
        movq   $0, %rsi
        movq   %rdx, %rax
-       subq   $16, %r15
+       subq   $8, %r15
        addq   $0, %rsp
        popq   %r14
        popq   %r13
@@ -200,9 +200,9 @@ _main812block896:
 
 
 
-.globl _main
+.globl main
 .align 16
-_main:
+main:
        pushq  %rbp
        pushq  %rbx
        pushq  %r12
@@ -212,14 +212,13 @@ _main:
        subq   $0, %rsp
        movq   $16384, %rdi
        movq   $16384, %rsi
-       callq _initialize
-       movq   _rootstack_begin(%rip), %r15
+       callq initialize
+       movq   rootstack_begin(%rip), %r15
        movq   $0, 0(%r15)
-       movq   $0, 8(%r15)
-       addq   $16, %r15
-       jmp _main812start
-_main812conclusion:
-       subq   $16, %r15
+       addq   $8, %r15
+       jmp main822start
+main822conclusion:
+       subq   $8, %r15
        addq   $0, %rsp
        popq   %r14
        popq   %r13
@@ -227,7 +226,7 @@ _main812conclusion:
        popq   %rbx
        popq   %rbp
        retq
-_lambda822start:
+lambda832start:
        movq   %rdi, %rcx
        movq   %rsi, %rsi
        movq   %rcx, %r11
@@ -236,56 +235,45 @@ _lambda822start:
        movq   24(%r11), %rdx
        movq   $0, %rax
        cmpq   %rax, %rsi
-       je _lambda822block917
-       jmp _lambda822block918
+       je lambda832block927
+       jmp lambda832block928
 
-_lambda822block917:
-       leaq   _lambda824(%rip), %rbx
+lambda832block927:
+       leaq   lambda834(%rip), %rbx
        movq   %rdx, -8(%r15)
-       movq   _free_ptr(%rip), %rdx
+       movq   free_ptr(%rip), %rdx
        movq   %rdx, %rdx
        addq   $24, %rdx
-       movq   _fromspace_end(%rip), %rcx
+       movq   fromspace_end(%rip), %rcx
        cmpq   %rcx, %rdx
-       jl _lambda822block908
-       jmp _lambda822block909
+       jl lambda832block918
+       jmp lambda832block919
 
-_lambda822block918:
-       leaq   _lambda826(%rip), %rbx
-       movq   %rdx, -8(%r15)
-       movq   _free_ptr(%rip), %rdx
-       movq   %rdx, %rdx
-       addq   $24, %rdx
-       movq   _fromspace_end(%rip), %rcx
-       cmpq   %rcx, %rdx
-       jl _lambda822block915
-       jmp _lambda822block916
+lambda832block918:
+       jmp lambda832block916
 
-_lambda822block916:
-       jmp _lambda822block914
+lambda832block916:
+       jmp lambda832block914
 
-_lambda822block914:
-       jmp _lambda822block912
+lambda832block914:
+       movq   $0, %rdx
+       jmp lambda832block913
 
-_lambda822block912:
+lambda832block919:
+       jmp lambda832block917
+
+lambda832block917:
+       jmp lambda832block915
+
+lambda832block915:
        movq   %r15, %rdi
        movq   $24, %rsi
-       callq _collect
-       jmp _lambda822block910
+       callq collect
+       jmp lambda832block913
 
-_lambda822block915:
-       jmp _lambda822block913
-
-_lambda822block913:
-       jmp _lambda822block911
-
-_lambda822block911:
-       movq   $0, %rdx
-       jmp _lambda822block910
-
-_lambda822block910:
-       movq   _free_ptr(%rip), %rdx
-       addq   $24, _free_ptr(%rip)
+lambda832block913:
+       movq   free_ptr(%rip), %rdx
+       addq   $24, free_ptr(%rip)
        movq   %rdx, %r11
        movq   $261, 0(%r11)
        movq   %rdx, %r11
@@ -296,33 +284,44 @@ _lambda822block910:
        movq   %rax, 16(%r11)
        movq   $0, %rcx
        movq   %rdx, %rax
-       jmp _lambda822conclusion
+       jmp lambda832conclusion
 
-_lambda822block908:
-       jmp _lambda822block906
+lambda832block928:
+       leaq   lambda836(%rip), %rbx
+       movq   %rdx, -8(%r15)
+       movq   free_ptr(%rip), %rdx
+       movq   %rdx, %rdx
+       addq   $24, %rdx
+       movq   fromspace_end(%rip), %rcx
+       cmpq   %rcx, %rdx
+       jl lambda832block925
+       jmp lambda832block926
 
-_lambda822block909:
-       jmp _lambda822block907
+lambda832block925:
+       jmp lambda832block923
 
-_lambda822block907:
-       jmp _lambda822block905
+lambda832block923:
+       jmp lambda832block921
 
-_lambda822block905:
+lambda832block926:
+       jmp lambda832block924
+
+lambda832block924:
+       jmp lambda832block922
+
+lambda832block922:
        movq   %r15, %rdi
        movq   $24, %rsi
-       callq _collect
-       jmp _lambda822block903
+       callq collect
+       jmp lambda832block920
 
-_lambda822block906:
-       jmp _lambda822block904
-
-_lambda822block904:
+lambda832block921:
        movq   $0, %rdx
-       jmp _lambda822block903
+       jmp lambda832block920
 
-_lambda822block903:
-       movq   _free_ptr(%rip), %rdx
-       addq   $24, _free_ptr(%rip)
+lambda832block920:
+       movq   free_ptr(%rip), %rdx
+       addq   $24, free_ptr(%rip)
        movq   %rdx, %r11
        movq   $261, 0(%r11)
        movq   %rdx, %r11
@@ -333,13 +332,13 @@ _lambda822block903:
        movq   %rax, 16(%r11)
        movq   $0, %rcx
        movq   %rdx, %rax
-       jmp _lambda822conclusion
+       jmp lambda832conclusion
 
 
 
-.globl _lambda822
+.globl lambda832
 .align 16
-_lambda822:
+lambda832:
        pushq  %rbp
        pushq  %rbx
        pushq  %r12
@@ -348,11 +347,10 @@ _lambda822:
        movq   %rsp, %rbp
        subq   $0, %rsp
        movq   $0, 0(%r15)
-       movq   $0, 8(%r15)
-       addq   $16, %r15
-       jmp _lambda822start
-_lambda822conclusion:
-       subq   $16, %r15
+       addq   $8, %r15
+       jmp lambda832start
+lambda832conclusion:
+       subq   $8, %r15
        addq   $0, %rsp
        popq   %r14
        popq   %r13
@@ -360,7 +358,7 @@ _lambda822conclusion:
        popq   %rbx
        popq   %rbp
        retq
-_lambda826start:
+lambda836start:
        movq   %rdi, %rdx
        movq   %rsi, %rcx
        movq   %rdx, %r11
@@ -369,13 +367,13 @@ _lambda826start:
        movq   %rcx, 8(%r11)
        movq   $0, %rdx
        movq   $42, %rax
-       jmp _lambda826conclusion
+       jmp lambda836conclusion
 
 
 
-.globl _lambda826
+.globl lambda836
 .align 16
-_lambda826:
+lambda836:
        pushq  %rbp
        pushq  %rbx
        pushq  %r12
@@ -384,8 +382,8 @@ _lambda826:
        movq   %rsp, %rbp
        subq   $0, %rsp
        addq   $0, %r15
-       jmp _lambda826start
-_lambda826conclusion:
+       jmp lambda836start
+lambda836conclusion:
        subq   $0, %r15
        addq   $0, %rsp
        popq   %r14
@@ -394,20 +392,20 @@ _lambda826conclusion:
        popq   %rbx
        popq   %rbp
        retq
-_lambda824start:
+lambda834start:
        movq   %rdi, %rdx
        movq   %rsi, %rcx
        movq   %rdx, %r11
        movq   16(%r11), %rdx
        movq   %rdx, %r11
        movq   8(%r11), %rax
-       jmp _lambda824conclusion
+       jmp lambda834conclusion
 
 
 
-.globl _lambda824
+.globl lambda834
 .align 16
-_lambda824:
+lambda834:
        pushq  %rbp
        pushq  %rbx
        pushq  %r12
@@ -416,8 +414,8 @@ _lambda824:
        movq   %rsp, %rbp
        subq   $0, %rsp
        addq   $0, %r15
-       jmp _lambda824start
-_lambda824conclusion:
+       jmp lambda834start
+lambda834conclusion:
        subq   $0, %r15
        addq   $0, %rsp
        popq   %r14

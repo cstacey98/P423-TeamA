@@ -7,8 +7,8 @@
 (require "utilities.rkt")
 (require graph)
 ;(provide (all-defined-out))
-(AST-output-syntax 'abstract-syntax)
 #;
+(AST-output-syntax 'abstract-syntax)
 (AST-output-syntax 'concrete-syntax)
 
 (provide
@@ -60,7 +60,12 @@
                  (map (get-exp-free-vars env)
                       (list cnd cnsq alt)))]
          [(Apply f-exp args)
-          (foldr append '() (map (get-exp-free-vars env) args))]
+          (define-values (f-var f-type) (match f-exp
+                                          [(HasType f t) (values (Var-name f) t)]))
+          (define f-fv (if (assv f-var env)
+                           '()
+                           (list (cons f-var f-type))))
+          (foldr append f-fv (map (get-exp-free-vars env) args))]
          [(Lambda (list `[,prms : ,prm-ts] ...) rt body)
           (define prms-assoc
             (map (lambda (p pt) (cons p pt)) prms prm-ts))
@@ -2544,15 +2549,10 @@ get-free-vars
    explicate-control
    uncover-locals
    select-instructions
-   #;
    uncover-live
-   #;
    build-interference
-   #;
    allocate-registers
-   #;
    patch-instructions
-   #;
    print-x86
    ))
 

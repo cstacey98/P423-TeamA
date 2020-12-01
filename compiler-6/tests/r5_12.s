@@ -1,39 +1,39 @@
-_main91start:
+main91start:
        movq   %rdi, %rdx
-       leaq   _lambda96(%rip), %rbx
-       movq   _free_ptr(%rip), %rdx
+       leaq   lambda96(%rip), %rbx
+       movq   free_ptr(%rip), %rdx
        movq   %rdx, %rdx
        addq   $16, %rdx
-       movq   _fromspace_end(%rip), %rcx
+       movq   fromspace_end(%rip), %rcx
        cmpq   %rcx, %rdx
-       jl _main91block125
-       jmp _main91block126
+       jl main91block125
+       jmp main91block126
 
-_main91block126:
-       jmp _main91block124
+main91block126:
+       jmp main91block124
 
-_main91block125:
-       jmp _main91block123
+main91block125:
+       jmp main91block123
 
-_main91block123:
-       jmp _main91block121
+main91block123:
+       jmp main91block121
 
-_main91block121:
+main91block121:
        movq   $0, %rdx
-       jmp _main91block120
+       jmp main91block120
 
-_main91block124:
-       jmp _main91block122
+main91block124:
+       jmp main91block122
 
-_main91block122:
+main91block122:
        movq   %r15, %rdi
        movq   $16, %rsi
-       callq _collect
-       jmp _main91block120
+       callq collect
+       jmp main91block120
 
-_main91block120:
-       movq   _free_ptr(%rip), %rdx
-       addq   $16, _free_ptr(%rip)
+main91block120:
+       movq   free_ptr(%rip), %rdx
+       addq   $16, free_ptr(%rip)
        movq   %rdx, %r11
        movq   $3, 0(%r11)
        movq   %rdx, %r11
@@ -63,9 +63,9 @@ _main91block120:
 
 
 
-.globl _main
+.globl main
 .align 16
-_main:
+main:
        pushq  %rbp
        pushq  %rbx
        pushq  %r12
@@ -75,11 +75,11 @@ _main:
        subq   $0, %rsp
        movq   $16384, %rdi
        movq   $16384, %rsi
-       callq _initialize
-       movq   _rootstack_begin(%rip), %r15
+       callq initialize
+       movq   rootstack_begin(%rip), %r15
        addq   $0, %r15
-       jmp _main91start
-_main91conclusion:
+       jmp main91start
+main91conclusion:
        subq   $0, %r15
        addq   $0, %rsp
        popq   %r14
@@ -88,44 +88,44 @@ _main91conclusion:
        popq   %rbx
        popq   %rbp
        retq
-_lambda96start:
+lambda96start:
        movq   %rdi, %rdx
        movq   %rsi, %rdx
-       leaq   _lambda98(%rip), %r12
+       leaq   lambda98(%rip), %r12
        movq   %rdx, %rbx
-       movq   _free_ptr(%rip), %rdx
+       movq   free_ptr(%rip), %rdx
        movq   %rdx, %rdx
        addq   $24, %rdx
-       movq   _fromspace_end(%rip), %rcx
+       movq   fromspace_end(%rip), %rcx
        cmpq   %rcx, %rdx
-       jl _lambda96block132
-       jmp _lambda96block133
+       jl lambda96block132
+       jmp lambda96block133
 
-_lambda96block133:
-       jmp _lambda96block131
+lambda96block133:
+       jmp lambda96block131
 
-_lambda96block131:
-       jmp _lambda96block129
+lambda96block131:
+       jmp lambda96block129
 
-_lambda96block129:
+lambda96block129:
        movq   %r15, %rdi
        movq   $24, %rsi
-       callq _collect
-       jmp _lambda96block127
+       callq collect
+       jmp lambda96block127
 
-_lambda96block132:
-       jmp _lambda96block130
+lambda96block132:
+       jmp lambda96block130
 
-_lambda96block130:
-       jmp _lambda96block128
+lambda96block130:
+       jmp lambda96block128
 
-_lambda96block128:
+lambda96block128:
        movq   $0, %rdx
-       jmp _lambda96block127
+       jmp lambda96block127
 
-_lambda96block127:
-       movq   _free_ptr(%rip), %rdx
-       addq   $24, _free_ptr(%rip)
+lambda96block127:
+       movq   free_ptr(%rip), %rdx
+       addq   $24, free_ptr(%rip)
        movq   %rdx, %r11
        movq   $5, 0(%r11)
        movq   %rdx, %r11
@@ -135,13 +135,13 @@ _lambda96block127:
        movq   %rbx, 16(%r11)
        movq   $0, %rcx
        movq   %rdx, %rax
-       jmp _lambda96conclusion
+       jmp lambda96conclusion
 
 
 
-.globl _lambda96
+.globl lambda96
 .align 16
-_lambda96:
+lambda96:
        pushq  %rbp
        pushq  %rbx
        pushq  %r12
@@ -150,8 +150,8 @@ _lambda96:
        movq   %rsp, %rbp
        subq   $0, %rsp
        addq   $0, %r15
-       jmp _lambda96start
-_lambda96conclusion:
+       jmp lambda96start
+lambda96conclusion:
        subq   $0, %r15
        addq   $0, %rsp
        popq   %r14
@@ -160,20 +160,20 @@ _lambda96conclusion:
        popq   %rbx
        popq   %rbp
        retq
-_lambda98start:
+lambda98start:
        movq   %rdi, %rdx
        movq   %rsi, %rcx
        movq   %rdx, %r11
        movq   16(%r11), %rdx
        movq   %rdx, %rax
        addq   %rcx, %rax
-       jmp _lambda98conclusion
+       jmp lambda98conclusion
 
 
 
-.globl _lambda98
+.globl lambda98
 .align 16
-_lambda98:
+lambda98:
        pushq  %rbp
        pushq  %rbx
        pushq  %r12
@@ -182,8 +182,8 @@ _lambda98:
        movq   %rsp, %rbp
        subq   $0, %rsp
        addq   $0, %r15
-       jmp _lambda98start
-_lambda98conclusion:
+       jmp lambda98start
+lambda98conclusion:
        subq   $0, %r15
        addq   $0, %rsp
        popq   %r14
