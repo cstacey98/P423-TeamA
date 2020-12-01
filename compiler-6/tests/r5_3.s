@@ -1,37 +1,37 @@
-_main61start:
+_main1006start:
        movq   %rdi, %rdx
-       leaq   _lambda65(%rip), %rbx
+       leaq   _lambda1010(%rip), %rbx
        movq   _free_ptr(%rip), %rdx
        movq   %rdx, %rdx
        addq   $16, %rdx
        movq   _fromspace_end(%rip), %rcx
        cmpq   %rcx, %rdx
-       jl _main61block94
-       jmp _main61block95
+       jl _main1006block1039
+       jmp _main1006block1040
 
-_main61block95:
-       jmp _main61block93
+_main1006block1040:
+       jmp _main1006block1038
 
-_main61block93:
-       jmp _main61block91
+_main1006block1038:
+       jmp _main1006block1036
 
-_main61block91:
+_main1006block1036:
        movq   %r15, %rdi
        movq   $16, %rsi
        callq _collect
-       jmp _main61block89
+       jmp _main1006block1034
 
-_main61block94:
-       jmp _main61block92
+_main1006block1039:
+       jmp _main1006block1037
 
-_main61block92:
-       jmp _main61block90
+_main1006block1037:
+       jmp _main1006block1035
 
-_main61block90:
+_main1006block1035:
        movq   $0, %rdx
-       jmp _main61block89
+       jmp _main1006block1034
 
-_main61block89:
+_main1006block1034:
        movq   _free_ptr(%rip), %rdx
        addq   $16, _free_ptr(%rip)
        movq   %rdx, %r11
@@ -77,8 +77,8 @@ _main:
        callq _initialize
        movq   _rootstack_begin(%rip), %r15
        addq   $0, %r15
-       jmp _main61start
-_main61conclusion:
+       jmp _main1006start
+_main1006conclusion:
        subq   $0, %r15
        addq   $0, %rsp
        popq   %r14
@@ -87,60 +87,60 @@ _main61conclusion:
        popq   %rbx
        popq   %rbp
        retq
-_lambda65start:
+_lambda1010start:
        movq   %rdi, %rdx
        movq   %rsi, %rdx
-       leaq   _lambda67(%rip), %rbx
-       movq   %rdx, %r12
+       leaq   _lambda1012(%rip), %r12
+       movq   %rdx, %rbx
        movq   _free_ptr(%rip), %rdx
        movq   %rdx, %rdx
        addq   $24, %rdx
        movq   _fromspace_end(%rip), %rcx
        cmpq   %rcx, %rdx
-       jl _lambda65block101
-       jmp _lambda65block102
+       jl _lambda1010block1046
+       jmp _lambda1010block1047
 
-_lambda65block101:
-       jmp _lambda65block99
+_lambda1010block1046:
+       jmp _lambda1010block1044
 
-_lambda65block99:
-       jmp _lambda65block97
+_lambda1010block1044:
+       jmp _lambda1010block1042
 
-_lambda65block97:
+_lambda1010block1042:
        movq   $0, %rdx
-       jmp _lambda65block96
+       jmp _lambda1010block1041
 
-_lambda65block102:
-       jmp _lambda65block100
+_lambda1010block1047:
+       jmp _lambda1010block1045
 
-_lambda65block100:
-       jmp _lambda65block98
+_lambda1010block1045:
+       jmp _lambda1010block1043
 
-_lambda65block98:
+_lambda1010block1043:
        movq   %r15, %rdi
        movq   $24, %rsi
        callq _collect
-       jmp _lambda65block96
+       jmp _lambda1010block1041
 
-_lambda65block96:
+_lambda1010block1041:
        movq   _free_ptr(%rip), %rdx
        addq   $24, _free_ptr(%rip)
        movq   %rdx, %r11
        movq   $5, 0(%r11)
        movq   %rdx, %r11
-       movq   %rbx, 8(%r11)
+       movq   %r12, 8(%r11)
        movq   $0, %rcx
        movq   %rdx, %r11
-       movq   %r12, 16(%r11)
+       movq   %rbx, 16(%r11)
        movq   $0, %rcx
        movq   %rdx, %rax
-       jmp _lambda65conclusion
+       jmp _lambda1010conclusion
 
 
 
-.globl _lambda65
+.globl _lambda1010
 .align 16
-_lambda65:
+_lambda1010:
        pushq  %rbp
        pushq  %rbx
        pushq  %r12
@@ -149,8 +149,8 @@ _lambda65:
        movq   %rsp, %rbp
        subq   $0, %rsp
        addq   $0, %r15
-       jmp _lambda65start
-_lambda65conclusion:
+       jmp _lambda1010start
+_lambda1010conclusion:
        subq   $0, %r15
        addq   $0, %rsp
        popq   %r14
@@ -159,19 +159,19 @@ _lambda65conclusion:
        popq   %rbx
        popq   %rbp
        retq
-_lambda67start:
+_lambda1012start:
        movq   %rdi, %rdx
        movq   %rsi, %rcx
        movq   %rdx, %r11
        movq   16(%r11), %rdx
        movq   %rdx, %rax
-       jmp _lambda67conclusion
+       jmp _lambda1012conclusion
 
 
 
-.globl _lambda67
+.globl _lambda1012
 .align 16
-_lambda67:
+_lambda1012:
        pushq  %rbp
        pushq  %rbx
        pushq  %r12
@@ -180,8 +180,8 @@ _lambda67:
        movq   %rsp, %rbp
        subq   $0, %rsp
        addq   $0, %r15
-       jmp _lambda67start
-_lambda67conclusion:
+       jmp _lambda1012start
+_lambda1012conclusion:
        subq   $0, %r15
        addq   $0, %rsp
        popq   %r14

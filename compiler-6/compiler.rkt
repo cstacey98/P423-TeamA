@@ -1799,7 +1799,10 @@ compiler.rkt> (p '((lambda: ([y : Integer]) : Integer (+ 1 y)) 41)
          (for/list ([reg callee-saved])
            (for/list ([var (car bl-info)])
              (and (Var? var)
-                  (let ([type (cdr (assv (get-var-name var) types))])
+                  (let* ([in-types? (assv (get-var-name var) types)]
+                         [type (if (not in-types?)
+                                   (error (format "var ~a, types ~a" var types))
+                                   (cdr in-types?))])
                     (if (is-vector? type)
                         (add-edge! graph-d var (Reg reg))
                         (void))))))
@@ -2541,10 +2544,15 @@ get-free-vars
    explicate-control
    uncover-locals
    select-instructions
+   #;
    uncover-live
+   #;
    build-interference
+   #;
    allocate-registers
+   #;
    patch-instructions
+   #;
    print-x86
    ))
 
