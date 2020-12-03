@@ -12,7 +12,7 @@
 (AST-output-syntax 'concrete-syntax)
 
 (provide
- type-check
+ #;type-check
  shrink
  reveal-functions
  convert-to-closures
@@ -197,7 +197,7 @@
     [`(,prm-ts ... -> ,rt) #t]
     [whatever #f]))
 
-(define (type-check-prim env)
+#; (define (type-check-prim env)
   (lambda (prim)
     (let ([recur (type-check-exp env)])
       (match prim
@@ -295,7 +295,7 @@
            (list? t2)
            (andmap types-eq? (cdr t1) (cdr t2)))))
 
-(define (type-check-exp env)
+#;(define (type-check-exp env)
   (lambda (e)
     (let ([recur (type-check-exp env)])
       (match e
@@ -346,7 +346,7 @@
         [else
          (error "type-check-exp couldn't match " e)]))))
 
-(define (type-check-def env)
+#;(define (type-check-def env)
   (lambda (e)
     (match e
       [(Def f (and doot (list `[,xs : ,ts] ...)) rt info body)
@@ -357,7 +357,7 @@
          (error "body type ~a not equal to return type ~a" t-body rt))
        (Def f doot rt info body^)])))
 
-(define (type-check p)
+#;(define (type-check p)
   (match p
     [(ProgramDefsExp info defs body)
      (define new-env
@@ -463,11 +463,51 @@
          #;(HasType (Prim op shrunk-args) output-type)
          ]))))
 
-(define (shrink-exp env)
+(define get-vector-length
+  (lambda (vec)
+    (- (length vec) 1)))
+
+(define get-func-arity
+  (lambda (fun)
+    (- (length fun) 2)))
+
+(define build-project-cond
+  (lambda (tmp ftype)
+    (define extra-cond
+      (cond
+        [(is-vector? ftype) (Prim 'eq? (list (Prim 'vector-length (list (Var tmp))) (Int (get-vector-length ftype))))]
+        [(is-function-type? ftype) (Prim 'eq? (list (Prim 'procedure-arity (list (Var tmp))) (Int (get-func-arity ftype))))]
+        [#f]))
+    (define base-cond
+      (Prim 'eq? (list (Prim 'tag-of-any (list (Var tmp)))
+                       (Int (tagof ftype)))))
+    (if extra-cond
+        (Prim 'and (list base-cond extra-cond))
+        (base-cond))))
+
+(define demo
   (lambda (e)
+    (match e
+      [(Project expr ftype)
+       (define tmp (gensym 'tmp))
+       (Let tmp expr
+            (If (build-project-cond tmp ftype)
+                (ValueOf tmp ftype)
+                (Exit)))])))
+
     (let ([recur (shrink-exp env)])
       (match e
-        [(HasType expr T)
+        [(Project expr ftype)
+         (define tmp (gensym 'tmp))
+         (define expr' (recur expr))
+         (Let tmp expr'
+              (If (build-project-cond tmp ftype)
+                  (ValueOf tmp ftype)
+                  (Exit)))]
+        [(Inject expr ftype)
+         (define expr' (recur expr))
+         (Prim 'make-any (list expr' (Int (tagof ftype))))]
+        #;[(HasType expr T)
          (HasType (recur expr) T)]
         [(Int n) e]
         [(Var x) e]
@@ -515,7 +555,7 @@
   (match p
     [(ProgramDefsExp info defs body)
      ; nice try
-     (if (not (HasType? body))
+     #;(if (not (HasType? body))
          (set! body ((type-check-exp '()) body))
          (void))
      (define new-env
@@ -2188,7 +2228,8 @@ compiler.rkt> (p '((lambda: ([y : Integer]) : Integer (+ 1 y)) 41)
 
 (define (is-vector? t)
   (and (list? t)
-       (eq? 'Vector (car t))))
+       (or (eq? 'Vector (car t))
+           (eq? 'Vectorof (car t)))))
 
 ; color is a natural number (or ,uncolored; see above)
 (define (color-to-location color type-mappings arg)
@@ -2601,7 +2642,7 @@ get-free-vars
 ; all the passes needed to be used in (t .)
 (define test-passes
   (list
-   type-check
+   #;type-check
    shrink
    uniquify
    reveal-functions
