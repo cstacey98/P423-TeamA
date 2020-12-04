@@ -94,12 +94,12 @@
 
 (define (tagof T)
   (match T
-    ['Integer 001]
-    ['Boolean 100]
-    [`(Vector ,ts ...) 010]
-    [`(Vectorof ,T) 010]
-    [`(,prm-ts ... -> ,rt) 011]
-    ['Void 101]))
+    ['Integer 1]
+    ['Boolean 4]
+    [`(Vector ,ts ...) 2]
+    [`(Vectorof ,T) 2]
+    [`(,prm-ts ... -> ,rt) 3]
+    ['Void 5]))
 
 #;
 (define (r6-ify-exp e)
@@ -395,18 +395,13 @@
          (define tmp-var (gensym 'tmp))
          (recur
           (Let tmp-var shrunk-1
-               (HasType
                 (Prim
                  'not
                  (list
-                  (HasType
                    (Prim
                     '<
                     (list shrunk-2
-                          (HasType (Var tmp-var)
-                                   (get-type shrunk-1))))
-                   'Boolean)))
-                'Boolean)))]
+                          (Var tmp-var)))))))]
         [(Prim '>= (list e1 e2))
          (define shrunk-1 (recur e1))
          (define shrunk-2 (recur e2))
@@ -414,11 +409,9 @@
           (Prim
            'not
            (list
-            (HasType
              (Prim
               '<
-              (list shrunk-1 shrunk-2))
-             'Boolean))))
+              (list shrunk-1 shrunk-2)))))
          ]
         [(Prim '> (list e1 e2))
          (define shrunk-1 (recur e1))
@@ -426,9 +419,7 @@
          (define tmp-var (gensym 'tmp))
          (recur
           (Let tmp-var shrunk-1
-               (HasType
-                (Prim '< (list shrunk-2 (HasType (Var tmp-var) 'Integer)))
-                'Boolean)))
+                (Prim '< (list shrunk-2 (Var tmp-var)))))
          ]
         [(Prim '- (list e1 e2))
          (define shrunk-1 (recur e1))
@@ -437,31 +428,31 @@
           (Prim
            '+
            (list shrunk-1
-                 (HasType (Prim '- (list shrunk-2))
-                          (get-type shrunk-2)))))]
+                 (Prim '- (list shrunk-2)))))]
         [(Prim 'and (list e1 e2))
          (define shrunk-1 (recur e1))
          (define shrunk-2 (recur e2))
-         (recur (If shrunk-1 shrunk-2 (HasType (Bool #f) 'Boolean)))]
+         (recur (If shrunk-1 shrunk-2 (Bool #f)))]
         [(Prim 'or (list e1 e2))
          (define shrunk-1 (recur e1))
          (define shrunk-2 (recur e2))
-         (recur (If shrunk-1 (HasType (Bool #t) 'Boolean) shrunk-2))]
+         (recur (If shrunk-1 (Bool #t) shrunk-2))]
+        [(Prim type-pred (list e))
+         (define type (assv type-pred type-pred-to-type))
+         #:when type
+         (recur (If (Prim 'eq? (list (Prim 'tag-of-any e)
+                                     (Int (tagof (cdr type))))
+                    (Bool #t)
+                    (Bool #f)))]
         [(Prim op args)
-         (define output-type (cdr (assv op op-to-output-type)))
-         (define shrunk-args (map recur args))
-         (define args-types (map get-type shrunk-args))
-         (if (eq? 'Vector output-type)
-             (set! output-type `(Vector . ,args-types))
-             'you-cant-see-me--john-cena)
-         (if (eq? 'VectorRef output-type)
-             (set! output-type
-                   (list-ind (match (cadr args) [(HasType (Int n) 'Integer) n])
-                             (cdar args-types)))
-             'you-cant-see-me--john-cena)
-         (Prim op shrunk-args)
-         #;(HasType (Prim op shrunk-args) output-type)
-         ]))))
+         (Prim op (map recur args))]))))
+
+(define type-pred-to-type
+  '((boolean? . Boolean)
+    (integer? . Integer)
+    (procedure? . Procedure)
+    (void? . Void)
+    (vector? . Vector)))
 
 (define get-vector-length
   (lambda (vec)
@@ -483,32 +474,22 @@
                        (Int (tagof ftype)))))
     (if extra-cond
         (Prim 'and (list base-cond extra-cond))
-        (base-cond))))
+        base-cond)))
 
-(define demo
+(define (shrink-exp env)
   (lambda (e)
-    (match e
-      [(Project expr ftype)
-       (define tmp (gensym 'tmp))
-       (Let tmp expr
-            (If (build-project-cond tmp ftype)
-                (ValueOf tmp ftype)
-                (Exit)))])))
-
     (let ([recur (shrink-exp env)])
       (match e
         [(Project expr ftype)
          (define tmp (gensym 'tmp))
-         (define expr' (recur expr))
-         (Let tmp expr'
-              (If (build-project-cond tmp ftype)
+         (define expr^ (recur expr))
+         (Let tmp expr^
+              (If (recur (build-project-cond tmp ftype))
                   (ValueOf tmp ftype)
                   (Exit)))]
         [(Inject expr ftype)
-         (define expr' (recur expr))
-         (Prim 'make-any (list expr' (Int (tagof ftype))))]
-        #;[(HasType expr T)
-         (HasType (recur expr) T)]
+         (define expr^ (recur expr))
+         (Prim 'make-any (list expr^ (Int (tagof ftype))))]
         [(Int n) e]
         [(Var x) e]
         [(Bool b) e]
@@ -539,7 +520,7 @@
               shrunk-body)
          ]
         [(Apply fn args)
-         (Apply fn (map recur args))]))))
+         (Apply (recur fn) (map recur args))]))))
 
 (define (shrink-def env)
   (lambda (e)
@@ -1163,93 +1144,89 @@ compiler.rkt> (p '((lambda: ([y : Integer]) : Integer (+ 1 y)) 41)
 ; then is basically a continuation/callback
 (define (rco-atom to-atomize)
   (match to-atomize
-    [(HasType expr t)
-     (cond
-       [(atomic? expr) (values to-atomize '())]
-       [else
-        (let ([new-name (gensym 'tmp)])
-          (values
-           (HasType (Var new-name) t)
-           (list (cons new-name to-atomize))))])]))
+    (cond
+      [(atomic? to-atomize) (values to-atomize '())]
+      [else
+       (let ([new-name (gensym 'tmp)])
+         (values
+          (Var new-name)
+          (list (cons new-name to-atomize)))])]))
 
 (define (get-var-name v)
   (match v
     [(Var x) x]
     [(HasType expr t) (get-var-name expr)]))
 
-(define (rco-exp e)
-  (match e
-    [(HasType expr t)
-     (HasType
-      (match expr
-        [atm
-         #:when (atomic? atm)
-         atm]
-        [(Apply f args)
-         (define-values (atomic-front complex-back)
-           (split-where (compose not atomic?) args))
-         (match complex-back
-           ['()
-            (define f^ (rco-exp f))
-            (define new-fun-name
-              (gensym 'funref-))
-            (Let new-fun-name f^
-                 (HasType
-                  (Apply
-                   (HasType (Var new-fun-name) (get-type f^))
-                   args)
-                  t))]
-           ; if there is nothing complex left, return what we have.
-           ; else, bind the complex operand to a variable (atomic) and recur
-           [`(,complex-a . ,complex-d)
-            (define f^ (rco-exp f))
-            (define-values (new-name bindings) (rco-atom complex-a))
-            (define var-name (get-var-name new-name))
-            (define bound-to (cdr (assv var-name bindings)))
+(define (rco-exp expr)
+  (match expr
+    [atm
+     #:when (atomic? atm)
+     atm]
+    [(Apply f args)
+     (define-values (atomic-front complex-back)
+       (split-where (compose not atomic?) args))
+     (match complex-back
+       ['()
+        (define f^ (rco-exp f))
+        (define new-fun-name
+          (gensym 'funref-))
+        (Let new-fun-name f^
+             (Apply
+              (Var new-fun-name)
+              args))]
+       ; if there is nothing complex left, return what we have.
+       ; else, bind the complex operand to a variable (atomic) and recur
+       [`(,complex-a . ,complex-d)
+        (define f^ (rco-exp f))
+        (define-values (new-name bindings) (rco-atom complex-a))
+        (define var-name (Var-name new-name))
+        (define bound-to (cdr (assv var-name bindings)))
 
-            (define body-updated
-              (HasType
-               (Apply
-                f^
-                (append atomic-front
-                        (list new-name)
-                        complex-d))
-               t))
-            (Let var-name
-                 (rco-exp bound-to)
-                 (rco-exp body-updated))])]
-        [(FunRef f) expr]
-        [(Allocate n-items types) expr]
-        [(Collect n-bytes) expr]
-        [(GlobalValue name) expr]
-        [(If cnd cnsq alt)
-         (If (rco-exp cnd)
-             (rco-exp cnsq)
-             (rco-exp alt))]
-        [(Let x rhs body)
-         (Let x (rco-exp rhs) (rco-exp body))]
-        [(Prim op es)
-         ; split where you find the first complex operand :D
-         (define-values (atomic-front complex-back)
-           (split-where (compose not atomic?) es))
-         (match complex-back
-           ['() expr]
-           ; if there is nothing complex left, return what we have.
-           ; else, bind the complex operand to a variable (atomic) and recur
-           [`(,complex-a . ,complex-d)
-            (define-values (new-name bindings) (rco-atom complex-a))
-            (define var-name (get-var-name new-name))
-            (define bound-to (cdr (assv var-name bindings)))
-            (define body-updated
-              (HasType
-               (Prim op (append atomic-front
-                                (list new-name)
-                                complex-d))
-               t))
-            (Let var-name
-                 (rco-exp bound-to)
-                 (rco-exp body-updated))])])
-      t)]))
+        (define body-updated
+           (Apply
+            f^
+            (append atomic-front
+                    (list new-name)
+                    complex-d)))
+        (Let var-name
+             (rco-exp bound-to)
+             (rco-exp body-updated))])]
+    [(FunRef f) expr]
+    [(Allocate n-items types) expr]
+    [(Collect n-bytes) expr]
+    [(GlobalValue name) expr]
+    [(Exit) expr]
+    [(If cnd cnsq alt)
+     (If (rco-exp cnd)
+         (rco-exp cnsq)
+         (rco-exp alt))]
+    [(ValueOf ex ftype)
+     (define new-name (gensym 'tmp))
+     (if (atomic? ex)
+         expr
+         (Let new-name (rco-exp ex)
+              (ValueOf (Var new-name) ftype)))]
+    [(Let x rhs body)
+     (Let x (rco-exp rhs) (rco-exp body))]
+    [(Prim op es)
+     ; split where you find the first complex operand :D
+     (define-values (atomic-front complex-back)
+       (split-where (compose not atomic?) es))
+     (match complex-back
+       ['() expr]
+       ; if there is nothing complex left, return what we have.
+       ; else, bind the complex operand to a variable (atomic) and recur
+       [`(,complex-a . ,complex-d)
+        (define-values (new-name bindings) (rco-atom complex-a))
+        (define var-name (get-var-name new-name))
+        (define bound-to (cdr (assv var-name bindings)))
+        (define body-updated
+           (Prim op (append atomic-front
+                            (list new-name)
+                            complex-d)))
+        (Let var-name
+             (rco-exp bound-to)
+             (rco-exp body-updated))])])]))
 
 (define (rco-def def)
   (match def
@@ -1270,10 +1247,6 @@ compiler.rkt> (p '((lambda: ([y : Integer]) : Integer (+ 1 y)) 41)
 ; page 69, nice, in book
 (define (explicate-pred p b1 b2)
   (match p
-    [(HasType expr t)
-     ;(define-values (pred-expl pred-vars) (explicate-pred expr b1 b2))
-     ;(values (HasType pred-expl t) pred-vars)
-     (explicate-pred expr b1 b2)]
     [whatever
      (define label-1 (gensym 'block))
      (define label-2 (gensym 'block))
@@ -1297,6 +1270,12 @@ compiler.rkt> (p '((lambda: ([y : Integer]) : Integer (+ 1 y)) 41)
         (add-edge! cfg-global `(,label-4 . ,b4) `(,label-2 . ,b2))
         (explicate-pred cnd b4 b3)]
        [(Bool b) (values (if b b1 b2) '())]
+       [(ValueOf e ftype)
+        (values
+         (IfStmt (Prim 'eq? (list (ValueOf e ftype) (Bool #t))
+                       (Goto label-1)
+                       (Goto label-2)))
+         '())]
        [(Var v)
         (values
          (IfStmt (Prim 'eq? (list (Var v) (Bool #t)))
@@ -1312,7 +1291,9 @@ compiler.rkt> (p '((lambda: ([y : Integer]) : Integer (+ 1 y)) 41)
           (IfStmt (Prim 'eq? (list (Var tmp-var) (Bool #t)))
                   (Goto label-1)
                   (Goto label-2)))
-         `(,(HasType (Var tmp-var) 'Boolean) . ()))]
+         ; Maybe need this?
+         #;(,(HasType (Var tmp-var) 'Boolean) . ())
+         `(,(Var tmp-var) . ()))]
        ; ^^^ the type of boolean may change with dynamic types TODO
        [(Prim 'not (list e))
         (explicate-pred e (Goto label-2) (Goto label-1))]
@@ -1327,7 +1308,7 @@ compiler.rkt> (p '((lambda: ([y : Integer]) : Integer (+ 1 y)) 41)
        [(Prim 'vector-ref (list vec n))
         (define refboi (gensym 'tmp-vec-ref-))
         (explicate-assign
-         refboi (HasType p 'Boolean) ; can safely assume this bc expl-*pred*
+         refboi p ; can safely assume this bc expl-*pred*
          (IfStmt
           (Prim 'eq? (list (Bool #t) (Var refboi)))
           (Goto label-1)
@@ -1343,16 +1324,12 @@ compiler.rkt> (p '((lambda: ([y : Integer]) : Integer (+ 1 y)) 41)
   ; applied to exps in tail position
 (define (explicate-tail exp)
   (match exp
-    [(HasType expr t)
-     (explicate-tail expr)
-     ; (define-values (expr-expl expr-vars) (explicate-tail expr))
-     ; (values (HasType expr-expl t) expr-vars)
-     ]
     [e #:when (atomic? e) (values (Return e) '())]
     [(Apply fn args)
      (values
       (TailCall (get-expr fn) (map get-expr args))
       '())]
+    [(Exit) (values (Seq (Exit) (Return (Int 0))) '())]
     [(Allocate n-items types)
      (values (Return (Allocate n-items types)) '())]
     [(GlobalValue name)
@@ -1369,9 +1346,10 @@ compiler.rkt> (p '((lambda: ([y : Integer]) : Integer (+ 1 y)) 41)
        (explicate-assign lhs rhs body-c0))
      (values
       new-tail
-      (append (list (HasType (Var lhs) (get-type rhs)))
+      (append (list (Var lhs) (get-type rhs))
               new-assignment-vars
               body-vars))]
+    [(ValueOf e ftype) (values (Return exp) '())]
     [(Prim op es)
      (values (Return (Prim op (map get-expr es)))
              '())]))
@@ -1380,43 +1358,34 @@ compiler.rkt> (p '((lambda: ([y : Integer]) : Integer (+ 1 y)) 41)
 ; applied to exps that occur on the rhs of a let clause
 (define (explicate-assign lhs rhs c0)
   (match rhs
-    [(HasType expr t)
-     (match expr
-       [(Let x e body)
-        (define-values (body-tail body-vars)
-          (explicate-assign lhs body c0))
-        (define-values (assign-tail assign-vars)
-          (explicate-assign x e body-tail))
-
-        (values
-         assign-tail
-         (cons (HasType (Var x) (get-type e))
-               (append body-vars assign-vars)))]
-       [(Apply fn args)
-        (values
-         (Seq (Assign (Var lhs) (Call (get-expr fn) (map get-expr args)))
-              c0)
-         '()
-         #;
-         `(,(HasType (Var lhs) t) . ()))]
-       [(If cnd cnsq alt)
-        (define label-1 (gensym 'block))
-        (add-vertex! cfg-global `(,label-1 . ,c0))
-        (define-values (b2-tail b2-vars)
-          (explicate-assign lhs cnsq (Goto label-1)))
-        (define-values (b3-tail b3-vars)
-          (explicate-assign lhs alt (Goto label-1)))
-        (define-values (b4-tail b4-vars)
-          (explicate-pred cnd b2-tail b3-tail))
-        (values b4-tail (append b4-vars b3-vars b2-vars))
-        ]
-       [whatever
-        ; Added (Var lhs) to locals since it is a new local.
-        (values (Seq (Assign (Var lhs) (remove-ht-expr expr)) c0)
-                '()
-                #;
-                `(,(HasType (Var lhs) t) . ()))])]
-    [whatever (displayln 'frick)]))
+    [(Let x e body)
+     (define-values (body-tail body-vars)
+       (explicate-assign lhs body c0))
+     (define-values (assign-tail assign-vars)
+       (explicate-assign x e body-tail))
+     (values
+      assign-tail
+      (cons (Var x)
+            (append body-vars assign-vars)))]
+    [(Apply fn args)
+     (values
+      (Seq (Assign (Var lhs) (Call (get-expr fn) (map get-expr args)))
+           c0)
+      '())]
+    [(If cnd cnsq alt)
+     (define label-1 (gensym 'block))
+     (add-vertex! cfg-global `(,label-1 . ,c0))
+     (define-values (b2-tail b2-vars)
+       (explicate-assign lhs cnsq (Goto label-1)))
+     (define-values (b3-tail b3-vars)
+       (explicate-assign lhs alt (Goto label-1)))
+     (define-values (b4-tail b4-vars)
+       (explicate-pred cnd b2-tail b3-tail))
+     (values b4-tail (append b4-vars b3-vars b2-vars))]
+    [whatever
+     ; Added (Var lhs) to locals since it is a new local.
+     (values (Seq (Assign (Var lhs) rhs) c0)
+             '())]))
 
 (define (explicate-def def)
   (match def
@@ -1523,6 +1492,10 @@ compiler.rkt> (p '((lambda: ([y : Integer]) : Integer (+ 1 y)) 41)
            (Callq 'collect))]
     [(Assign var expr)
      (match expr
+       [(Exit)
+        (list
+         (Instr 'movq (list (Imm -1) (Reg 'rdi)))
+         (Callq 'exit))]
        [(Var x) (list (Instr 'movq (list (Var x) var)))]
        [(Int n) (list (Instr 'movq (list (Imm n) var)))]
        [(Void) (list (Instr 'movq (list (si-atm expr) var)))]
@@ -1590,16 +1563,7 @@ compiler.rkt> (p '((lambda: ([y : Integer]) : Integer (+ 1 y)) 41)
                   (Instr 'movzbq (list (ByteReg 'al) var))))
           (list (Instr 'cmpq (list e2-si e1-si))
                 (Instr 'set (list 'l (ByteReg 'al)))
-                (Instr 'movzbq (list (ByteReg 'al) var))))
-        #;(if (and (Imm? e1-si) (Imm? e2-si))
-            (list (Instr 'movq (list e1-si (Reg 'rax)))
-                  (Instr 'cmpq (list e2-si (Reg 'rax)))
-                  (Instr 'set (list 'l (ByteReg 'al)))
-                  (Instr 'movzbq (list (ByteReg 'al) var)))
-            (list (Instr 'cmpq (list e2-si e1-si))
-                  (Instr 'set (list 'l (ByteReg 'al)))
-                  (Instr 'movzbq (list (ByteReg 'al) var))))
-        ]
+                (Instr 'movzbq (list (ByteReg 'al) var))))]
        [(Prim 'eq? (list e1 e2))
         (define e1-si (si-atm e1))
         (define e2-si (si-atm e2))
@@ -1638,7 +1602,22 @@ compiler.rkt> (p '((lambda: ([y : Integer]) : Integer (+ 1 y)) 41)
                      (Instr 'negq (list var))))])]
        [(Prim 'read args)
         (list (Callq 'read_int)
-              (Instr 'movq (list (Reg 'rax) var)))])]))
+              (Instr 'movq (list (Reg 'rax) var)))]
+       [(Prim 'make-any (list e (Int ttag)))
+        (define instrOr (Instr 'orq (list (Imm ttag) var)))
+        (define end (if (or (eq? ttag 2) (eq? ttag 3))
+                        instrOr
+                        (cons (Instr 'salq (list Imm 3) var) instrOr)))
+        (cons (Instr 'movq (list e var)) end)]
+       [(Prim 'tag-of-any (list e))
+        (list (Instr 'movq (list e var))
+              (Instr 'andq (list (Imm 7) var)))]
+       [(ValueOf e ftype)
+        (if (or (is-vector? ftype) (is-function-type? ftype))
+            (list (Instr 'movq (list (Imm -8) var))
+                  (Instr 'andq (list e var)))
+            (list (Instr 'movq (list e var))
+                  (Instr 'sarq (list (Imm 3) var))))]))
 
 ; select instructions for tails
 ; gives a non-empty list of instr
@@ -1663,11 +1642,7 @@ compiler.rkt> (p '((lambda: ([y : Integer]) : Integer (+ 1 y)) 41)
                (Jmp label-2)))
        (list (Instr 'cmpq (list e2-si e1-si))
              (JmpIf cc label-1)
-             (Jmp label-2)))
-     #;(list (Instr 'cmpq (list e2-si e1-si))
-           ; (Instr 'set (list cc (ByteReg 'al)))
-           (JmpIf cc label-1)
-           (Jmp label-2))]
+             (Jmp label-2)))]
     [(TailCall f args)
      (define-values (used-regs _) (first-n (length args) param-regs))
      (append
