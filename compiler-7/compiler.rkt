@@ -6,8 +6,8 @@
 (require "utilities.rkt")
 (require graph)
 ;(provide (all-defined-out))
-#;
 (AST-output-syntax 'abstract-syntax)
+#;
 (AST-output-syntax 'concrete-syntax)
 
 (provide
@@ -36,40 +36,37 @@
      ((get-exp-free-vars '()) main)]))
 
 (define (get-exp-free-vars env)
-  (lambda (e)
-    (match e
-      [(HasType expr t)
-       (match expr
-         [(Int n) '()]
-         [(Bool b) '()]
-         [(Void) '()]
-         [(Var x)
-          (if (not (assv x env))
-              (list (cons x t))
-              '())]
-         [(Let lhs rhs body)
-          (define rhs-fv ((get-exp-free-vars env) rhs))
-          (define body-fv
-            ((get-exp-free-vars
-              (cons `(,lhs . ,(get-type rhs)) env)) body))
-          (append rhs-fv body-fv)]
-         [(Prim op args)
-          (foldr append '() (map (get-exp-free-vars env) args))]
-         [(If cnd cnsq alt)
-          (foldr append '()
-                 (map (get-exp-free-vars env)
-                      (list cnd cnsq alt)))]
-         [(Apply f-exp args)
-          (define-values (f-var f-type) (match f-exp
-                                          [(HasType f t) (values (Var-name f) t)]))
-          (define f-fv (if (assv f-var env)
-                           '()
-                           (list (cons f-var f-type))))
-          (foldr append f-fv (map (get-exp-free-vars env) args))]
-         [(Lambda (list `[,prms : ,prm-ts] ...) rt body)
-          (define prms-assoc
-            (map (lambda (p pt) (cons p pt)) prms prm-ts))
-          ((get-exp-free-vars (append prms-assoc env)) body)])])))
+  (lambda (expr)
+    (match expr
+      [(Int n) '()]
+      [(Bool b) '()]
+      [(Void) '()]
+      [(Var x)
+       (if (not (assv x env))
+           (list (cons x 'Any))
+           '())]
+      [(Let lhs rhs body)
+       (define rhs-fv ((get-exp-free-vars env) rhs))
+       (define body-fv
+         ((get-exp-free-vars
+           (cons `(,lhs . Any) env)) body))
+       (append rhs-fv body-fv)]
+      [(Prim op args)
+       (foldr append '() (map (get-exp-free-vars env) args))]
+      [(If cnd cnsq alt)
+       (foldr append '()
+              (map (get-exp-free-vars env)
+                   (list cnd cnsq alt)))]
+      [(Apply f-exp args)
+       (define f-var (Var-name f-exp))
+       (define f-fv (if (assv f-var env)
+                        '()
+                        (list (cons f-var 'Any))))
+       (foldr append f-fv (map (get-exp-free-vars env) args))]
+      [(Lambda (list `[,prms : ,prm-ts] ...) rt body)
+       (define prms-assoc
+         (map (lambda (p pt) (cons p pt)) prms prm-ts))
+       ((get-exp-free-vars (append prms-assoc env)) body)])))
 
 (define (replace-in-symbol sym find replace)
   (begin
@@ -530,9 +527,9 @@
          #:when (assv type-pred type-pred-to-type)
          (define type (assv type-pred type-pred-to-type))
          (recur (If (Prim 'eq? (list (Prim 'tag-of-any e)
-                                     (Int (tagof (cdr type))))
+                                     (Int (tagof (cdr type)))))
                           (Bool #t)
-                          (Bool #f))))]
+                          (Bool #f)))]
         [(Prim op args)
          (Prim op (map recur args))]))))
 
@@ -557,7 +554,7 @@
       (cond
         [(is-vector? ftype) (Prim 'eq? (list (Prim 'vector-length (list (Var tmp))) (Int (get-vector-length ftype))))]
         [(is-function-type? ftype) (Prim 'eq? (list (Prim 'procedure-arity (list (Var tmp))) (Int (get-func-arity ftype))))]
-        [#f]))
+        [else #f]))
     (define base-cond
       (Prim 'eq? (list (Prim 'tag-of-any (list (Var tmp)))
                        (Int (tagof ftype)))))
@@ -574,7 +571,7 @@
          (define expr^ (recur expr))
          (Let tmp expr^
               (If (recur (build-project-cond tmp ftype))
-                  (ValueOf tmp ftype)
+                  (ValueOf (Var tmp) ftype)
                   (Exit)))]
         [(Inject expr ftype)
          (define expr^ (recur expr))
@@ -664,7 +661,7 @@
     (let ([recur (uniquify-exp symtab)])
       (match e
         ; TODO (?): make simpler hastype matching (revert but add hastype case)
-        [(HasType expr t)
+        #;[(HasType expr t)
          (HasType (recur expr) t)]
         [(Lambda (and prm* (list `[,xs : ,ts] ...)) rt body)
          (define new-env
@@ -699,6 +696,9 @@
            (Let x-uniq
                 e-uniq
                 body-uniq))]
+        [(ValueOf e ftype)
+         (ValueOf ((uniquify-exp symtab) e) ftype)]
+        [(Exit) e]
         [(Prim op es)
          (Prim
           op
@@ -747,9 +747,6 @@
 
 (define (reveal-fun-in-body e def-names)
   (match e
-    [(HasType doot t)
-     (define doot-rev (reveal-fun-in-body doot def-names))
-     (HasType doot-rev t)]
     [(Lambda prm* rt body)
      (Lambda prm* rt (reveal-fun-in-body body def-names))]
     [(Apply ex args)
@@ -810,56 +807,37 @@
 (define (closure-conversion-exp e)
   (match e
     [(HasType doot t)
-     (define t^ (closure-conversion-type t))
      (define doot^
        (match doot
          [(Lambda prm* rt body)
+          #; TODO
           (define typed-fvs ((get-exp-free-vars '()) e))
           (define fv-names (map car typed-fvs))
-          (define fvts (map cdr typed-fvs))
-
           (define lambda-name (gensym 'lambda-))
           (define clos-name (gensym 'clos-))
-          (define clos-type `(Vector ,dummy-type ,@fvts))
-
+          (define clos-type 'Any)
           (define body^ (closure-conversion-exp body))
-          (define t-body^ (get-type body^))
           (define index (add1 (length typed-fvs)))
           (define body-with-fvs-bound
             (foldr
              (lambda (fv bodyy)
                (set! index (sub1 index))
-               (HasType
-                (Let fv
-                     (HasType
-                      (Prim 'vector-ref
-                            (list (Var clos-name) (Int index)))
-                      (list-ref fvts (sub1 index)))
-                     bodyy)
-                t-body^))
+               (Let fv
+                    (Prim 'vector-ref
+                          (list (Var clos-name) (Int index)))
+                    bodyy))
              body^
              fv-names))
 
-          (define prm*^
-            (for/list ([prm prm*])
-              (match prm
-                [`[,pname : ,pt]
-                 `[,pname : ,(closure-conversion-type pt)]])))
-
           (define lambda-def
             (Def lambda-name (cons `[,clos-name : ,clos-type]
-                                   prm*^)
+                                   prm*)
               rt '() body-with-fvs-bound))
           (add-lambda-def lambda-def)
           (define fvs
             (for/list ([fv typed-fvs])
-              (HasType (Var (car fv)) (cdr fv))))
-
-          ; sneaky-deaky
-          (set! t^ (append t^ fvts))
-
-          (Prim 'vector `(,(HasType (FunRef lambda-name)
-                                    (cons clos-type t))
+              (Var (car fv))))
+          (Prim 'vector `(,(FunRef lambda-name)
                           ,@fvs))]
          [(Apply ex arg*)
           (define ex^ (closure-conversion-exp ex))
@@ -1573,7 +1551,7 @@ compiler.rkt> (p '((lambda: ([y : Integer]) : Integer (+ 1 y)) 41)
     [(Collect n-bytes)
      (list (Instr 'movq (list (Reg 'r15) (Reg 'rdi)))
            (Instr 'movq (list (Imm n-bytes) (Reg 'rsi)))
-           (Callq 'collect))]
+           (Callq 'collect 2))]
     [(Assign var expr)
      (match expr
        [(Var x) (list (Instr 'movq (list (Var x) var)))]
@@ -1590,7 +1568,7 @@ compiler.rkt> (p '((lambda: ([y : Integer]) : Integer (+ 1 y)) 41)
              ([arg-exp args]
               [reg used-regs])
            (Instr 'movq (list (si-atm arg-exp) (Reg reg))))
-         (list (IndirectCallq f #;(length args))
+         (list (IndirectCallq f (length args))
                (Instr 'movq (list (Reg 'rax) var))))]
        [(GlobalValue name) (list (Instr 'movq (list (si-atm expr) var)))]
        ; can't really assign collect to anything, as per syntax in book
@@ -1681,7 +1659,7 @@ compiler.rkt> (p '((lambda: ([y : Integer]) : Integer (+ 1 y)) 41)
                (list (Instr 'movq (list (si-atm arg) var))
                      (Instr 'negq (list var))))])]
        [(Prim 'read args)
-        (list (Callq 'read_int)
+        (list (Callq 'read_int 0)
               (Instr 'movq (list (Reg 'rax) var)))]
        [(Prim 'make-any (list e (Int ttag)))
         (define instrOr (Instr 'orq (list (Imm ttag) var)))
@@ -1708,7 +1686,7 @@ compiler.rkt> (p '((lambda: ([y : Integer]) : Integer (+ 1 y)) 41)
     [(Exit)
      (list
       (Instr 'movq (list (Imm -1) (Reg 'rdi)))
-      (Callq 'exit))]
+      (Callq 'exit 0))]
     [(IfStmt (Prim cmp (list e1 e2)) (Goto label-1) (Goto label-2))
      (define cc
        (match cmp
@@ -1734,7 +1712,7 @@ compiler.rkt> (p '((lambda: ([y : Integer]) : Integer (+ 1 y)) 41)
           ([arg-exp args]
            [reg used-regs])
         (Instr 'movq (list (si-atm arg-exp) (Reg reg))))
-      (list (TailJmp f #;(length args))))]
+      (list (TailJmp f (length args))))]
     [(Return expr)
      (append (si-stmt (Assign (Reg 'rax) expr))
              (list (Jmp 'conclusion)))]
@@ -1824,15 +1802,15 @@ compiler.rkt> (p '((lambda: ([y : Integer]) : Integer (+ 1 y)) 41)
     [(Instr 'movzbq (list arg1 arg2))
      (values (filter interferable? (list arg2))
              '())]
-    [(IndirectCallq calling #;arity)
+    [(IndirectCallq calling arity)
      (values '()
              (filter interferable? (list calling)))]
-    [(TailJmp jmp-to #;arity)
+    [(TailJmp jmp-to arity)
      (values '()
              (filter interferable? (list jmp-to)))]
     [(Jmp label) (values '() '())]
     [(JmpIf cc label) (values '() '())]
-    [(Callq label) (values '() '())]))
+    [(Callq label arity) (values '() '())]))
 
 ; 'fairly simple' - kevin cao's last words
 ; return a (list of (lists of variables that are live at that point))
@@ -1938,9 +1916,9 @@ compiler.rkt> (p '((lambda: ([y : Integer]) : Integer (+ 1 y)) 41)
     [(cons (JmpIf cc label) instr-d)
      ; interference is not changed by jmpif, right?
      (interference-graph (cdr bl-info) instr-d base-g types)]
-    [(cons (TailJmp jmp-to #;arity) instr-d)
+    [(cons (TailJmp jmp-to arity) instr-d)
      base-g]
-    [(cons (IndirectCallq calling #;arity) instr-d)
+    [(cons (IndirectCallq calling arity) instr-d)
      (define graph-d
        (interference-graph (cdr bl-info) instr-d base-g types))
      (for/list ([reg caller-saved])
@@ -1956,7 +1934,7 @@ compiler.rkt> (p '((lambda: ([y : Integer]) : Integer (+ 1 y)) 41)
                     (add-edge! graph-d var (Reg reg))
                     (void))))))
      graph-d]
-    [(cons (Callq label) instr-d)
+    [(cons (Callq label arity) instr-d)
      (define graph-d
        (interference-graph (cdr bl-info) instr-d base-g types))
      (for/list ([reg caller-saved])
@@ -2345,11 +2323,11 @@ compiler.rkt> (p '((lambda: ([y : Integer]) : Integer (+ 1 y)) 41)
        (match instr-a
          [(Instr op args)
           (Instr op (map arg-to-color args))]
-         [(TailJmp jmp-to #;arity)
-          (TailJmp (arg-to-color jmp-to) #;arity)]
-         [(IndirectCallq calling #;arity
+         [(TailJmp jmp-to arity)
+          (TailJmp (arg-to-color jmp-to) arity)]
+         [(IndirectCallq calling arity
                          )
-          (IndirectCallq (arg-to-color calling) #;arity)]
+          (IndirectCallq (arg-to-color calling) arity)]
          [whatever
           instr-a]))
      (define new-instr-d
@@ -2442,13 +2420,13 @@ compiler.rkt> (p '((lambda: ([y : Integer]) : Integer (+ 1 y)) 41)
     ['() '()]
     [`(,instr-a . ,instr-d)
      (match instr-a
-       [(TailJmp jmp-to #;arity)
+       [(TailJmp jmp-to arity)
         (if (and (Reg? jmp-to)
                  (eq? 'rax (Reg-name jmp-to)))
             (cons instr-a
                   (pi-helper instr-d))
             (append (list (Instr 'movq (list jmp-to (Reg 'rax)))
-                          (TailJmp (Reg 'rax) #;arity))
+                          (TailJmp (Reg 'rax) arity))
                     (pi-helper instr-d)))]
        [(Instr 'leaq (list lbl into))
         (if (mem-ref? into)
@@ -2602,7 +2580,7 @@ compiler.rkt> (p '((lambda: ([y : Integer]) : Integer (+ 1 y)) 41)
      (format "jmp ~a" (os-label (symbol-append def-label label)))]
     [(JmpIf cc label)
      (format "j~a ~a" cc (os-label (symbol-append def-label label)))]
-    [(TailJmp jmp-to #;arity)
+    [(TailJmp jmp-to arity)
      (string-append
       (print-instr
        (Instr 'subq (list (Imm rbn)
@@ -2615,9 +2593,9 @@ compiler.rkt> (p '((lambda: ([y : Integer]) : Integer (+ 1 y)) 41)
               def-label -69 -420) newline
       indent (print-callee-saved-regs #f)
       (format "jmp *%~a" (Reg-name jmp-to)))]
-    [(IndirectCallq calling #;arity)
+    [(IndirectCallq calling arity)
      (format "callq *~a" (print-arg calling))]
-    [(Callq label) (format "callq ~a" (os-label label))]))
+    [(Callq label arity) (format "callq ~a" (os-label label))]))
 
 (define main-main
   (string-append
@@ -2627,7 +2605,7 @@ compiler.rkt> (p '((lambda: ([y : Integer]) : Integer (+ 1 y)) 41)
    indent (print-instr
            (Instr 'movq (list (Imm 16384) (Reg 'rsi)))
            'dummylabel -69 -420) newline
-   indent (print-instr (Callq 'initialize) 'dummylabel -69 -420) newline
+   indent (print-instr (Callq 'initialize 2) 'dummylabel -69 -420) newline
    indent (print-instr
            (Instr 'movq (list (Global 'rootstack_begin)
                               (Reg 'r15)))

@@ -1522,7 +1522,7 @@ Changelog:
   (match p
     [`(program ,info ,body)
      (Program info (parse-exp body))]
-    [`(program ,info ,def* ... ,body)
+    [`(program ,info ,def* ,body)
      (ProgramDefsExp info
                   (for/list ([d def*]) (parse-def d))
                   (parse-exp body))]
