@@ -1,9 +1,8 @@
 #lang racket
 (require racket/set racket/stream)
 (require racket/fixnum)
-(require "interp-R0.rkt")
-(require "interp-R1.rkt")
-(require "interp.rkt")
+#;(require "interp.rkt")
+(require "type-check-R6.rkt")
 (require "utilities.rkt")
 (require graph)
 ;(provide (all-defined-out))
@@ -29,6 +28,7 @@
  patch-instructions
  print-x86
  )
+
 
 (define (get-free-vars p)
   (match p
@@ -198,83 +198,83 @@
     [whatever #f]))
 
 #; (define (type-check-prim env)
-  (lambda (prim)
-    (let ([recur (type-check-exp env)])
-      (match prim
-        [(Prim op args)
-         (define args^ '())
-         (define ts-args '())
-         (for/list ([arg (reverse args)])
-           (begin
-             (define-values (arg^ t-arg)
-               (recur arg))
-             (set! args^ (cons arg^ args^))
-             (set! ts-args (cons t-arg ts-args))))
-         (cond
-           [(eq? op 'procedure-arity)
-            (define e-tc (recur (car args)))
-            (if (is-function-type? (get-type e-tc))
-                (Prim op args-tc)
-                (error "type error with Prim " op))]
-           [(eq? op 'eq?)
-            (define-values (e1^ t-1)
-              (values (car args^) (car ts-args)))
-            (define-values (e2^ t-2)
-              (values (cadr args^) (cadr ts-args)))
-            (if (can-be-eq? t-1 t-2)
-                (Prim op (list e1^ e2^))
-                (error "type error with Prim " op))]
-           [(memv op type-predicates)
-            (if (check-args-consistency args^ 'Integer)
-                (Prim op args^)
-                (error "type error with Prim " op))]
-           [(memv op comparison)
-            (if (check-args-consistency args^ 'Integer)
-                (Prim op args^)
-                (error "type error with Prim " op))]
-           [(memv op arithmetic)
-            (if (check-args-consistency args^ 'Integer)
-                (Prim op args^)
-                (error "type error with Prim " op))]
-           [(memv op bool-algebra)
-            (if (check-args-consistency args^ 'Boolean)
-                (Prim op args^)
-                (error "type error with Prim " op))]
-           [(eq? op 'vector)
-            (define components-tc (map recur args))
-            ; (define vec-type (cons 'Vector (map get-type components-tc)))
-            (Prim op components-tc)]
-           [(eq? op 'vector-ref)
-            ; TODO pick up here
-            ; (define args-tc (map recur args))
-            (define-values (v^ t-v)
-              (recur (car args)))
-            (define t-components (cdr t-v))
-            (define index (Int-value (cadr args^)))
-            (if (>= index (length t-components))
-                (error (format "trying to access index ~a of vector size ~a"
-                               index
-                               (length t-components)))
-                (Prim op args-tc))]
-           [(eq? op 'vector-set!)
-            (define args-tc (map recur args))
-            (define v-tc (car args-tc))
-            (define Tv (get-type v-tc))
-            (define Tcomponents (cdr Tv))
-            (define index (match (cadr args) [(Int n) n]))
-            (define new-val-type (get-type (caddr args-tc)))
-            (define vec-index-type (list-ind index Tcomponents))
-            (if (>= index (length Tcomponents))
-                (error (format "trying to set index ~a of vector size ~a"
-                               index
-                               (length Tcomponents)))
-                (if (equal? vec-index-type new-val-type)
-                    (Prim op args-tc)
-                    (error
-                     (format (string-append "new value has type ~a, "
-                                            "vector at index has type ~a")
-                             new-val-type
-                             vec-index-type))))])]))))
+     (lambda (prim)
+       (let ([recur (type-check-exp env)])
+         (match prim
+           [(Prim op args)
+            (define args^ '())
+            (define ts-args '())
+            (for/list ([arg (reverse args)])
+              (begin
+                (define-values (arg^ t-arg)
+                  (recur arg))
+                (set! args^ (cons arg^ args^))
+                (set! ts-args (cons t-arg ts-args))))
+            (cond
+              [(eq? op 'procedure-arity)
+               (define e-tc (recur (car args)))
+               (if (is-function-type? (get-type e-tc))
+                   (Prim op args-tc)
+                   (error "type error with Prim " op))]
+              [(eq? op 'eq?)
+               (define-values (e1^ t-1)
+                 (values (car args^) (car ts-args)))
+               (define-values (e2^ t-2)
+                 (values (cadr args^) (cadr ts-args)))
+               (if (can-be-eq? t-1 t-2)
+                   (Prim op (list e1^ e2^))
+                   (error "type error with Prim " op))]
+              [(memv op type-predicates)
+               (if (check-args-consistency args^ 'Integer)
+                   (Prim op args^)
+                   (error "type error with Prim " op))]
+              [(memv op comparison)
+               (if (check-args-consistency args^ 'Integer)
+                   (Prim op args^)
+                   (error "type error with Prim " op))]
+              [(memv op arithmetic)
+               (if (check-args-consistency args^ 'Integer)
+                   (Prim op args^)
+                   (error "type error with Prim " op))]
+              [(memv op bool-algebra)
+               (if (check-args-consistency args^ 'Boolean)
+                   (Prim op args^)
+                   (error "type error with Prim " op))]
+              [(eq? op 'vector)
+               (define components-tc (map recur args))
+               ; (define vec-type (cons 'Vector (map get-type components-tc)))
+               (Prim op components-tc)]
+              [(eq? op 'vector-ref)
+               ; TODO pick up here
+               ; (define args-tc (map recur args))
+               (define-values (v^ t-v)
+                 (recur (car args)))
+               (define t-components (cdr t-v))
+               (define index (Int-value (cadr args^)))
+               (if (>= index (length t-components))
+                   (error (format "trying to access index ~a of vector size ~a"
+                                  index
+                                  (length t-components)))
+                   (Prim op args-tc))]
+              [(eq? op 'vector-set!)
+               (define args-tc (map recur args))
+               (define v-tc (car args-tc))
+               (define Tv (get-type v-tc))
+               (define Tcomponents (cdr Tv))
+               (define index (match (cadr args) [(Int n) n]))
+               (define new-val-type (get-type (caddr args-tc)))
+               (define vec-index-type (list-ind index Tcomponents))
+               (if (>= index (length Tcomponents))
+                   (error (format "trying to set index ~a of vector size ~a"
+                                  index
+                                  (length Tcomponents)))
+                   (if (equal? vec-index-type new-val-type)
+                       (Prim op args-tc)
+                       (error
+                        (format (string-append "new value has type ~a, "
+                                               "vector at index has type ~a")
+                                new-val-type
+                                vec-index-type))))])]))))
 
 (define param-regs
   '(rdi rsi rdx rcx r8 r9))
@@ -296,81 +296,170 @@
            (andmap types-eq? (cdr t1) (cdr t2)))))
 
 #;(define (type-check-exp env)
-  (lambda (e)
-    (let ([recur (type-check-exp env)])
-      (match e
-        #;[(HasType expr t) (recur expr)]
-        [(Lambda (and params `([,xs : ,ts] ...)) rt body)
-         (define env^ (append (map cons xs ts) env))
-         (define-values (body^ t-body)
-           ((type-check-exp env^) body))
-         (define t `(,@ts -> ,rt))
-         (cond
-           [(types-eq? rt t-body)
-            (values (Lambda params rt body-tc) t)]
-           [else (error "mismatch in return type" (get-type body-tc) rt)])]
-        [(Var x)
-         (values e (dict-ref env x))]
-        [(Int n) (values e 'Integer)]
-        [(Bool b) (values e 'Boolean)]
-        [(Void) (values e 'Void)]
-        [(Prim op args)
-         ((type-check-prim env) e)]
-        [(Let x rhs body)
-         (define-values (rhs^ t-rhs) (recur rhs))
-         (define-values (body^ t-body)
-           ((type-check-exp (dict-set env x t-rhs)) body))
-         (values (Let x rhs^ body^) t-body)]
-        [(If cnd cnsq alt)
-         (define-values (cnd^ t-cnd) (recur cnd))
-         (define-values (cnsq^ t-cnsq) (recur cnsq))
-         (define-values (alt^ t-alt) (recur alt))
-         (unless (eq? 'Boolean t-cnd)
-           (error "condition given to if should be bool, given " cnd))
-         #;(unless (types-eq? t-cnsq t-alt)
-           (error (string-append "consequent and alternative in if should "
-                                 "have same type, given ")
-                  (list Tc Ta)))
-         (values (If cnd^ cnsq^ alt^) '???)]
-        [(Apply f es)
-         (define-values (f^ t-f) (recur f))
-         (define-values (es^ t-es) (map recur es))
-         (match t-f
-           [`(,tes* ... -> ,rt)
-            (for ([arg-ty t-es] [prm-ty tes*])
-              (unless (equal? arg-ty prm-ty)
-                (error (format "argument ~a not equal to parameter ~a"
-                               arg-ty prm-ty))))
-            (values (Apply f^ es^) rt)]
-           [wtf (error "expected a function, not" tf)])]
-        [else
-         (error "type-check-exp couldn't match " e)]))))
+    (lambda (e)
+      (let ([recur (type-check-exp env)])
+        (match e
+          #;[(HasType expr t) (recur expr)]
+          [(Lambda (and params `([,xs : ,ts] ...)) rt body)
+           (define env^ (append (map cons xs ts) env))
+           (define-values (body^ t-body)
+             ((type-check-exp env^) body))
+           (define t `(,@ts -> ,rt))
+           (cond
+             [(types-eq? rt t-body)
+              (values (Lambda params rt body-tc) t)]
+             [else (error "mismatch in return type" (get-type body-tc) rt)])]
+          [(Var x)
+           (values e (dict-ref env x))]
+          [(Int n) (values e 'Integer)]
+          [(Bool b) (values e 'Boolean)]
+          [(Void) (values e 'Void)]
+          [(Prim op args)
+           ((type-check-prim env) e)]
+          [(Let x rhs body)
+           (define-values (rhs^ t-rhs) (recur rhs))
+           (define-values (body^ t-body)
+             ((type-check-exp (dict-set env x t-rhs)) body))
+           (values (Let x rhs^ body^) t-body)]
+          [(If cnd cnsq alt)
+           (define-values (cnd^ t-cnd) (recur cnd))
+           (define-values (cnsq^ t-cnsq) (recur cnsq))
+           (define-values (alt^ t-alt) (recur alt))
+           (unless (eq? 'Boolean t-cnd)
+             (error "condition given to if should be bool, given " cnd))
+           #;(unless (types-eq? t-cnsq t-alt)
+               (error (string-append "consequent and alternative in if should "
+                                     "have same type, given ")
+                      (list Tc Ta)))
+           (values (If cnd^ cnsq^ alt^) '???)]
+          [(Apply f es)
+           (define-values (f^ t-f) (recur f))
+           (define-values (es^ t-es) (map recur es))
+           (match t-f
+             [`(,tes* ... -> ,rt)
+              (for ([arg-ty t-es] [prm-ty tes*])
+                (unless (equal? arg-ty prm-ty)
+                  (error (format "argument ~a not equal to parameter ~a"
+                                 arg-ty prm-ty))))
+              (values (Apply f^ es^) rt)]
+             [wtf (error "expected a function, not" tf)])]
+          [else
+           (error "type-check-exp couldn't match " e)]))))
 
 #;(define (type-check-def env)
-  (lambda (e)
-    (match e
-      [(Def f (and doot (list `[,xs : ,ts] ...)) rt info body)
-       (define new-env (append (map cons xs ts) env))
-       (define-values (body^ t-body)
-         ((type-check-exp new-env) body))
-       (unless (equal? t-body rt)
-         (error "body type ~a not equal to return type ~a" t-body rt))
-       (Def f doot rt info body^)])))
+    (lambda (e)
+      (match e
+        [(Def f (and doot (list `[,xs : ,ts] ...)) rt info body)
+         (define new-env (append (map cons xs ts) env))
+         (define-values (body^ t-body)
+           ((type-check-exp new-env) body))
+         (unless (equal? t-body rt)
+           (error "body type ~a not equal to return type ~a" t-body rt))
+         (Def f doot rt info body^)])))
 
 #;(define (type-check p)
+    (match p
+      [(ProgramDefsExp info defs body)
+       (define new-env
+         (for/list ([d defs])
+           (cons (fun-def-name d) (fun-def-type d))))
+       (define ds^
+         (for/list ([d defs])
+           ((type-check-def new-env) d)))
+       (define-values (body^ t-body)
+         ((type-check-exp new-env) body))
+       (unless (equal? 'Integer body^)
+         (error "result of the program must be an integer, not "
+                t-body))
+       (ProgramDefsExp info ds^ body^)]))
+
+(define (translateR7R6Prim prim)
+  (match prim
+    [(Prim op args)
+     #:when (memv op arithmetic)
+     (define args^ (for/list ([arg args])
+                     (Project (translateR7R6Exp arg)
+                              'Integer)))
+     (Inject (Prim op args^) 'Integer)]
+    [(Prim op args)
+     #:when (memv op bool-algebra)
+     (define args^ (for/list ([arg args])
+                     (Project (translateR7R6Exp arg)
+                              'Boolean)))
+     (Inject (Prim op args^) 'Boolean)]
+    [(Prim op args)
+     #:when (memv op comparison)
+     (define args^ (for/list ([arg args])
+                     (Project (translateR7R6Exp arg)
+                              'Integer)))
+     (Inject (Prim op args^) 'Boolean)]
+    [(Prim op args)
+     #:when (memv op (append equality type-predicates))
+     (define args^ (map translateR7R6Exp args))
+     (Inject (Prim op args^) 'Boolean)]
+    [(Prim 'vector args)
+     (define size (length args))
+     (define args^ (map translateR7R6Exp args))
+     (Inject (Prim 'vector args^)
+             `(Vector ,@(build-list size (lambda (x) 'Any))))]
+    [(Prim 'vector-ref (list vec idx))
+     (define vec^ (Project (translateR7R6Exp vec) '(Vectorof Any)))
+     (define idx^ (Project (translateR7R6Exp idx) 'Integer))
+     (Inject (Prim 'vector-ref (list vec^ idx^)) 'Void)]
+    [(Prim 'vector-set! (list vec idx val))
+     (define vec^ (Project (translateR7R6Exp vec) '(Vectorof Any)))
+     (define idx^ (Project (translateR7R6Exp idx) 'Integer))
+     (define val^ (translateR7R6Exp val))
+     (Inject (Prim 'vector-set! vec^ idx^ val^) 'Void)]))
+
+(define (translateR7R6Exp expr)
+  (match expr
+    [(Var x) expr]
+    [(Bool b) (Inject expr 'Boolean)]
+    [(Int n) (Inject expr 'Integer)]
+    [(Void) (Inject expr 'Void)]
+    [(Let x rhs body)
+     (define rhs^ (translateR7R6Exp rhs))
+     (define body^ (translateR7R6Exp body))
+     (Let x rhs^ body^)]
+    [(If cnd cnsq alt)
+     (define cnd^ (translateR7R6Exp cnd))
+     (define cnsq^ (translateR7R6Exp cnsq))
+     (define alt^ (translateR7R6Exp alt))
+     (If (Prim 'eq? cnd^ (Inject #f 'Boolean)) cnsq^ alt^)]
+    [(Apply f args)
+     (define arity (length args))
+     (define f^
+       (Project (translateR7R6Exp f)
+                `(,@(build-list arity (lambda (x) 'Any)) -> Any)))
+     (define args^ (map translateR7R6Exp args))
+     (Apply f^ args^)]
+    [(Lambda prms 'Any body)
+     (define arity (length prms))
+     (define body^ (translateR7R6Exp body))
+     (define prms^ (for/list ([p prms])
+                     `[,p : Any]))
+     (Inject (Lambda prms^ 'Any body^)
+             `(,@(build-list arity (lambda (x) 'Any)) -> Any))]
+    [(Prim op args) (translateR7R6Prim expr)]))
+
+(define (translateR7R6Defs def)
+  (match def
+    [(Def f prms rt info body)
+     (define body^ (translateR7R6Exp body))
+     (define prms^
+       (for/list ([p prms])
+         `[,p : Any]))
+     (Def f prms^ rt info body^)]))
+
+(define (translateR7R6 p)
   (match p
     [(ProgramDefsExp info defs body)
-     (define new-env
-       (for/list ([d defs])
-         (cons (fun-def-name d) (fun-def-type d))))
      (define ds^
        (for/list ([d defs])
-         ((type-check-def new-env) d)))
-     (define-values (body^ t-body)
-       ((type-check-exp new-env) body))
-     (unless (equal? 'Integer body^)
-       (error "result of the program must be an integer, not "
-              t-body))
+         (translateR7R6Defs d)))
+     (define body^
+       (translateR7R6Exp body))
      (ProgramDefsExp info ds^ body^)]))
 
 (define op-to-output-type
@@ -395,13 +484,13 @@
          (define tmp-var (gensym 'tmp))
          (recur
           (Let tmp-var shrunk-1
-                (Prim
-                 'not
-                 (list
-                   (Prim
-                    '<
-                    (list shrunk-2
-                          (Var tmp-var)))))))]
+               (Prim
+                'not
+                (list
+                 (Prim
+                  '<
+                  (list shrunk-2
+                        (Var tmp-var)))))))]
         [(Prim '>= (list e1 e2))
          (define shrunk-1 (recur e1))
          (define shrunk-2 (recur e2))
@@ -409,9 +498,9 @@
           (Prim
            'not
            (list
-             (Prim
-              '<
-              (list shrunk-1 shrunk-2)))))
+            (Prim
+             '<
+             (list shrunk-1 shrunk-2)))))
          ]
         [(Prim '> (list e1 e2))
          (define shrunk-1 (recur e1))
@@ -419,7 +508,7 @@
          (define tmp-var (gensym 'tmp))
          (recur
           (Let tmp-var shrunk-1
-                (Prim '< (list shrunk-2 (Var tmp-var)))))
+               (Prim '< (list shrunk-2 (Var tmp-var)))))
          ]
         [(Prim '- (list e1 e2))
          (define shrunk-1 (recur e1))
@@ -438,12 +527,12 @@
          (define shrunk-2 (recur e2))
          (recur (If shrunk-1 (Bool #t) shrunk-2))]
         [(Prim type-pred (list e))
+         #:when (assv type-pred type-pred-to-type)
          (define type (assv type-pred type-pred-to-type))
-         #:when type
          (recur (If (Prim 'eq? (list (Prim 'tag-of-any e)
                                      (Int (tagof (cdr type))))
-                    (Bool #t)
-                    (Bool #f)))]
+                          (Bool #t)
+                          (Bool #f))))]
         [(Prim op args)
          (Prim op (map recur args))]))))
 
@@ -537,8 +626,8 @@
     [(ProgramDefsExp info defs body)
      ; nice try
      #;(if (not (HasType? body))
-         (set! body ((type-check-exp '()) body))
-         (void))
+           (set! body ((type-check-exp '()) body))
+           (void))
      (define new-env
        (for/list ([d defs])
          (cons (fun-def-name d) (fun-def-type d))))
@@ -859,10 +948,10 @@
     [else (map limit-one-arg args)]))
 
 (define (get-input-types funref-type)
-       (begin
-         (define-values (inputs _)
-           (first-n (- (length funref-type) 2) funref-type))
-         inputs))
+  (begin
+    (define-values (inputs _)
+      (first-n (- (length funref-type) 2) funref-type))
+    inputs))
 
 (define (get-output-type funref-type)
   (last funref-type))
@@ -960,7 +1049,7 @@
 #|
 
 compiler.rkt> (p '((lambda: ([y : Integer]) : Integer (+ 1 y)) 41)
-                 '())
+'())
 ; car: contract violation
 ;   expected: pair?
 ;   given: '()
@@ -1143,14 +1232,13 @@ compiler.rkt> (p '((lambda: ([y : Integer]) : Integer (+ 1 y)) 41)
 ; bindings is our association list of variable bindings
 ; then is basically a continuation/callback
 (define (rco-atom to-atomize)
-  (match to-atomize
-    (cond
-      [(atomic? to-atomize) (values to-atomize '())]
-      [else
-       (let ([new-name (gensym 'tmp)])
-         (values
-          (Var new-name)
-          (list (cons new-name to-atomize)))])]))
+  (cond
+    [(atomic? to-atomize) (values to-atomize '())]
+    [else
+     (let ([new-name (gensym 'tmp)])
+       (values
+        (Var new-name)
+        (list (cons new-name to-atomize))))]))
 
 (define (get-var-name v)
   (match v
@@ -1183,11 +1271,11 @@ compiler.rkt> (p '((lambda: ([y : Integer]) : Integer (+ 1 y)) 41)
         (define bound-to (cdr (assv var-name bindings)))
 
         (define body-updated
-           (Apply
-            f^
-            (append atomic-front
-                    (list new-name)
-                    complex-d)))
+          (Apply
+           f^
+           (append atomic-front
+                   (list new-name)
+                   complex-d)))
         (Let var-name
              (rco-exp bound-to)
              (rco-exp body-updated))])]
@@ -1221,12 +1309,12 @@ compiler.rkt> (p '((lambda: ([y : Integer]) : Integer (+ 1 y)) 41)
         (define var-name (get-var-name new-name))
         (define bound-to (cdr (assv var-name bindings)))
         (define body-updated
-           (Prim op (append atomic-front
-                            (list new-name)
-                            complex-d)))
+          (Prim op (append atomic-front
+                           (list new-name)
+                           complex-d)))
         (Let var-name
              (rco-exp bound-to)
-             (rco-exp body-updated))])])]))
+             (rco-exp body-updated))])]))
 
 (define (rco-def def)
   (match def
@@ -1293,7 +1381,7 @@ compiler.rkt> (p '((lambda: ([y : Integer]) : Integer (+ 1 y)) 41)
                   (Goto label-2)))
          ; Maybe need this?
          #;(,(HasType (Var tmp-var) 'Boolean) . ())
-         `(,(Var tmp-var) . ()))]
+         '())]
        ; ^^^ the type of boolean may change with dynamic types TODO
        [(Prim 'not (list e))
         (explicate-pred e (Goto label-2) (Goto label-1))]
@@ -1318,10 +1406,10 @@ compiler.rkt> (p '((lambda: ([y : Integer]) : Integer (+ 1 y)) 41)
           (explicate-pred body (Goto label-1) (Goto label-2)))
         (define-values (new-tail new-assignment-vars)
           (explicate-assign lhs rhs body-exp))
-        (values new-tail (append body-vars new-assignment-vars))])]))
+        (values new-tail '())])]))
 
-  ; R1 -> C0 x Listof(Variable)
-  ; applied to exps in tail position
+; R1 -> C0 x Listof(Variable)
+; applied to exps in tail position
 (define (explicate-tail exp)
   (match exp
     [e #:when (atomic? e) (values (Return e) '())]
@@ -1329,7 +1417,7 @@ compiler.rkt> (p '((lambda: ([y : Integer]) : Integer (+ 1 y)) 41)
      (values
       (TailCall (get-expr fn) (map get-expr args))
       '())]
-    [(Exit) (values (Seq (Exit) (Return (Int 0))) '())]
+    [(Exit) (values exp '())]
     [(Allocate n-items types)
      (values (Return (Allocate n-items types)) '())]
     [(GlobalValue name)
@@ -1338,7 +1426,7 @@ compiler.rkt> (p '((lambda: ([y : Integer]) : Integer (+ 1 y)) 41)
      (define-values (b1 b1-vars) (explicate-tail cnsq))
      (define-values (b2 b2-vars) (explicate-tail alt))
      (define-values (pred-ex pred-vars) (explicate-pred cnd b1 b2))
-     (values pred-ex (append pred-vars b1-vars b2-vars))]
+     (values pred-ex '())]
     [(Let lhs rhs body)
      (define-values (body-c0 body-vars)
        (explicate-tail body))
@@ -1346,9 +1434,7 @@ compiler.rkt> (p '((lambda: ([y : Integer]) : Integer (+ 1 y)) 41)
        (explicate-assign lhs rhs body-c0))
      (values
       new-tail
-      (append (list (Var lhs) (get-type rhs))
-              new-assignment-vars
-              body-vars))]
+      '())]
     [(ValueOf e ftype) (values (Return exp) '())]
     [(Prim op es)
      (values (Return (Prim op (map get-expr es)))
@@ -1365,8 +1451,7 @@ compiler.rkt> (p '((lambda: ([y : Integer]) : Integer (+ 1 y)) 41)
        (explicate-assign x e body-tail))
      (values
       assign-tail
-      (cons (Var x)
-            (append body-vars assign-vars)))]
+      '())]
     [(Apply fn args)
      (values
       (Seq (Assign (Var lhs) (Call (get-expr fn) (map get-expr args)))
@@ -1381,7 +1466,7 @@ compiler.rkt> (p '((lambda: ([y : Integer]) : Integer (+ 1 y)) 41)
        (explicate-assign lhs alt (Goto label-1)))
      (define-values (b4-tail b4-vars)
        (explicate-pred cnd b2-tail b3-tail))
-     (values b4-tail (append b4-vars b3-vars b2-vars))]
+     (values b4-tail '())]
     [whatever
      ; Added (Var lhs) to locals since it is a new local.
      (values (Seq (Assign (Var lhs) rhs) c0)
@@ -1399,7 +1484,7 @@ compiler.rkt> (p '((lambda: ([y : Integer]) : Integer (+ 1 y)) 41)
      (Def f
        args
        rt
-       `((locals . ,locals))
+       info
        (CFG (get-vertices cfg-global)))]))
 
 ;; explicate-control : R1 -> C0
@@ -1464,13 +1549,12 @@ compiler.rkt> (p '((lambda: ([y : Integer]) : Integer (+ 1 y)) 41)
     [whatever #f]))
 
 ; select instructions for atoms
-(define (si-atm atm)
-  (match atm
-    [(Var x) (Var x)]
-    [(Int n) (Imm n)]
-    [(Void) (Imm 0)]
-    [(GlobalValue name) (Global name)]
-    [(Bool b) (if b (Imm 1) (Imm 0))]))
+(define (si-atm atm) (match atm
+                       [(Var x) (Var x)]
+                       [(Int n) (Imm n)]
+                       [(Void) (Imm 0)]
+                       [(GlobalValue name) (Global name)]
+                       [(Bool b) (if b (Imm 1) (Imm 0))]))
 
 ; start with (Vector type*), then give (type*) part to this
 (define (vec-types-to-pointer-mask types)
@@ -1492,10 +1576,6 @@ compiler.rkt> (p '((lambda: ([y : Integer]) : Integer (+ 1 y)) 41)
            (Callq 'collect))]
     [(Assign var expr)
      (match expr
-       [(Exit)
-        (list
-         (Instr 'movq (list (Imm -1) (Reg 'rdi)))
-         (Callq 'exit))]
        [(Var x) (list (Instr 'movq (list (Var x) var)))]
        [(Int n) (list (Instr 'movq (list (Imm n) var)))]
        [(Void) (list (Instr 'movq (list (si-atm expr) var)))]
@@ -1554,30 +1634,30 @@ compiler.rkt> (p '((lambda: ([y : Integer]) : Integer (+ 1 y)) 41)
         (define e2-si (si-atm e2))
         ; Need to watch out for immediates (can be the case where only e2 is.)
         (if (or (Imm? e1-si) (Imm? e2-si))
-          (let ([to-move (if (Imm? e1-si) e1-si e2-si)]
-                [cmp-before (if (Imm? e1-si) e2-si (Reg 'rax))]
-                [cmp-after (if (Imm? e1-si) (Reg' rax) e1-si)])
-            (list (Instr 'movq (list to-move (Reg 'rax)))
-                  (Instr 'cmpq (list cmp-before cmp-after))
+            (let ([to-move (if (Imm? e1-si) e1-si e2-si)]
+                  [cmp-before (if (Imm? e1-si) e2-si (Reg 'rax))]
+                  [cmp-after (if (Imm? e1-si) (Reg' rax) e1-si)])
+              (list (Instr 'movq (list to-move (Reg 'rax)))
+                    (Instr 'cmpq (list cmp-before cmp-after))
+                    (Instr 'set (list 'l (ByteReg 'al)))
+                    (Instr 'movzbq (list (ByteReg 'al) var))))
+            (list (Instr 'cmpq (list e2-si e1-si))
                   (Instr 'set (list 'l (ByteReg 'al)))
-                  (Instr 'movzbq (list (ByteReg 'al) var))))
-          (list (Instr 'cmpq (list e2-si e1-si))
-                (Instr 'set (list 'l (ByteReg 'al)))
-                (Instr 'movzbq (list (ByteReg 'al) var))))]
+                  (Instr 'movzbq (list (ByteReg 'al) var))))]
        [(Prim 'eq? (list e1 e2))
         (define e1-si (si-atm e1))
         (define e2-si (si-atm e2))
         (if (or (Imm? e1-si) (Imm? e2-si))
-          (let ([to-move (if (Imm? e1-si) e1-si e2-si)]
-                [cmp-before (if (Imm? e1-si) e2-si (Reg 'rax))]
-                [cmp-after (if (Imm? e1-si) (Reg' rax) e1-si)])
-            (list (Instr 'movq (list to-move (Reg 'rax)))
-                  (Instr 'cmpq (list cmp-before cmp-after))
+            (let ([to-move (if (Imm? e1-si) e1-si e2-si)]
+                  [cmp-before (if (Imm? e1-si) e2-si (Reg 'rax))]
+                  [cmp-after (if (Imm? e1-si) (Reg' rax) e1-si)])
+              (list (Instr 'movq (list to-move (Reg 'rax)))
+                    (Instr 'cmpq (list cmp-before cmp-after))
+                    (Instr 'set (list 'e (ByteReg 'al)))
+                    (Instr 'movzbq (list (ByteReg 'al) var))))
+            (list (Instr 'cmpq (list e2-si e1-si))
                   (Instr 'set (list 'e (ByteReg 'al)))
                   (Instr 'movzbq (list (ByteReg 'al) var))))
-          (list (Instr 'cmpq (list e2-si e1-si))
-                (Instr 'set (list 'e (ByteReg 'al)))
-                (Instr 'movzbq (list (ByteReg 'al) var))))
         ]
        [(Prim '+ args)
         (match args
@@ -1617,7 +1697,7 @@ compiler.rkt> (p '((lambda: ([y : Integer]) : Integer (+ 1 y)) 41)
             (list (Instr 'movq (list (Imm -8) var))
                   (Instr 'andq (list e var)))
             (list (Instr 'movq (list e var))
-                  (Instr 'sarq (list (Imm 3) var))))]))
+                  (Instr 'sarq (list (Imm 3) var))))])]))
 
 ; select instructions for tails
 ; gives a non-empty list of instr
@@ -1625,6 +1705,10 @@ compiler.rkt> (p '((lambda: ([y : Integer]) : Integer (+ 1 y)) 41)
   (match tail
     [(Goto label)
      (list (Jmp label))]
+    [(Exit)
+     (list
+      (Instr 'movq (list (Imm -1) (Reg 'rdi)))
+      (Callq 'exit))]
     [(IfStmt (Prim cmp (list e1 e2)) (Goto label-1) (Goto label-2))
      (define cc
        (match cmp
@@ -1633,16 +1717,16 @@ compiler.rkt> (p '((lambda: ([y : Integer]) : Integer (+ 1 y)) 41)
      (define e1-si (si-atm e1))
      (define e2-si (si-atm e2))
      (if (or (Imm? e1-si) (Imm? e2-si))
-       (let ([to-move (if (Imm? e1-si) e1-si e2-si)]
-             [cmp-before (if (Imm? e1-si) e2-si (Reg 'rax))]
-             [cmp-after (if (Imm? e1-si) (Reg' rax) e1-si)])
-         (list (Instr 'movq (list to-move (Reg 'rax)))
-               (Instr 'cmpq (list cmp-before cmp-after))
+         (let ([to-move (if (Imm? e1-si) e1-si e2-si)]
+               [cmp-before (if (Imm? e1-si) e2-si (Reg 'rax))]
+               [cmp-after (if (Imm? e1-si) (Reg' rax) e1-si)])
+           (list (Instr 'movq (list to-move (Reg 'rax)))
+                 (Instr 'cmpq (list cmp-before cmp-after))
+                 (JmpIf cc label-1)
+                 (Jmp label-2)))
+         (list (Instr 'cmpq (list e2-si e1-si))
                (JmpIf cc label-1)
-               (Jmp label-2)))
-       (list (Instr 'cmpq (list e2-si e1-si))
-             (JmpIf cc label-1)
-             (Jmp label-2)))]
+               (Jmp label-2)))]
     [(TailCall f args)
      (define-values (used-regs _) (first-n (length args) param-regs))
      (append
@@ -1868,7 +1952,7 @@ compiler.rkt> (p '((lambda: ([y : Integer]) : Integer (+ 1 y)) 41)
        (for/list ([var (car bl-info)])
          (and (Var? var)
               (let ([type (cdr (assv (get-var-name var) types))])
-                (if (is-vector? type)
+                (if (or (is-vector? type) (is-any? type))
                     (add-edge! graph-d var (Reg reg))
                     (void))))))
      graph-d]
@@ -1886,7 +1970,7 @@ compiler.rkt> (p '((lambda: ([y : Integer]) : Integer (+ 1 y)) 41)
                          [type (if (not in-types?)
                                    (error (format "var ~a, types ~a" var types))
                                    (cdr in-types?))])
-                    (if (is-vector? type)
+                    (if (or (is-vector? type) (is-any? type))
                         (add-edge! graph-d var (Reg reg))
                         (void))))))
          (void))
@@ -2206,6 +2290,9 @@ compiler.rkt> (p '((lambda: ([y : Integer]) : Integer (+ 1 y)) 41)
        (or (eq? 'Vector (car t))
            (eq? 'Vectorof (car t)))))
 
+(define (is-any? t)
+  (eq? 'Any t))
+
 ; color is a natural number (or ,uncolored; see above)
 (define (color-to-location color type-mappings arg)
   (match (assv color usable-regs)
@@ -2218,7 +2305,7 @@ compiler.rkt> (p '((lambda: ([y : Integer]) : Integer (+ 1 y)) 41)
        (assf (lambda (var)
                (vars-eq? var arg)) type-mappings))
      (define which-stack
-       (if (is-vector? (cdr var-type))
+       (if (or (is-vector? (cdr var-type)) (is-any? (cdr var-type)))
            'r15
            'rbp))
      (define stack-loc
@@ -2308,7 +2395,6 @@ compiler.rkt> (p '((lambda: ([y : Integer]) : Integer (+ 1 y)) 41)
      ; don't need the intf-graph anymore
      (define spills
        `(,call-stack-vars-needed . ,root-stack-vars-needed))
-     
      (Def f '() rt
        (list `(num-spills . ,spills))
        (CFG
@@ -2519,9 +2605,9 @@ compiler.rkt> (p '((lambda: ([y : Integer]) : Integer (+ 1 y)) 41)
     [(TailJmp jmp-to #;arity)
      (string-append
       (print-instr
-              (Instr 'subq (list (Imm rbn)
-                                 (Reg 'r15)))
-              def-label -69 -420)
+       (Instr 'subq (list (Imm rbn)
+                          (Reg 'r15)))
+       def-label -69 -420)
       newline
       indent (print-instr
               (Instr 'addq (list (Imm bn)
@@ -2618,6 +2704,7 @@ get-free-vars
 (define test-passes
   (list
    #;type-check
+   translateR7R6
    shrink
    uniquify
    reveal-functions
@@ -2626,6 +2713,7 @@ get-free-vars
    expose-allocation
    remove-complex-opera*
    explicate-control
+   type-check-C5
    uncover-locals
    select-instructions
    uncover-live

@@ -7,8 +7,8 @@
 (require "utilities.rkt")
 (require graph)
 ;(provide (all-defined-out))
-#;
 (AST-output-syntax 'abstract-syntax)
+#;
 (AST-output-syntax 'concrete-syntax)
 
 (provide
@@ -1911,6 +1911,7 @@ compiler.rkt> (p '((lambda: ([y : Integer]) : Integer (+ 1 y)) 41)
           (define bl-info
             (match (cdr label-tail)
               [(Block bl-info instr+) bl-info]))
+          (displayln locals)
           (define new-g
             (interference-graph (cdr bl-info) instr+ acc-graph locals))
           (map
