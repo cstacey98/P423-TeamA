@@ -423,7 +423,7 @@
      (define cnd^ (translateR7R6Exp cnd))
      (define cnsq^ (translateR7R6Exp cnsq))
      (define alt^ (translateR7R6Exp alt))
-     (If (Prim 'eq? cnd^ (Inject #f 'Boolean)) cnsq^ alt^)]
+     (If (Prim 'eq? (list cnd^ (Inject (Bool #f) 'Boolean))) cnsq^ alt^)]
     [(Apply f args)
      (define arity (length args))
      (define f^
@@ -576,6 +576,9 @@
         [(Inject expr ftype)
          (define expr^ (recur expr))
          (Prim 'make-any (list expr^ (Int (tagof ftype))))]
+        [(ValueOf expr val)
+         (ValueOf (recur expr) val)]
+        [(Exit) e]
         [(Int n) e]
         [(Var x) e]
         [(Bool b) e]
@@ -600,7 +603,7 @@
          ]
         [(Let x expr body)
          (define shrunk-expr (recur expr))
-         (define new-env (dict-set env x 'Any)
+         (define new-env (dict-set env x 'Any))
          (define shrunk-body ((shrink-exp new-env) body))
          (Let x shrunk-expr
               shrunk-body)]
@@ -635,9 +638,6 @@
       info
       (append shrunk-defs
               (list (Def 'main '() 'Integer '() shrunk-body))))]))
-
-
-
 
 
 
@@ -678,6 +678,10 @@
         [(Apply f args)
          (Apply (recur f)
                 (map recur args))]
+        [(ValueOf expr val)
+         (ValueOf (recur expr) val)]
+        [(Void) e]
+        [(Exit) e]
         [(Var x) (Var (search-symtab symtab x))]
         [(Int n) (Int n)]
         [(Bool b) (Bool b)]
@@ -842,7 +846,7 @@
        (HasType (Var tmp-var) (get-type ex^)))
      (Let tmp-var ex^
            (Apply
-             (Prim 'vector-ref (list typed-tmp-var
+             (Prim 'vector-ref (list tmp-var
                                      (Int 0)))
             (cons tmp-var (map closure-conversion-exp arg*))))]
     [(FunRef f)
@@ -1039,7 +1043,7 @@ compiler.rkt> (p '((lambda: ([y : Integer]) : Integer (+ 1 y)) 41)
   (match p
     [(Prim 'vector components) ; types
      (define components-exposed (map expose-alloc-exp components))
-
+     (define types (build-list len (lambda (x) 'Any)))
      (define v-name (gensym 'vec-init-))
      (define len (length components))
      (define vars
