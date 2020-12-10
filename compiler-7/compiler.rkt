@@ -1308,7 +1308,7 @@ compiler.rkt> (p '((lambda: ([y : Integer]) : Integer (+ 1 y)) 41)
         (values
          (Seq
           (Assign (Var tmp-var)
-                  (Call (get-expr fn) (map get-expr args)))
+                  (Call fn args))
           (IfStmt (Prim 'eq? (list (Var tmp-var) (Bool #t)))
                   (Goto label-1)
                   (Goto label-2)))
@@ -1322,7 +1322,7 @@ compiler.rkt> (p '((lambda: ([y : Integer]) : Integer (+ 1 y)) 41)
         #:when (or (eq? 'eq? op) (eq? '< op))
         (values
          (IfStmt
-          (Prim op (list (get-expr e1) (get-expr e2)))
+          (Prim op (list e1 e2))
           (Goto label-1)
           (Goto label-2))
          '())]
@@ -1348,7 +1348,7 @@ compiler.rkt> (p '((lambda: ([y : Integer]) : Integer (+ 1 y)) 41)
     [e #:when (atomic? e) (values (Return e) '())]
     [(Apply fn args)
      (values
-      (TailCall (get-expr fn) (map get-expr args))
+      (TailCall fn args)
       '())]
     [(Exit) (values exp '())]
     [(Allocate n-items types)
@@ -1370,7 +1370,7 @@ compiler.rkt> (p '((lambda: ([y : Integer]) : Integer (+ 1 y)) 41)
       '())]
     [(ValueOf e ftype) (values (Return exp) '())]
     [(Prim op es)
-     (values (Return (Prim op (map get-expr es)))
+     (values (Return (Prim op es))
              '())]))
 
 ; Variable x R1 x C0 -> Tail x Listof(Variable)
@@ -1387,7 +1387,7 @@ compiler.rkt> (p '((lambda: ([y : Integer]) : Integer (+ 1 y)) 41)
       '())]
     [(Apply fn args)
      (values
-      (Seq (Assign (Var lhs) (Call (get-expr fn) (map get-expr args)))
+      (Seq (Assign (Var lhs) (Call fn args))
            c0)
       '())]
     [(If cnd cnsq alt)
@@ -1447,7 +1447,7 @@ compiler.rkt> (p '((lambda: ([y : Integer]) : Integer (+ 1 y)) 41)
      (define proper-locals
        (map
         (lambda (ht)
-          (cons (get-var-name (get-expr ht)) (get-type ht)))
+          (cons (get-var-name ht) 'Any))
         locals))
      (set! proper-locals
            (append proper-locals
