@@ -806,68 +806,61 @@
 
 (define (closure-conversion-exp e)
   (match e
-    [(HasType doot t)
-     (define doot^
-       (match doot
-         [(Lambda prm* rt body)
-          #; TODO
-          (define typed-fvs ((get-exp-free-vars '()) e))
-          (define fv-names (map car typed-fvs))
-          (define lambda-name (gensym 'lambda-))
-          (define clos-name (gensym 'clos-))
-          (define clos-type 'Any)
-          (define body^ (closure-conversion-exp body))
-          (define index (add1 (length typed-fvs)))
-          (define body-with-fvs-bound
-            (foldr
-             (lambda (fv bodyy)
-               (set! index (sub1 index))
-               (Let fv
-                    (Prim 'vector-ref
-                          (list (Var clos-name) (Int index)))
-                    bodyy))
-             body^
-             fv-names))
+    [(Lambda prm* rt body) ; prm: ([p1 : Any] [p2 : Any] [p3 : Any])
+     #; TODO
+     (define typed-fvs ((get-exp-free-vars '()) e)) ; '((x . Any) (y . Any) (z . Any))
+     (define fv-names (map car typed-fvs)) ; '(x y z)
+     (define lambda-name (gensym 'lambda-))
+     (define clos-name (gensym 'clos-))
+     (define clos-type 'Any)
+     (define body^ (closure-conversion-exp body)) ; 
+     (define index (add1 (length typed-fvs)))
+     (define body-with-fvs-bound
+       (foldr
+        (lambda (fv bodyy)
+          (set! index (sub1 index))
+          (Let fv
+               (Prim 'vector-ref
+                     (list (Var clos-name) (Int index)))
+               bodyy))
+        body^
+        fv-names))
 
-          (define lambda-def
-            (Def lambda-name (cons `[,clos-name : ,clos-type]
-                                   prm*)
-              rt '() body-with-fvs-bound))
-          (add-lambda-def lambda-def)
-          (define fvs
-            (for/list ([fv typed-fvs])
-              (Var (car fv))))
-          (Prim 'vector `(,(FunRef lambda-name)
-                          ,@fvs))]
-         [(Apply ex arg*)
-          (define ex^ (closure-conversion-exp ex))
-          (define tmp-var (gensym 'applying-))
-          (define typed-tmp-var
-            (HasType (Var tmp-var) (get-type ex^)))
-          (Let tmp-var ex^
-               (HasType
-                (Apply
-                 (HasType
-                  (Prim 'vector-ref (list typed-tmp-var
-                                          (HasType (Int 0) 'Integer)))
-                  (clos-fun-type (get-type ex^)))
-                 (cons typed-tmp-var (map closure-conversion-exp arg*)))
-                t^))]
-         [(FunRef f)
-          (Prim 'vector (list (HasType (FunRef f) t)))]
-         [y #:when (atomic? y) y]
-         [(Prim op args)
-          (Prim op (map closure-conversion-exp args))]
-         [(If cnd cnsq alt)
-          (If (closure-conversion-exp cnd)
-              (closure-conversion-exp cnsq)
-              (closure-conversion-exp alt))]
-         [(Let x rhs body)
-          (Let
-           x
-           (closure-conversion-exp rhs)
-           (closure-conversion-exp body))]))
-     (HasType doot^ t^)]))
+     (define lambda-def
+       (Def lambda-name (cons `[,clos-name : ,clos-type]
+                              prm*)
+         rt '() body-with-fvs-bound))
+     (add-lambda-def lambda-def)
+     (define fvs
+       (for/list ([fv fv-names])
+         (Var fv)))
+     (Prim 'vector `(,(FunRef lambda-name)
+                     ,@fvs))]
+    [(Apply ex arg*)
+     (define ex^ (closure-conversion-exp ex))
+     (define tmp-var (gensym 'applying-))
+     #;(define typed-tmp-var
+       (HasType (Var tmp-var) (get-type ex^)))
+     (Let tmp-var ex^
+           (Apply
+             (Prim 'vector-ref (list typed-tmp-var
+                                     (Int 0)))
+            (cons tmp-var (map closure-conversion-exp arg*))))]
+    [(FunRef f)
+     (Prim 'vector (FunRef f))]
+    [y #:when (atomic? y) y]
+    [(Prim op args)
+     (Prim op (map closure-conversion-exp args))]
+    [(If cnd cnsq alt)
+     (If (closure-conversion-exp cnd)
+         (closure-conversion-exp cnsq)
+         (closure-conversion-exp alt))]
+    [(Let x rhs body)
+     (Let
+      x
+      (closure-conversion-exp rhs)
+      (closure-conversion-exp body))]))
+
 
 (define (clos-fun-type t-clos)
   (match t-clos
