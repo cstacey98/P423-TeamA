@@ -53,6 +53,8 @@
        (append rhs-fv body-fv)]
       [(Prim op args)
        (foldr append '() (map (get-exp-free-vars env) args))]
+      [(ValueOf expr val) ((get-exp-free-vars env) expr)]
+      [(Exit) '()]
       [(If cnd cnsq alt)
        (foldr append '()
               (map (get-exp-free-vars env)
@@ -765,6 +767,10 @@
          (FunRef x)
          (Var x))]
     [y #:when (atomic? y) y]
+    [(ValueOf expr val)
+     (ValueOf (reveal-fun-in-body expr def-names) val)]
+    [(Exit) e]
+    [(Void) e]
     [(Prim op args)
      (Prim op (map (lambda (a) (reveal-fun-in-body a def-names))
                    args))]
