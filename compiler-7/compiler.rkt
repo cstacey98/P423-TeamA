@@ -600,11 +600,10 @@
          ]
         [(Let x expr body)
          (define shrunk-expr (recur expr))
-         (define new-env (dict-set env x (get-type shrunk-expr)))
+         (define new-env (dict-set env x 'Any)
          (define shrunk-body ((shrink-exp new-env) body))
          (Let x shrunk-expr
-              shrunk-body)
-         ]
+              shrunk-body)]
         [(Apply fn args)
          (Apply (recur fn) (map recur args))]))))
 
@@ -968,7 +967,6 @@
        [(<= (length back) 1)
         (Apply new-f (append front back))]
        [else
-        (define t-back (map (compose limit-type get-type) back))
         (define new-back (Prim 'vector back))
         (Apply new-f
                (append front (list new-back)))])]
