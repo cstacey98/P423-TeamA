@@ -944,8 +944,6 @@
 ; assume new-args' types have been limited (as per limit-type)
 (define (limit-exp expr args-assoc new-args)
   (match expr
-    [(HasType e t)
-     (HasType (limit-exp e args-assoc new-args) (limit-type t))]
     [(FunRef f) (FunRef f)]
     [(Var x)
      (define index (assv x args-assoc))
@@ -954,10 +952,9 @@
               (> (length args-assoc)
                  6))
          (Prim 'vector-ref
-               (list (HasType (Var (car (list-ind 5 new-args)))
+               (list (Var (car (list-ind 5 new-args)))
                               ; since new-args looks like [x : t]
-                              (caddr (list-ind 5 new-args)))
-                     (HasType (Int (- (cdr index) 5)) 'Integer)))
+                     (Int (- (cdr index) 5))))
          (Var x))]
     [e #:when (atomic? e) e]
     [(Apply f params)
@@ -972,9 +969,7 @@
         (Apply new-f (append front back))]
        [else
         (define t-back (map (compose limit-type get-type) back))
-        (define new-back
-          (HasType (Prim 'vector back)
-                   (cons 'Vector t-back)))
+        (define new-back (Prim 'vector back))
         (Apply new-f
                (append front (list new-back)))])]
     [(Prim op args)
@@ -1044,7 +1039,7 @@ compiler.rkt> (p '((lambda: ([y : Integer]) : Integer (+ 1 y)) 41)
 ; TODO fix and test this
 (define (expose-prim p)
   (match p
-    [(HasType (Prim 'vector components) types)
+    [(Prim 'vector components) ; types
      (define components-exposed (map expose-alloc-exp components))
 
      (define v-name (gensym 'vec-init-))
@@ -1055,56 +1050,36 @@ compiler.rkt> (p '((lambda: ([y : Integer]) : Integer (+ 1 y)) 41)
      (define assignments
        (assign-all vars 0 (Var v-name) types))
      (define decl-and-assg
-       (HasType
         (Let v-name
              #;
              (Allocate len types)
-             (HasType (Allocate len types) types)
-             assignments)
-        types))
+             (Allocate len types)
+             assignments))
      (define n-bytes (* 8 (add1 len)))
      (define new-space-needed
-       (HasType
         (Prim
          '+
          (list
           #;(GlobalValue 'free_ptr)
-          (HasType (GlobalValue 'free_ptr) 'Integer)
-          (HasType (Int n-bytes) 'Integer)))
-        'Integer))
+          (GlobalValue 'free_ptr)
+          (Int n-bytes))))
      (define have-enough-space?
-       (HasType
         (Prim
          '<
          (list
           new-space-needed
-          #;
-          (GlobalValue 'fromspace_end)
-          (HasType
-           (GlobalValue 'fromspace_end)
-           'Integer)))
-        'Boolean))
-     (define do-nothing
-       (HasType (Void) 'Void))
-     (define call-collect
-       #;(Collect n-bytes)
-       (HasType (Collect n-bytes) 'Void)
-       )
-
+          (GlobalValue 'fromspace_end))))
+     (define do-nothing (Void))
+     (define call-collect (Collect n-bytes))
      (define check-collect?
-       (HasType
-        (Let (gensym '_)
-             (HasType
-              (If have-enough-space?
-                  do-nothing
-                  call-collect)
-              'Void)
-             decl-and-assg)
-        types))
-     (assign-components vars components-exposed check-collect?)
-     ]
-    [(HasType (Prim op args) t)
-     (HasType (Prim op (map expose-alloc-exp args)) t)]))
+       (Let (gensym '_)
+            (If have-enough-space?
+                do-nothing
+                call-collect)
+            decl-and-assg))
+     (assign-components vars components-exposed check-collect?)]
+    [(Prim op args)
+     (Prim op (map expose-alloc-exp args))]))
 
 (define (assign-components var-names components after-assigning)
   (match var-names
