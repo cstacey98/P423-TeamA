@@ -1086,38 +1086,30 @@ compiler.rkt> (p '((lambda: ([y : Integer]) : Integer (+ 1 y)) 41)
      #;
      (define i
        (add1 (- (length (cdr (get-type after-assigning))) (length xs-d))))
-     (HasType
       (Let
        x-i
-       ; assuming components is a list of `HasType`s
+       ; assuming components is a list of LIES
        (car components)
-       (assign-components xs-d (cdr components) after-assigning))
-      (get-type after-assigning))]))
+       (assign-components xs-d (cdr components) after-assigning))]))
 
 (define (assign-all to-assign n-assigned vec-name types)
   (match to-assign
-    ['() (HasType vec-name types)]
+    ['() vec-name]
     [`(,a . ,d)
-     (HasType
-      (Let (gensym '_)
-           (HasType
-            (Prim 'vector-set!
-                  (list (HasType vec-name types)
-                        ; n-assigned
-                        (HasType (Int n-assigned) 'Integer)
-                        (HasType
-                         (Var a)
-                         (list-ind n-assigned (cdr types)))))
-            'Void)
-           (assign-all d (add1 n-assigned) vec-name types))
-      types)]))
+     (Let (gensym '_)
+          (Prim 'vector-set!
+                (list vec-name
+                      ; n-assigned
+                      (Int n-assigned)
+                      (Var a)))
+          (assign-all d (add1 n-assigned) vec-name types))]))
 
 
 (define (expose-alloc-exp e)
   (match e
-    [(HasType (Prim op args) t)
+    [(Prim op args)
      (expose-prim e)]
-    [(HasType expr t) (HasType (expose-alloc-exp expr) t)]
+    [expr (expose-alloc-exp expr)]
     [y #:when (atomic? y) e]
     [(Apply f args)
      (Apply (expose-alloc-exp f)
@@ -1151,8 +1143,6 @@ compiler.rkt> (p '((lambda: ([y : Integer]) : Integer (+ 1 y)) 41)
 ; 'type' predicate for atomicity
 (define (atomic? e)
   (match e
-    [(HasType expr t)
-     (atomic? expr)]
     [(Var x) #t]
     [(Int n) #t]
     [(Bool b) #t]
@@ -1186,8 +1176,7 @@ compiler.rkt> (p '((lambda: ([y : Integer]) : Integer (+ 1 y)) 41)
 
 (define (get-var-name v)
   (match v
-    [(Var x) x]
-    [(HasType expr t) (get-var-name expr)]))
+    [(Var x) x]))
 
 (define (rco-exp expr)
   (match expr
