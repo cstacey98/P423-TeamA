@@ -296,6 +296,7 @@
   (lambda (d)
     (match d
       [(Def f (and p:t* (list `[,xs : ,ps] ...)) rt info CFG)
+       (set! CFG (CFG-block* CFG))
        (define new-env (append (map cons xs ps) global-env))
        (define env (make-hash new-env))
        (define block-env (make-hash))

@@ -7,8 +7,7 @@
 (require graph)
 ;(provide (all-defined-out))
 (AST-output-syntax 'abstract-syntax)
-#;
-(AST-output-syntax 'concrete-syntax)
+;(AST-output-syntax 'concrete-syntax)
 
 (provide
  #;type-check
@@ -100,37 +99,6 @@
     [`(,prm-ts ... -> ,rt) 3]
     ['Void 5]))
 
-#;
-(define (r6-ify-exp e)
-  (match e
-    [y
-     #:when (atomic? y)
-     y]
-    [(Let lhs rhs body)
-     ...]
-    [(If cnd cnsq alt)
-     ...]
-    [(Prim op args)
-     ...]
-    [(Apply expr args)
-     ...]
-    [(Lambda vars 'Any body)
-     ...]))
-
-#;
-(define (r6-ify-def def)
-  (match def
-    [(Def name vars 'Any '() body)
-     (define vars^ vars)
-     (define T^ 'Any)
-     (define body^ body)
-     (Def name vars^ T^ '() body^)]))
-
-#;
-(define (r6-ify p)
-  (match p
-    [(ProgramDefsExp '() defs main)
-     (ProgramDefsExp '() (map r6-ify-def defs) (r6-ify-exp main))]))
 
 
 
@@ -499,8 +467,7 @@
            (list
             (Prim
              '<
-             (list shrunk-1 shrunk-2)))))
-         ]
+             (list shrunk-1 shrunk-2)))))]
         [(Prim '> (list e1 e2))
          (define shrunk-1 (recur e1))
          (define shrunk-2 (recur e2))
@@ -849,15 +816,17 @@
      (define ex^ (closure-conversion-exp ex))
      (define tmp-var (gensym 'applying-))
      #;(define typed-tmp-var
-       (HasType (Var tmp-var) (get-type ex^)))
+         (HasType (Var tmp-var) (get-type ex^)))
      (Let tmp-var ex^
-           (Apply
-             (Prim 'vector-ref (list tmp-var
-                                     (Int 0)))
-            (cons tmp-var (map closure-conversion-exp arg*))))]
+          (Apply
+           (Prim 'vector-ref (list (Var tmp-var)
+                                   (Int 0)))
+           (cons (Var tmp-var) (map closure-conversion-exp arg*))))]
     [(FunRef f)
      (Prim 'vector (FunRef f))]
     [y #:when (atomic? y) y]
+    [(ValueOf expr val) (ValueOf (closure-conversion-exp expr) val)]
+    [(Exit) e]
     [(Prim op args)
      (Prim op (map closure-conversion-exp args))]
     [(If cnd cnsq alt)
@@ -885,6 +854,7 @@
 (define lambda-defs '())
 (define (add-lambda-def new-def)
   (set! lambda-defs (cons new-def lambda-defs)))
+
 (define (convert-to-closures p)
   (match p
     [(ProgramDefs info defs)
@@ -966,6 +936,8 @@
                      (Int (- (cdr index) 5))))
          (Var x))]
     [e #:when (atomic? e) e]
+    [(ValueOf ex val) (ValueOf (limit-exp ex args-assoc new-args) val)]
+    [(Exit) expr]
     [(Apply f params)
      (define params-l
        (map
@@ -1049,9 +1021,9 @@ compiler.rkt> (p '((lambda: ([y : Integer]) : Integer (+ 1 y)) 41)
   (match p
     [(Prim 'vector components) ; types
      (define components-exposed (map expose-alloc-exp components))
-     (define types (build-list len (lambda (x) 'Any)))
      (define v-name (gensym 'vec-init-))
      (define len (length components))
+     (define types `(Vector ,@(build-list len (lambda (x) 'Any))))
      (define vars
        (map (lambda (n) (gensym (string->symbol (format "x-~a-" n))))
             (build-list len identity)))
@@ -1119,8 +1091,9 @@ compiler.rkt> (p '((lambda: ([y : Integer]) : Integer (+ 1 y)) 41)
   (match e
     [(Prim op args)
      (expose-prim e)]
-    [expr (expose-alloc-exp expr)]
     [y #:when (atomic? y) e]
+    [(ValueOf expr val) (ValueOf (expose-alloc-exp expr) val)]
+    [(Exit) e]
     [(Apply f args)
      (Apply (expose-alloc-exp f)
             (map expose-alloc-exp args))]
@@ -1193,6 +1166,11 @@ compiler.rkt> (p '((lambda: ([y : Integer]) : Integer (+ 1 y)) 41)
     [atm
      #:when (atomic? atm)
      atm]
+    #;(Let 'applying-34 ex^
+         (Apply
+          (Prim 'vector-ref (list (Var 'applying-34)
+                                  (Int 0)))
+          (cons tmp-var (map closure-conversion-exp arg*))))
     [(Apply f args)
      (define-values (atomic-front complex-back)
        (split-where (compose not atomic?) args))
@@ -1303,10 +1281,11 @@ compiler.rkt> (p '((lambda: ([y : Integer]) : Integer (+ 1 y)) 41)
        [(Bool b) (values (if b b1 b2) '())]
        [(ValueOf e ftype)
         (values
-         (IfStmt (Prim 'eq? (list (ValueOf e ftype) (Bool #t))
-                       (Goto label-1)
-                       (Goto label-2)))
+         (IfStmt (Prim 'eq? (list (ValueOf e ftype) (Bool #t)))
+                 (Goto label-1)
+                 (Goto label-2))
          '())]
+       [(Exit) (values (Exit) '())]
        [(Var v)
         (values
          (IfStmt (Prim 'eq? (list (Var v) (Bool #t)))
@@ -1436,11 +1415,7 @@ compiler.rkt> (p '((lambda: ([y : Integer]) : Integer (+ 1 y)) 41)
     [(ProgramDefs info defs)
      (define exp-defs
        (map explicate-def defs))
-     (ProgramDefs info
-                  exp-defs
-                  #;(CFG (get-vertices cfg-global))
-                  )]))
-
+     (ProgramDefs info exp-defs)]))
 
 (define (remove-ht-expr expr)
   (cond
