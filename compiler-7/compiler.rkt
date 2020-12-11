@@ -6,8 +6,8 @@
 (require "utilities.rkt")
 (require graph)
 ;(provide (all-defined-out))
-(AST-output-syntax 'abstract-syntax)
-;(AST-output-syntax 'concrete-syntax)
+;(AST-output-syntax 'abstract-syntax)
+(AST-output-syntax 'concrete-syntax)
 
 (provide
  #;type-check
@@ -1045,8 +1045,6 @@ compiler.rkt> (p '((lambda: ([y : Integer]) : Integer (+ 1 y)) 41)
        (assign-all vars 0 (Var v-name) types))
      (define decl-and-assg
         (Let v-name
-             #;
-             (Allocate len types)
              (Allocate len types)
              assignments))
      (define n-bytes (* 8 (add1 len)))
@@ -1054,7 +1052,6 @@ compiler.rkt> (p '((lambda: ([y : Integer]) : Integer (+ 1 y)) 41)
         (Prim
          '+
          (list
-          #;(GlobalValue 'free_ptr)
           (GlobalValue 'free_ptr)
           (Int n-bytes))))
      (define have-enough-space?
@@ -1079,12 +1076,8 @@ compiler.rkt> (p '((lambda: ([y : Integer]) : Integer (+ 1 y)) 41)
   (match var-names
     ['() after-assigning]
     [`(,x-i . ,xs-d)
-     #;
-     (define i
-       (add1 (- (length (cdr (get-type after-assigning))) (length xs-d))))
       (Let
        x-i
-       ; assuming components is a list of LIES
        (car components)
        (assign-components xs-d (cdr components) after-assigning))]))
 
@@ -1095,7 +1088,6 @@ compiler.rkt> (p '((lambda: ([y : Integer]) : Integer (+ 1 y)) 41)
      (Let (gensym '_)
           (Prim 'vector-set!
                 (list vec-name
-                      ; n-assigned
                       (Int n-assigned)
                       (Var a)))
           (assign-all d (add1 n-assigned) vec-name types))]))
@@ -1180,11 +1172,6 @@ compiler.rkt> (p '((lambda: ([y : Integer]) : Integer (+ 1 y)) 41)
     [atm
      #:when (atomic? atm)
      atm]
-    #;(Let 'applying-34 ex^
-         (Apply
-          (Prim 'vector-ref (list (Var 'applying-34)
-                                  (Int 0)))
-          (cons tmp-var (map closure-conversion-exp arg*))))
     [(Apply f args)
      (define-values (atomic-front complex-back)
        (split-where (compose not atomic?) args))
@@ -1263,11 +1250,8 @@ compiler.rkt> (p '((lambda: ([y : Integer]) : Integer (+ 1 y)) 41)
      (ProgramDefs info (map rco-def defs))]))
 
 
-; what we need in this:
-; set of ... blocks?
 (define cfg-global (unweighted-graph/directed '()))
 
-; page 69, nice, in book
 (define (explicate-pred p b1 b2)
   (match p
     [whatever
@@ -1315,10 +1299,7 @@ compiler.rkt> (p '((lambda: ([y : Integer]) : Integer (+ 1 y)) 41)
           (IfStmt (Prim 'eq? (list (Var tmp-var) (Bool #t)))
                   (Goto label-1)
                   (Goto label-2)))
-         ; Maybe need this?
-         #;(,(HasType (Var tmp-var) 'Boolean) . ())
          '())]
-       ; ^^^ the type of boolean may change with dynamic types TODO
        [(Prim 'not (list e))
         (explicate-pred e (Goto label-2) (Goto label-1))]
        [(Prim op (list e1 e2))
@@ -1332,7 +1313,7 @@ compiler.rkt> (p '((lambda: ([y : Integer]) : Integer (+ 1 y)) 41)
        [(Prim 'vector-ref (list vec n))
         (define refboi (gensym 'tmp-vec-ref-))
         (explicate-assign
-         refboi p ; can safely assume this bc expl-*pred*
+         refboi p 
          (IfStmt
           (Prim 'eq? (list (Bool #t) (Var refboi)))
           (Goto label-1)
@@ -1404,7 +1385,6 @@ compiler.rkt> (p '((lambda: ([y : Integer]) : Integer (+ 1 y)) 41)
        (explicate-pred cnd b2-tail b3-tail))
      (values b4-tail '())]
     [whatever
-     ; Added (Var lhs) to locals since it is a new local.
      (values (Seq (Assign (Var lhs) rhs) c0)
              '())]))
 
@@ -1429,6 +1409,7 @@ compiler.rkt> (p '((lambda: ([y : Integer]) : Integer (+ 1 y)) 41)
     [(ProgramDefs info defs)
      (define exp-defs
        (map explicate-def defs))
+     (for/list ([d defs]) (displayln d))
      (ProgramDefs info exp-defs)]))
 
 (define (remove-ht-expr expr)
@@ -1514,8 +1495,6 @@ compiler.rkt> (p '((lambda: ([y : Integer]) : Integer (+ 1 y)) 41)
        [(Bool b) (list (Instr 'movq (list (si-atm expr) var)))]
        [(FunRef f) (list (Instr 'leaq (list (FunRef f) var)))]
        [(Call f args)
-        ; TODO if all hope is lost look here
-        ; (define fun-name (match f [(Var x) x] [(FunRef f_) f_]))
         (define-values (used-regs _) (first-n (length args) param-regs))
         (append
          (for/list
@@ -1525,7 +1504,6 @@ compiler.rkt> (p '((lambda: ([y : Integer]) : Integer (+ 1 y)) 41)
          (list (IndirectCallq f (length args))
                (Instr 'movq (list (Reg 'rax) var))))]
        [(GlobalValue name) (list (Instr 'movq (list (si-atm expr) var)))]
-       ; can't really assign collect to anything, as per syntax in book
        [(Collect n-bytes)
         (si-stmt expr)]
        [(Allocate len types)
@@ -1542,13 +1520,11 @@ compiler.rkt> (p '((lambda: ([y : Integer]) : Integer (+ 1 y)) 41)
               (Instr 'movq (list var-prime (Reg 'r11)))
               (Instr 'movq (list (Imm tagg) (Deref 'r11 0))))]
        [(Prim 'vector-ref (list vec n))
-        ; TODO this is possibly wrong... unless?
         (define vec-prime (si-atm vec))
         (set! n (match n [(Int n_) n_]))
         (list (Instr 'movq (list vec-prime (Reg 'r11)))
               (Instr 'movq (list (Deref 'r11 (* 8 (add1 n))) var)))]
        [(Prim 'vector-set! (list vec n arg))
-        ; TODO this is possibly wrong... unless?
         (define vec-prime (si-atm vec))
         (define arg-prime (si-atm arg))
         (set! n (match n [(Int n_) n_]))
@@ -1690,7 +1666,7 @@ compiler.rkt> (p '((lambda: ([y : Integer]) : Integer (+ 1 y)) 41)
     [(Def f (and args `([,xs : ,ts] ...)) rt
        (and info `((locals . ,locals)))
        (CFG `((,labels . ,blocks) ...)))
-     (Def f '() rt info ; info may change
+     (Def f '() rt info 
        (CFG
         (for/list ([label labels]
                    [block blocks])
@@ -1707,7 +1683,6 @@ compiler.rkt> (p '((lambda: ([y : Integer]) : Integer (+ 1 y)) 41)
     [(ProgramDefs info defs)
      (ProgramDefs info (map si-def defs))]))
 
-; removed 'rax
 (define caller-saved (list 'rdx 'rcx 'rsi 'rdi 'r8 'r9 'r10 'r11))
 ; membership predicate
 (define (caller-saved? r)
@@ -1868,7 +1843,6 @@ compiler.rkt> (p '((lambda: ([y : Integer]) : Integer (+ 1 y)) 41)
     [(cons (Jmp label) '())
      base-g]
     [(cons (JmpIf cc label) instr-d)
-     ; interference is not changed by jmpif, right?
      (interference-graph (cdr bl-info) instr-d base-g types)]
     [(cons (TailJmp jmp-to arity) instr-d)
      base-g]
