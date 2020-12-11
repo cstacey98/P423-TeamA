@@ -377,7 +377,7 @@
      (define vec^ (Project (translateR7R6Exp vec) '(Vectorof Any)))
      (define idx^ (Project (translateR7R6Exp idx) 'Integer))
      (define val^ (translateR7R6Exp val))
-     (Inject (Prim 'vector-set! vec^ idx^ val^) 'Void)]))
+     (Inject (Prim 'vector-set! (list vec^ idx^ val^)) 'Void)]))
 
 (define (translateR7R6Exp expr)
   (match expr
@@ -499,6 +499,20 @@
                                      (Int (tagof (cdr type)))))
                           (Bool #t)
                           (Bool #f)))]
+        [(Prim vector-prim args)
+         #:when (or (eq? 'vector-set! vector-prim)
+                    (eq? 'vector-ref vector-prim))
+         (define vec^ (recur (car args)))
+         (define idx^ (recur (cadr args)))
+         (define cdr^ (cddr args))
+         (set! cdr^ (if (empty? cdr^) cdr^ (recur cdr^)))
+          (If
+           (recur
+            (Prim 'and
+                  (list (Prim '<= (list (Int 0) idx^))
+                        (Prim '< (list idx^ (Prim 'vector-length (list vec^)))))))
+            (Prim vector-prim (cons vec^ (cons idx^ cdr^)))
+            (Exit))]
         [(Prim op args)
          (Prim op (map recur args))]))))
 

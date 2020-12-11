@@ -301,7 +301,7 @@
        (define env (make-hash new-env))
        (define block-env (make-hash))
        (define t ((type-check-tail env block-env CFG)
-                  (dict-ref CFG (symbol-append f 'start))))
+                  (dict-ref CFG 'start)))
        (unless (ty-equal? t rt)
          (error "mismatching return type" t rt))
        (define locals-types
