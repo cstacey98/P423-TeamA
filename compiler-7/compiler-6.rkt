@@ -2,6 +2,7 @@
 (require racket/set racket/stream)
 (require racket/fixnum)
 (require "utilities.rkt")
+(require "type-check-R6.rkt")
 (require graph)
 ;(provide (all-defined-out))
 (AST-output-syntax 'abstract-syntax)
@@ -9,7 +10,7 @@
 (AST-output-syntax 'concrete-syntax)
 
 (provide
- type-check
+ ;type-check
  shrink
  reveal-functions
  convert-to-closures
@@ -435,23 +436,6 @@
   (lambda (fun)
     (- (length fun) 2)))
 
-(define build-project-cond
-  (lambda (tmp ftype)
-    (define extra-cond
-      (cond
-        [(is-vector? ftype)
-         (Prim 'eq? (list (Prim 'vector-length (list (Var tmp)))
-                          (Int (get-vector-length ftype))))]
-        [(is-function-type? ftype)
-         (Prim 'eq? (list (Prim 'procedure-arity (list (Var tmp)))
-                          (Int (get-func-arity ftype))))]
-        [else #f]))
-    (define base-cond
-      (Prim 'eq? (list (Prim 'tag-of-any (list (Var tmp)))
-                       (Int (tagof ftype)))))
-    (if extra-cond
-        (Prim 'and (list base-cond extra-cond))
-        base-cond)))
 
 
 
@@ -488,7 +472,7 @@
                    (search-symtab new-env x))
                  rt
                  ((uniquify-exp new-env) body))]
-        [(FunRef f) (FunRef (search-symtab symtab f))]
+        [(FunRefArity f arity) (FunRefArity (search-symtab symtab f) arity)]
         [(Apply f args)
          (Apply (recur f)
                 (map recur args))]
@@ -560,8 +544,9 @@
              (reveal-fun-in-body a def-names))
            args))]
     [(Var x)
-     (if (memv x def-names)
-         (FunRef x)
+     (define defpair (assv x def-names))
+     (if defpair
+         (FunRefArity x (length (Def-param* (cdr defpair))))
          (Var x))]
     [y #:when (atomic? y) y]
     [(Prim op args)
@@ -585,8 +570,8 @@
 (define (reveal-functions p)
   (match p
     [(ProgramDefs info defs)
-     (define def-names
-       (map Def-name defs))
+     (define def-names (for/list ([d defs])
+                         `(,(Def-name d) . ,d)))
      (ProgramDefs
       info
       (map
@@ -634,7 +619,7 @@
     [(Prim 'vector-ref (list vec idx))
      (define vec^ (Project (cast-insert-exp vec fun-env) '(Vectorof Any)))
      (define idx^ (Project (cast-insert-exp idx fun-env) 'Integer))
-     (Inject (Prim 'vector-ref (list vec^ idx^)) 'Void)]
+     (Prim 'vector-ref (list vec^ idx^))]
     [(Prim 'vector-set! (list vec idx val))
      (define vec^ (Project (cast-insert-exp vec fun-env) '(Vectorof Any)))
      (define idx^ (Project (cast-insert-exp idx fun-env) 'Integer))
@@ -647,9 +632,8 @@
     [(Bool b) (Inject expr 'Boolean)]
     [(Int n) (Inject expr 'Integer)]
     [(Void) (Inject expr 'Void)]
-    [(FunRef f)
+    [(FunRefArity f arity)
      (define fun (cdr (assv f fun-env)))
-     (define arity (length (Def-param* fun)))
      (Inject expr
              `(,@(build-list arity (lambda (x) 'Any)) -> Any))]
     [(Let x rhs body)
@@ -679,12 +663,18 @@
 
 (define (cast-insert-def def fun-env)
   (match def
-    [(Def name args rt info body)
-     (Def name args rt info (cast-insert-exp body fun-env))]))
+    [(Def name prms rt info body)
+     (define prms^ (for/list ([p prms])
+                     `[,p : Any]))
+     (define body^ (cast-insert-exp body fun-env))
+     (Def name prms^ rt info (if (eq? rt 'Any)
+                                 body^
+                                 (Project body^ rt)))]))
 
 (define (cast-insert p)
   (match p
     [(ProgramDefs info defs)
+     (displayln 'starting-check-bounds)
      (define fun-env
        (for/list ([d defs])
          (cons (Def-name d) d)))
@@ -694,6 +684,7 @@
 
 (define (check-bounds-exp expr)
   (match expr
+    [(HasType e type) (HasType (check-bounds-exp e) type)]
     [(Inject e ftype) (Inject (check-bounds-exp e) ftype)]
     [(Project e ftype) (Project (check-bounds-exp e) ftype)]
     [(Prim op args)
@@ -723,7 +714,7 @@
     [(Prim op args)
      (Prim op (map check-bounds-exp args))]
     [y #:when (atomic? y) y]
-    [(FunRef f) expr]
+    [(FunRefArity f arity) expr]
     [(Let x rhs body)
      (Let x (check-bounds-exp rhs) (check-bounds-exp body))]
     [(If cnd cnsq alt)
@@ -743,7 +734,80 @@
 (define (check-bounds p)
   (match p
     [(ProgramDefs info defs)
+     (displayln 'starting-check-bounds)
      (ProgramDefs info (map check-bounds-def defs))]))
+
+(define build-project-cond
+  (lambda (tmp ftype)
+    (define extra-cond
+      (cond
+        [(is-vector? ftype)
+         (Prim 'eq? (list (Prim 'vector-length (list (Var tmp)))
+                          (Int (get-vector-length ftype))))]
+        [(is-function-type? ftype)
+         (Prim 'eq? (list (Prim 'procedure-arity (list (Var tmp)))
+                          (Int (get-func-arity ftype))))]
+        [else #f]))
+    (define base-cond
+      (Prim 'eq? (list (Prim 'tag-of-any (list (Var tmp)))
+                       (Int (tagof ftype)))))
+    (if extra-cond
+        (Prim 'and (list base-cond extra-cond))
+        base-cond)))
+
+(define (reveal-casts-prim prim)
+  (match prim
+    [(Prim type-pred (list e))
+     #:when (assv type-pred type-pred-to-type)
+     (define type (assv type-pred type-pred-to-type))
+     (reveal-casts-exp (If (Prim 'eq? (list (Prim 'tag-of-any e)
+                                            (Int (tagof (cdr type)))))
+                           (Bool #t)
+                           (Bool #f)))]
+    [(Prim op args)
+     (Prim op (map reveal-casts-exp args))]))
+
+(define (reveal-casts-exp expr)
+  (match expr
+    [(HasType e type) (HasType (reveal-casts-exp e) type)]
+    [(Inject e ftype)
+     (define e^ (reveal-casts-exp e))
+     (Prim 'make-any (list e^ (Int (tagof ftype))))]
+    [(Project e ftype)
+     (define tmp (gensym 'tmp))
+     (define e^ (reveal-casts-exp e))
+     (Let tmp e^
+          (If (reveal-casts-exp (build-project-cond tmp ftype))
+              (ValueOf (Var tmp) ftype)
+              (Exit)))]
+    [(Exit) expr]
+    [(ValueOf e ftype)
+     (ValueOf (reveal-casts-exp e) ftype)]
+    [(Prim op args)
+     (reveal-casts-prim expr)]
+    [y #:when (atomic? y) y]
+    [(FunRefArity f arity) expr]
+    [(Let x rhs body)
+     (Let x (reveal-casts-exp rhs) (reveal-casts-exp body))]
+    [(If cnd cnsq alt)
+     (If (reveal-casts-exp cnd)
+         (reveal-casts-exp cnsq)
+         (reveal-casts-exp alt))]
+    [(Apply f args)
+     (Apply (reveal-casts-exp f) (map reveal-casts-exp args))]
+    [(Lambda prms rt body)
+     (Lambda prms rt (reveal-casts-exp body))]))
+
+(define (reveal-casts-def def)
+  (match def
+    [(Def name prms rt info body)
+     (Def name prms rt info (reveal-casts-exp body))]))
+
+(define (reveal-casts p)
+  (match p
+    [(ProgramDefs info defs)
+     (displayln 'starting-reveal-casts)
+     (ProgramDefs info (map reveal-casts-def defs))]))
 
 (define (closure-conversion-type t)
   (match t
@@ -2665,7 +2729,11 @@ get-free-vars
    uniquify
    reveal-functions
    cast-insert
+   type-check-R6
    check-bounds
+   type-check-R6
+   reveal-casts
+   type-check-R6
    #;convert-to-closures
    #;limit-functions
    #;expose-allocation

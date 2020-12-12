@@ -167,7 +167,7 @@
               (values (Inject new-e ty) 'Any)]
              [else
               (error 'type-check-exp
-                     "injected expression does not have expected type" 
+                     "injected expression ~a does not have expected type ~a instead has ~a" 
                      e e-ty ty)])]
           [(ValueOf e ty)
            (define-values (new-e e-ty) (recur e))
@@ -177,6 +177,7 @@
              (error 'type-check-exp
                     "may only project to a flat type, not ~a" ty))
            (define-values (new-e e-ty) (recur e))
+           (if (Int? e) (displayln ty) void)
            (cond
              [(type-equal? e-ty 'Any)
               (values (Project new-e ty) ty)]
