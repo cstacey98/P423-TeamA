@@ -674,7 +674,7 @@
 (define (cast-insert p)
   (match p
     [(ProgramDefs info defs)
-     (displayln 'starting-check-bounds)
+     (displayln 'starting-cast-insert)
      (define fun-env
        (for/list ([d defs])
          (cons (Def-name d) d)))
@@ -741,11 +741,11 @@
   (lambda (tmp ftype)
     (define extra-cond
       (cond
-        [(is-vector? ftype)
-         (Prim 'eq? (list (Prim 'vector-length (list (Var tmp)))
+        [(and (is-vector? ftype) (not (eq? (car ftype) 'Vectorof)))
+         (Prim 'eq? (list (Prim 'vector-length (list (ValueOf (Var tmp) ftype)))
                           (Int (get-vector-length ftype))))]
         [(is-function-type? ftype)
-         (Prim 'eq? (list (Prim 'procedure-arity (list (Var tmp)))
+         (Prim 'eq? (list (Prim 'procedure-arity (list (ValueOf (Var tmp) ftype)))
                           (Int (get-func-arity ftype))))]
         [else #f]))
     (define base-cond
@@ -812,6 +812,8 @@
 (define (closure-conversion-type t)
   (match t
     [simple-t #:when (symbol? t) t]
+    [`(Vectorof ,type)
+     `(Vectorof ,(closure-conversion-type type))]
     [`(Vector ,components ...)
      `(Vector ,@(map closure-conversion-type components))]
     [`(,prm-ts ... -> ,rt)
@@ -823,87 +825,68 @@
 
 (define (closure-conversion-exp e)
   (match e
-    [(HasType doot t)
-     (define t^ (closure-conversion-type t))
-     (define doot^
-       (match doot
-         [(Lambda prm* rt body)
-          (define typed-fvs ((get-exp-free-vars '()) e))
-          (define fv-names (map car typed-fvs))
-          (define fvts (map cdr typed-fvs))
+    [(HasType (and expr (Prim 'vector args)) type)
+     (HasType (closure-conversion-exp expr) type)]
+    [(HasType e type) (closure-conversion-exp e)]
+    [(Lambda prm* rt body) ; prm: ([p1 : Any] [p2 : Any] [p3 : Any])
+     #; TODO
+     (define typed-fvs ((get-exp-free-vars '()) e)) ; '((x . Any) (y . Any) (z . Any))
+     (define fv-names (map car typed-fvs)) ; '(x y z)
+     (define lambda-name (gensym 'lambda-))
+     (define clos-name (gensym 'clos-))
+     (define clos-type 'Any)
+     (define body^ (closure-conversion-exp body)) ; 
+     (define index (add1 (length typed-fvs)))
+     (define body-with-fvs-bound
+       (foldr
+        (lambda (fv bodyy)
+          (set! index (sub1 index))
+          (Let fv
+               (Prim 'vector-ref
+                     (list (Var clos-name) (Int index)))
+               bodyy))
+        body^
+        fv-names))
 
-          (define lambda-name (gensym 'lambda-))
-          (define clos-name (gensym 'clos-))
-          (define clos-type `(Vector ,dummy-type ,@fvts))
+     (define lambda-def
+       (Def lambda-name (cons `[,clos-name : ,clos-type]
+                              prm*)
+         rt '() body-with-fvs-bound))
+     (add-lambda-def lambda-def)
+     (define fvs
+       (for/list ([fv fv-names])
+         (Var fv)))
+     (Prim 'vector `(,(FunRef lambda-name)
+                     ,@fvs))]
+    [(Apply ex arg*)
+     (define ex^ (closure-conversion-exp ex))
+     (displayln ex^)
+     (define tmp-var (gensym 'applying-))
+     #;(define typed-tmp-var
+         (HasType (Var tmp-var) (get-type ex^)))
+     (Let tmp-var ex^
+          (Apply
+           (Prim 'vector-ref (list (Var tmp-var)
+                                   (Int 0)))
+           (cons (Var tmp-var) (map closure-conversion-exp arg*))))]
+    [(FunRefArity f arity)
+     (Prim 'vector (list (FunRefArity f arity)))]
+    [y #:when (atomic? y) y]
+    [(ValueOf expr type)
+     (ValueOf (closure-conversion-exp expr) (closure-conversion-type type))]
+    [(Exit) e]
+    [(Prim op args)
+     (Prim op (map closure-conversion-exp args))]
+    [(If cnd cnsq alt)
+     (If (closure-conversion-exp cnd)
+         (closure-conversion-exp cnsq)
+         (closure-conversion-exp alt))]
+    [(Let x rhs body)
+     (Let
+      x
+      (closure-conversion-exp rhs)
+      (closure-conversion-exp body))]))
 
-          (define body^ (closure-conversion-exp body))
-          (define t-body^ (get-type body^))
-          (define index (add1 (length typed-fvs)))
-          (define body-with-fvs-bound
-            (foldr
-             (lambda (fv bodyy)
-               (set! index (sub1 index))
-               (HasType
-                (Let fv
-                     (HasType
-                      (Prim 'vector-ref
-                            (list (Var clos-name) (Int index)))
-                      (list-ref fvts (sub1 index)))
-                     bodyy)
-                t-body^))
-             body^
-             fv-names))
-
-          (define prm*^
-            (for/list ([prm prm*])
-              (match prm
-                [`[,pname : ,pt]
-                 `[,pname : ,(closure-conversion-type pt)]])))
-
-          (define lambda-def
-            (Def lambda-name (cons `[,clos-name : ,clos-type]
-                                   prm*^)
-              rt '() body-with-fvs-bound))
-          (add-lambda-def lambda-def)
-          (define fvs
-            (for/list ([fv typed-fvs])
-              (HasType (Var (car fv)) (cdr fv))))
-
-          ; sneaky-deaky
-          (set! t^ (append t^ fvts))
-
-          (Prim 'vector `(,(HasType (FunRef lambda-name)
-                                    (cons clos-type t))
-                          ,@fvs))]
-         [(Apply ex arg*)
-          (define ex^ (closure-conversion-exp ex))
-          (define tmp-var (gensym 'applying-))
-          (define typed-tmp-var
-            (HasType (Var tmp-var) (get-type ex^)))
-          (Let tmp-var ex^
-               (HasType
-                (Apply
-                 (HasType
-                  (Prim 'vector-ref (list typed-tmp-var
-                                          (HasType (Int 0) 'Integer)))
-                  (clos-fun-type (get-type ex^)))
-                 (cons typed-tmp-var (map closure-conversion-exp arg*)))
-                t^))]
-         [(FunRef f)
-          (Prim 'vector (list (HasType (FunRef f) t)))]
-         [y #:when (atomic? y) y]
-         [(Prim op args)
-          (Prim op (map closure-conversion-exp args))]
-         [(If cnd cnsq alt)
-          (If (closure-conversion-exp cnd)
-              (closure-conversion-exp cnsq)
-              (closure-conversion-exp alt))]
-         [(Let x rhs body)
-          (Let
-           x
-           (closure-conversion-exp rhs)
-           (closure-conversion-exp body))]))
-     (HasType doot^ t^)]))
 
 (define (clos-fun-type t-clos)
   (match t-clos
@@ -919,9 +902,11 @@
 (define lambda-defs '())
 (define (add-lambda-def new-def)
   (set! lambda-defs (cons new-def lambda-defs)))
+
 (define (convert-to-closures p)
   (match p
     [(ProgramDefs info defs)
+     (displayln 'starting-closure-conversion)
      (set! lambda-defs '())
      (define defs^ (map closure-conversion-def defs))
      (ProgramDefs info (append defs^ lambda-defs))]))
@@ -989,7 +974,10 @@
   (match expr
     [(HasType e t)
      (HasType (limit-exp e args-assoc new-args) (limit-type t))]
-    [(FunRef f) (FunRef f)]
+    [(FunRefArity f arity) (FunRefArity f arity)]
+    [(ValueOf ex ftype)
+     expr]
+    [(Exit) expr]
     [(Var x)
      (define index (assv x args-assoc))
      ; if referencing 6th or higher, and there are 7 or more inputs
@@ -1056,7 +1044,9 @@
 (define (limit-functions p)
   (match p
     [(ProgramDefs info defs)
+     (displayln 'limit-functions)
      (ProgramDefs info (map limit-funs-def defs))]))
+
 
 
 ; TODO
@@ -1192,7 +1182,7 @@ compiler.rkt> (p '((lambda: ([y : Integer]) : Integer (+ 1 y)) 41)
     [(Apply f args)
      (Apply (expose-alloc-exp f)
             (map expose-alloc-exp args))]
-    [(FunRef f) e]
+    [(FunRefArity f arity) e]
     [(If cnd cnsq alt)
      (define cnd-e (expose-alloc-exp cnd))
      (define cnsq-e (expose-alloc-exp cnsq))
@@ -1302,7 +1292,7 @@ compiler.rkt> (p '((lambda: ([y : Integer]) : Integer (+ 1 y)) 41)
             (Let var-name
                  (rco-exp bound-to)
                  (rco-exp body-updated))])]
-        [(FunRef f) expr]
+        [(FunRefArity f arity) expr]
         [(Allocate n-items types) expr]
         [(Collect n-bytes) expr]
         [(GlobalValue name) expr]
@@ -1611,7 +1601,7 @@ compiler.rkt> (p '((lambda: ([y : Integer]) : Integer (+ 1 y)) 41)
        [(Int n) (list (Instr 'movq (list (Imm n) var)))]
        [(Void) (list (Instr 'movq (list (si-atm expr) var)))]
        [(Bool b) (list (Instr 'movq (list (si-atm expr) var)))]
-       [(FunRef f) (list (Instr 'leaq (list (FunRef f) var)))]
+       [(FunRefArity f arity) (list (Instr 'leaq (list (FunRefArity f arity) var)))]
        [(Call f args)
         ; TODO if all hope is lost look here
         ; (define fun-name (match f [(Var x) x] [(FunRef f_) f_]))
@@ -2604,7 +2594,7 @@ compiler.rkt> (p '((lambda: ([y : Integer]) : Integer (+ 1 y)) 41)
 (define (print-arg arg)
   (match arg
     ; Not sure if we should prefix these names with _?
-    [(FunRef f) (format "~a(%rip)" (os-label f))]
+    [(FunRefArity f arity) (format "~a(%rip)" (os-label f))]
     [(Global name) (format "~a(%rip)" (os-label name))]
     [(Imm n) (format "$~a" n)]
     [(Reg reg) (format "%~a" reg)]
@@ -2734,9 +2724,12 @@ get-free-vars
    type-check-R6
    reveal-casts
    type-check-R6
-   #;convert-to-closures
-   #;limit-functions
-   #;expose-allocation
+   convert-to-closures
+   type-check-R6
+   limit-functions
+   type-check-R6
+   expose-allocation
+   type-check-R6
    #;remove-complex-opera*
    #;explicate-control
    #;uncover-locals
