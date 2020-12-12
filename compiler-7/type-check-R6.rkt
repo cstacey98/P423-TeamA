@@ -130,8 +130,10 @@
                            (i^ . < . (length ts)))
                 (error 'type-check-exp "invalid index ~a in ~a" i^ e))
               (unless (type-equal? (list-ref ts i^) t-arg)
-                (error 'type-check-exp "type mismatch in vector vector-set! ~a ~a" 
-                       (list-ref ts i^) t-arg))
+                (begin
+                  (displayln e-vec^)
+                  (error 'type-check-exp "type mismatch in vector vector-set! ~a ~a" 
+                         (list-ref ts i^) t-arg)))
               (values (Prim 'vector-set! (list e-vec^ (Int i^) e-arg^))  'Void)]
              [(list `(Vectorof ,t) i)
               (unless (type-equal? t t-arg)

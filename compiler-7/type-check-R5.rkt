@@ -45,6 +45,7 @@
            (define t (dict-ref env x))
            (define var (cond [(typed-vars) (HasType (Var x) t)]
                              [else (Var x)]))
+           (displayln var)
            (values var t)]
           [(Closure arity es)
            (define-values (e* t*) (for/lists (e* t*) ([e es])
