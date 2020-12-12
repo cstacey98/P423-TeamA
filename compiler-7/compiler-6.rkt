@@ -504,7 +504,7 @@
         [(Let x e body)
          (define e-uniq (recur e))
          (define symtab-x (extend-symtab symtab x))
-         (define x-uniq (search-symtab (pe symtab-x) x))
+         (define x-uniq (search-symtab symtab-x x))
          (define body-uniq ((uniquify-exp symtab-x) body))
          (Let x-uniq
               e-uniq
@@ -691,6 +691,59 @@
      (ProgramDefs info (map
                         (lambda (d) (cast-insert-def d fun-env))
                         defs))]))
+
+(define (check-bounds-exp expr)
+  (match expr
+    [(Inject e ftype) (Inject (check-bounds-exp e) ftype)]
+    [(Project e ftype) (Project (check-bounds-exp e) ftype)]
+    [(Prim op args)
+     #:when (or (eq? op 'vector-ref) (eq? op 'vector-set!))
+     (define vec^ (car args))
+     (define vftype (Project-type vec^))
+     (define idx^ (cadr args))
+     (define cdr^ (cddr args))
+     (define v-sym (gensym 'tmp))
+     (define i-sym (gensym 'tmp))
+     (match vftype
+       [`(Vectorof ,_)
+        (Let v-sym vec^
+             (Let i-sym idx^
+                  (If
+                   (If
+                    (Prim 'not (list (Prim '< (list (Var i-sym) (Int 0)))))
+                    (Prim '< (list (Var i-sym) (Prim 'vector-length (list (Var v-sym)))))
+                    (Bool #f))
+                   (Prim op (cons (Var v-sym) (cons (Var i-sym) cdr^)))
+                   (Exit))))]
+       [`(Vector ,components ...)
+        (define idx (Int-value (Project-value idx^)))
+        (define cardinality (length components))
+        (unless (and (>= idx 0) (< idx cardinality))
+          (error (format "index out of bounds exception for index ~a on vector with length ~a" idx cardinality)))])]
+    [(Prim op args)
+     (Prim op (map check-bounds-exp args))]
+    [y #:when (atomic? y) y]
+    [(FunRef f) expr]
+    [(Let x rhs body)
+     (Let x (check-bounds-exp rhs) (check-bounds-exp body))]
+    [(If cnd cnsq alt)
+     (If (check-bounds-exp cnd)
+         (check-bounds-exp cnsq)
+         (check-bounds-exp alt))]
+    [(Apply f args)
+     (Apply (check-bounds-exp f) (map check-bounds-exp args))]
+    [(Lambda prms rt body)
+     (Lambda prms rt (check-bounds-exp body))]))
+
+(define (check-bounds-def def)
+  (match def
+    [(Def name args rt info body)
+     (Def name args rt info (check-bounds-exp body))]))
+
+(define (check-bounds p)
+  (match p
+    [(ProgramDefs info defs)
+     (ProgramDefs info (map check-bounds-def defs))]))
 
 (define (closure-conversion-type t)
   (match t
@@ -2612,6 +2665,7 @@ get-free-vars
    uniquify
    reveal-functions
    cast-insert
+   check-bounds
    #;convert-to-closures
    #;limit-functions
    #;expose-allocation
